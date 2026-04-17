@@ -1,0 +1,29 @@
+cmake_minimum_required(VERSION 3.16)
+
+project(tyke_project VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(NOT CMAKE_PREFIX_INSTALL)
+    set(CMAKE_PREFIX_INSTALL "${CMAKE_INSTALL_PREFIX}")
+endif()
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(THIRD_PARTY_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/include")
+set(THIRD_PARTY_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lib/${CMAKE_SYSTEM_NAME}")
+
+add_subdirectory(tyke)
+add_subdirectory(examples)
+
+message(STATUS "=== Tyke Build Configuration ===")
+message(STATUS "CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+message(STATUS "CMAKE_CXX_STANDARD: ${CMAKE_CXX_STANDARD}")
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "CMAKE_PREFIX_INSTALL: ${CMAKE_PREFIX_INSTALL}")
+message(STATUS "================================")
