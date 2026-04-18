@@ -37,7 +37,7 @@ namespace tyke
     using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<uint8_t> &)>;
 
     /// 服务器接收数据回调函数类型
-    using ServerRecvDataCallback = std::function<uint32_t(ClientId, const std::vector<uint8_t> &,
+    using ServerRecvDataCallback = std::function<nonstd::optional<uint32_t>(ClientId, const std::vector<uint8_t> &,
                                                  const ServerSendDataCallback&
     )
     >;

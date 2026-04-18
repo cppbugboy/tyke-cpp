@@ -226,16 +226,14 @@ namespace tyke
      * @param func 响应回调函数
      * @return 成功返回true，失败返回错误信息
      */
-    nonstd::expected<bool, std::string> TykeRequest::SendAsyncWithFunc(const std::string& send_uuid,
-                                                                       std::function<void(TykeResponse &)> func)
+    nonstd::expected<bool, std::string> TykeRequest::SendAsyncWithFunc(const std::string &send_uuid, const std::function<void(const TykeResponse &)> &func)
     {
         LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}", send_uuid, GetRoute());
-
+        // 先注册回调
+        RequestStub::AddFunc(metadata_.GetMsgUuid(), func);
         auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFunc);
-        if (result)
-        {
-            async_func_ = std::move(func);
-            LOG_DEBUG("Async callback registered, msg_uuid={}", GetMsgUuid());
+        if (!result) {
+            RequestStub::DelFunc(metadata_.GetMsgUuid());
         }
         return result;
     }
@@ -251,7 +249,7 @@ namespace tyke
     {
         LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}", send_uuid, GetRoute());
 
-        auto result = EncodeAndSend(send_uuid, MessageType::kResponseAsyncFunc);
+        auto result = EncodeAndSend(send_uuid, MessageType::kResponseAsyncFuture);
         if (!result)
         {
             return nonstd::make_unexpected(result.error());

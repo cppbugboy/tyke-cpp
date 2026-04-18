@@ -21,7 +21,7 @@ namespace tyke
      * @brief 数据编解码处理器类
      *
      * 提供静态方法实现请求和响应的编解码功能，支持Tyke协议格式。
-     * 协议格式: [ProtocolHeader(固定32字节)][Metadata JSON][Content Binary]
+     * 协议格式: [ProtocolHeader(固定28字节)][Metadata JSON][Content Binary]
      *
      * 使用示例：
      * @code

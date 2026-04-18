@@ -9,10 +9,11 @@
  */
 
 #ifdef _WIN32
-#include "ipc/ipc_internal_platform.h"
-#include "ipc/ipc_crypto.h"
 #include "common/log_def.h"
 #include "component/thread_pool.hpp"
+#include "ipc/ipc_client.h"
+#include "ipc/ipc_crypto.h"
+#include "ipc/ipc_internal_platform.h"
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -359,7 +360,7 @@ namespace tyke
                 std::shared_ptr<ClientContext> ctx;
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
-                    auto it = clients_.find(reinterpret_cast<ClientId>(ctx_raw->pipe));
+                    auto it = clients_.find(static_cast<ClientId>(reinterpret_cast<ClientId>(ctx_raw->pipe)));
                     if (it == clients_.end())
                         continue;
                     ctx = it->second;
@@ -418,7 +419,7 @@ namespace tyke
             }
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                clients_[reinterpret_cast<ClientId>(pipe)] = ctx;
+                clients_[static_cast<ClientId>(reinterpret_cast<ClientId>(pipe))] = ctx;
             }
             BOOL pending = ConnectNamedPipe(pipe, &ctx->read_ov);
             if (!pending)
@@ -484,7 +485,7 @@ namespace tyke
                         return false;
                     
                     auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(decrypt_result.value()));
-                    auto client_id = reinterpret_cast<ClientId>(ctx->pipe);
+                    auto client_id = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(ctx->pipe));
                     auto callback = callback_;
                     
                     THREAD_POOL_INSTANCE->Enqueue([callback, client_id, data_copy, this]() {
@@ -495,7 +496,11 @@ namespace tyke
                         };
                         if (callback)
                         {
-                            callback(client_id, *data_copy, cb_send);
+                            const auto optional = callback(client_id, *data_copy, cb_send);
+                            if (!optional)
+                            {
+                                CloseClient(client_id);
+                            }
                         }
                     });
                 }
@@ -529,7 +534,23 @@ namespace tyke
             DisconnectNamedPipe(pipe);
             CloseHandle(pipe);
             std::lock_guard<std::mutex> lock(mutex_);
-            clients_.erase(reinterpret_cast<ClientId>(pipe));
+            const auto client_id = static_cast<ClientId>(reinterpret_cast<ClientId>(pipe));
+            clients_.erase(client_id);
+        }
+
+        void CloseClient(const ClientId client_id)
+        {
+            auto pipe = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(client_id));
+            if (clients_.find(client_id) == clients_.end())
+                return;
+            const auto  ctx = clients_.at(client_id);
+
+            CancelIoEx(pipe, &ctx->read_ov);
+            CancelIoEx(pipe, &ctx->write_ov);
+            DisconnectNamedPipe(pipe);
+            CloseHandle(pipe);
+            std::lock_guard<std::mutex> lock(mutex_);
+            clients_.erase(client_id);
         }
 
         std::string server_name_;

@@ -25,7 +25,7 @@ namespace tyke
      * @param send_data_handler 发送数据的回调函数
      * @return 已处理的数据字节数
      */
-    uint32_t DataHandler::DataCallback(const ClientId client_id, const std::vector<unsigned char>& data_vec,
+    nonstd::optional<uint32_t> DataHandler::DataCallback(const ClientId client_id, const std::vector<unsigned char>& data_vec,
                                        const SendDataHandler& send_data_handler)
     {
         LOG_DEBUG("DataCallback invoked, client_id={}, data_size={}", client_id, data_vec.size());
@@ -46,7 +46,7 @@ namespace tyke
         if (std::memcmp(header.magic, kProtocolMagic, sizeof(header.magic)) != 0)
         {
             LOG_WARN("Protocol magic mismatch, expected=TYKE");
-            return 0;
+            return nonstd::nullopt;
         }
 
         LOG_DEBUG("Received message, type={}, metadata_len={}, content_len={}",
@@ -58,16 +58,23 @@ namespace tyke
         case MessageType::kRequest:
             {
                 // 处理同步请求
-                const auto tyke_request_ptr = MakeRequestPtr();
-                auto decode_result = DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used);
-                if (decode_result)
+                try
                 {
-                    LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
-                    RequestHandler(client_id, *tyke_request_ptr, send_data_handler);
+                    const auto tyke_request_ptr = MakeRequestPtr();
+                    auto decode_result = DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used);
+                    if (decode_result)
+                    {
+                        LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
+                        RequestHandler(client_id, *tyke_request_ptr, send_data_handler);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Decode request failed: {}", decode_result.error());
+                    }
                 }
-                else
+                catch (...)
                 {
-                    LOG_ERROR("Decode request failed: {}", decode_result.error());
+                    return nonstd::nullopt;
                 }
                 break;
             }
@@ -76,17 +83,24 @@ namespace tyke
         case MessageType::kRequestAsyncFuture:
             {
                 // 处理异步请求
-                const auto tyke_request_ptr = MakeRequestPtr();
-                auto decode_result = DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used);
-                if (decode_result)
+                try
                 {
-                    LOG_DEBUG("Processing async request, route={}, msg_type={}",
-                              tyke_request_ptr->GetRoute(), static_cast<int>(header.msg_type));
-                    RequestHandlerAsync(*tyke_request_ptr);
+                    const auto tyke_request_ptr = MakeRequestPtr();
+                    auto decode_result = DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used);
+                    if (decode_result)
+                    {
+                        LOG_DEBUG("Processing async request, route={}, msg_type={}",
+                                  tyke_request_ptr->GetRoute(), static_cast<int>(header.msg_type));
+                        RequestHandlerAsync(*tyke_request_ptr);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Decode async request failed: {}", decode_result.error());
+                    }
                 }
-                else
+                catch (...)
                 {
-                    LOG_ERROR("Decode async request failed: {}", decode_result.error());
+                    return nonstd::nullopt;
                 }
                 break;
             }
@@ -95,17 +109,24 @@ namespace tyke
         case MessageType::kResponseAsyncFuture:
             {
                 // 处理异步响应
-                const auto tyke_response_ptr = MakeResponsePtr();
-                auto decode_result = DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used);
-                if (decode_result)
+                try
                 {
-                    LOG_DEBUG("Processing async response, route={}, msg_uuid={}",
-                              tyke_response_ptr->GetRoute(), tyke_response_ptr->GetMsgUuid());
-                    ResponseHandler(*tyke_response_ptr);
+                    const auto tyke_response_ptr = MakeResponsePtr();
+                    auto decode_result = DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used);
+                    if (decode_result)
+                    {
+                        LOG_DEBUG("Processing async response, route={}, msg_uuid={}",
+                                  tyke_response_ptr->GetRoute(), tyke_response_ptr->GetMsgUuid());
+                        ResponseHandler(*tyke_response_ptr);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Decode response failed: {}", decode_result.error());
+                    }
                 }
-                else
+                catch (...)
                 {
-                    LOG_ERROR("Decode response failed: {}", decode_result.error());
+                    return nonstd::nullopt;
                 }
                 break;
             }
@@ -138,7 +159,7 @@ namespace tyke
                 .SetSendDataHandler(send_data_handler);
 
         // 分发请求到处理器
-        Dispatcher::DispatchRequest(request, *response_ptr);
+        dispatcher::DispatchRequest(request, *response_ptr);
 
         // 发送响应
         auto send_result = response_ptr->Send();
@@ -174,7 +195,7 @@ namespace tyke
         }
 
         // 分发请求到处理器
-        Dispatcher::DispatchRequest(request, *response_ptr);
+        dispatcher::DispatchRequest(request, *response_ptr);
 
         // 异步发送响应
         auto send_result = response_ptr->SendAsync();
@@ -197,7 +218,7 @@ namespace tyke
         {
         case MessageType::kResponseAsync:
             // 分发到响应处理器
-            Dispatcher::DispatchResponse(response);
+            dispatcher::DispatchResponse(response);
             break;
         case MessageType::kResponseAsyncFunc:
             // 执行回调函数

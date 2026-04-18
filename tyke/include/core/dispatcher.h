@@ -26,32 +26,28 @@ namespace tyke
      * 3. 执行处理器
      * 4. 按逆序执行过滤器的After方法
      */
-    class Dispatcher
-    {
-    public:
-        Dispatcher() = delete;
-        ~Dispatcher() = delete;
+namespace dispatcher
+{
+/**
+ * @brief 分发请求到相应的处理器
+ * @param request 请求对象
+ * @param response 响应对象
+ *
+ * 根据请求的路由信息查找对应的处理器和过滤器链，
+ * 按顺序执行过滤器的Before方法，然后执行处理器，
+ * 最后按逆序执行过滤器的After方法。
+ */
+void DispatchRequest(const TykeRequest& request, TykeResponse& response);
 
-        /**
-         * @brief 分发请求到相应的处理器
-         * @param request 请求对象
-         * @param response 响应对象
-         *
-         * 根据请求的路由信息查找对应的处理器和过滤器链，
-         * 按顺序执行过滤器的Before方法，然后执行处理器，
-         * 最后按逆序执行过滤器的After方法。
-         */
-        static void DispatchRequest(const TykeRequest& request, TykeResponse& response);
-
-        /**
-         * @brief 分发响应到相应的处理器
-         * @param response 响应对象
-         *
-         * 根据响应的路由信息查找对应的处理器和过滤器链，
-         * 处理逻辑与请求分发类似。
-         */
-        static void DispatchResponse(const TykeResponse& response);
-    };
+/**
+ * @brief 分发响应到相应的处理器
+ * @param response 响应对象
+ *
+ * 根据响应的路由信息查找对应的处理器和过滤器链，
+ * 处理逻辑与请求分发类似。
+ */
+void DispatchResponse(const TykeResponse& response);
+}
 } // tyke
 
 #endif //TYKE_DISPATCHER_H

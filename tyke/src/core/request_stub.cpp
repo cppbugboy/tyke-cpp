@@ -36,19 +36,20 @@ namespace tyke
      * @brief 设置Future结果
      * @param response 响应对象
      */
-    void RequestStub::SetFuture(const TykeResponse& response)
-    {
-        std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
-        auto it = uuid_future_map_.find(response.metadata_.GetMsgUuid());
-        if (it != uuid_future_map_.end())
+void RequestStub::SetFuture(const TykeResponse& response) {
+        FutureEntry entry;
+        bool found = false;
         {
-            it->second.promise.set_value(response);
-            uuid_future_map_.erase(it);
-            LOG_DEBUG("Future result set, uuid={}", response.metadata_.GetMsgUuid());
+            std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
+            auto it = uuid_future_map_.find(response.metadata_.GetMsgUuid());
+            if (it != uuid_future_map_.end()) {
+                entry = std::move(it->second);
+                uuid_future_map_.erase(it);
+                found = true;
+            }
         }
-        else
-        {
-            LOG_WARN("Future entry not found for response, uuid={}", response.metadata_.GetMsgUuid());
+        if (found) {
+            entry.promise.set_value(response);
         }
     }
 
@@ -95,6 +96,17 @@ namespace tyke
         {
             LOG_WARN("Callback entry not found for response, uuid={}", response.metadata_.GetMsgUuid());
         }
+    }
+
+    /**
+     * @brief 删除Func条目
+     * @param msg_uuid 消息UUID
+     */
+    void RequestStub::DelFunc(const std::string &msg_uuid)
+    {
+        std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
+        uuid_func_map_.erase(msg_uuid);
+        LOG_DEBUG("Func entry deleted, uuid={}", msg_uuid);
     }
 
     /**

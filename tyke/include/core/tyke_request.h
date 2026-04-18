@@ -163,8 +163,8 @@ namespace tyke
          * @param func 响应回调函数
          * @return 成功返回true，失败返回错误信息
          */
-        nonstd::expected<bool, std::string> SendAsyncWithFunc(const std::string& send_uuid,
-                                                              std::function<void(TykeResponse &)> func);
+        nonstd::expected<bool, std::string> SendAsyncWithFunc(const std::string                        &send_uuid,
+                                                              const std::function<void(const TykeResponse &)> &func);
 
         /**
          * @brief 异步发送请求（Future方式）

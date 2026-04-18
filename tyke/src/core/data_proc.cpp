@@ -35,7 +35,7 @@ namespace tyke
         if (!json_result)
         {
             LOG_ERROR("Metadata serialization failed: {}", json_result.error());
-            return nonstd::make_unexpected("metadata serialization failed: " + json_result.error());
+            throw std::runtime_error(json_result.error());
         }
 
         // 计算各部分大小
@@ -107,7 +107,7 @@ namespace tyke
         if (std::memcmp(msg.protocol_header_.magic, kProtocolMagic, sizeof(msg.protocol_header_.magic)) != 0)
         {
             LOG_ERROR("Protocol magic mismatch: expected TYKE");
-            return nonstd::make_unexpected("protocol magic mismatch");
+            throw std::runtime_error("Protocol magic mismatch");
         }
 
         const uint32_t meta_len = msg.protocol_header_.metadata_len;
@@ -130,7 +130,7 @@ namespace tyke
             if (!from_json_result)
             {
                 LOG_ERROR("Metadata deserialization failed: {}", from_json_result.error());
-                return nonstd::make_unexpected("metadata deserialization failed: " + from_json_result.error());
+                throw std::runtime_error(from_json_result.error());
             }
         }
 
@@ -152,7 +152,14 @@ namespace tyke
      */
     BoolResult DataProc::EncodeRequest(TykeRequest& request, std::vector<unsigned char>& data_vec)
     {
-        return Encode(request, data_vec);
+        try
+        {
+            return Encode(request, data_vec);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(e.what());
+        }
     }
 
     /**
@@ -164,7 +171,14 @@ namespace tyke
      */
     BoolResult DataProc::DecodeRequest(const std::vector<unsigned char>& data_vec, TykeRequest& request, uint32_t& data_size)
     {
-        return Decode(data_vec, request, data_size);
+        try
+        {
+            return Decode(data_vec, request, data_size);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(e.what());
+        }
     }
 
     /**
@@ -175,7 +189,14 @@ namespace tyke
      */
     BoolResult DataProc::EncodeResponse(TykeResponse& response, std::vector<unsigned char>& data_vec)
     {
-        return Encode(response, data_vec);
+        try
+        {
+            return Encode(response, data_vec);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(e.what());
+        }
     }
 
     /**
@@ -188,6 +209,13 @@ namespace tyke
     BoolResult DataProc::DecodeResponse(const std::vector<unsigned char>& data_vec, TykeResponse& response,
                                   uint32_t& data_size)
     {
-        return Decode(data_vec, response, data_size);
+        try
+        {
+            return Decode(data_vec, response, data_size);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(e.what());
+        }
     }
 } // namespace tyke
