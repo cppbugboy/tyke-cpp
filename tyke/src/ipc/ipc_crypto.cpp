@@ -10,6 +10,7 @@
 
 #include "ipc/ipc_crypto.h"
 #include "common/log_def.h"
+#include "common/tyke_def.h"
 
 #include <cstring>
 #include <openssl/evp.h>
@@ -246,7 +247,7 @@ namespace tyke
             }
 
             // 使用SHA-256派生AES-256密钥
-            impl_->aes_key.resize(32);
+            impl_->aes_key.resize(kAes256KeyLen);
             if (!EVP_Q_digest(nullptr, "SHA256", nullptr, shared_secret.data(), shared_secret.size(),
                               impl_->aes_key.data(), nullptr))
             {
@@ -277,7 +278,7 @@ namespace tyke
             }
 
             // 生成随机IV
-            std::vector<uint8_t> iv(12);
+            std::vector<uint8_t> iv(kAesGcmIvLen);
             if (RAND_bytes(iv.data(), static_cast<int>(iv.size())) != 1)
             {
                 LOG_ERROR("RAND_bytes for IV failed");
@@ -292,7 +293,7 @@ namespace tyke
             }
 
             if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1 ||
-                EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 12, nullptr) != 1 ||
+                EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, kAesGcmIvLen, nullptr) != 1 ||
                 EVP_EncryptInit_ex(ctx, nullptr, nullptr, impl_->aes_key.data(), iv.data()) != 1)
             {
                 EVP_CIPHER_CTX_free(ctx);
@@ -319,8 +320,8 @@ namespace tyke
             }
 
             // 获取认证标签
-            std::vector<uint8_t> tag(16);
-            if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag.data()) != 1)
+            std::vector<uint8_t> tag(kAesGcmTagLen);
+            if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, kAesGcmTagLen, tag.data()) != 1)
             {
                 EVP_CIPHER_CTX_free(ctx);
                 LOG_ERROR("AES-GCM get tag failed");
@@ -331,7 +332,7 @@ namespace tyke
 
             // 组装结果: IV + 密文 + Tag
             std::vector<uint8_t> result;
-            result.reserve(12 + ciphertext.size() + 16);
+            result.reserve(kAesGcmIvLen + ciphertext.size() + kAesGcmTagLen);
             result.insert(result.end(), iv.begin(), iv.end());
             result.insert(result.end(), ciphertext.begin(), ciphertext.begin() + out_len + final_len);
             result.insert(result.end(), tag.begin(), tag.end());
@@ -350,15 +351,15 @@ namespace tyke
                 return nonstd::make_unexpected("cipher not initialized");
             }
 
-            if (ciphertext.size() < 12 + 16)
+            if (ciphertext.size() < kAesGcmIvLen + kAesGcmTagLen)
             {
                 return nonstd::make_unexpected("ciphertext too short");
             }
 
             const uint8_t* iv = ciphertext.data();
-            const uint8_t* enc_data = ciphertext.data() + 12;
-            size_t enc_len = ciphertext.size() - 12 - 16;
-            const uint8_t* tag = ciphertext.data() + ciphertext.size() - 16;
+            const uint8_t* enc_data = ciphertext.data() + kAesGcmIvLen;
+            size_t enc_len = ciphertext.size() - kAesGcmIvLen - kAesGcmTagLen;
+            const uint8_t* tag = ciphertext.data() + ciphertext.size() - kAesGcmTagLen;
 
             EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
             if (!ctx)
@@ -368,7 +369,7 @@ namespace tyke
             }
 
             if (EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1 ||
-                EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 12, nullptr) != 1 ||
+                EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, kAesGcmIvLen, nullptr) != 1 ||
                 EVP_DecryptInit_ex(ctx, nullptr, nullptr, impl_->aes_key.data(), iv) != 1)
             {
                 EVP_CIPHER_CTX_free(ctx);
@@ -385,7 +386,7 @@ namespace tyke
                 return nonstd::make_unexpected("AES-GCM decrypt update failed");
             }
 
-            if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, const_cast<uint8_t*>(tag)) != 1)
+            if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, kAesGcmTagLen, const_cast<uint8_t*>(tag)) != 1)
             {
                 EVP_CIPHER_CTX_free(ctx);
                 LOG_ERROR("AES-GCM set tag failed");

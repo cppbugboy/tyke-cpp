@@ -21,7 +21,7 @@ namespace tyke
      * @brief 数据编解码处理器类
      *
      * 提供静态方法实现请求和响应的编解码功能，支持Tyke协议格式。
-     * 协议格式: [ProtocolHeader(固定32字节)][Metadata JSON][Content Binary]
+     * 协议格式: [ProtocolHeader(固定28字节)][Metadata JSON][Content Binary]
      *
      * 使用示例：
      * @code
@@ -43,7 +43,7 @@ namespace tyke
          *
          * 将TykeRequest对象编码为Tyke协议格式的字节流，包括协议头、元数据JSON和内容数据。
          */
-        static BoolResult EncodeRequest(TykeRequest& request, std::vector<unsigned char>& data_vec);
+        static void EncodeRequest(TykeRequest& request, std::vector<unsigned char>& data_vec);
 
         /**
          * @brief 解码协议格式为请求对象
@@ -54,7 +54,7 @@ namespace tyke
          *
          * 从Tyke协议格式的字节流中解析出TykeRequest对象。
          */
-        static BoolResult DecodeRequest(const std::vector<unsigned char>& data_vec, TykeRequest& request,
+        static nonstd::optional<bool> DecodeRequest(const std::vector<unsigned char>& data_vec, TykeRequest& request,
                                   uint32_t& data_size);
 
         /**
@@ -65,7 +65,7 @@ namespace tyke
          *
          * 将TykeResponse对象编码为Tyke协议格式的字节流。
          */
-        static BoolResult EncodeResponse(TykeResponse& response, std::vector<unsigned char>& data_vec);
+        static void EncodeResponse(TykeResponse& response, std::vector<unsigned char>& data_vec);
 
         /**
          * @brief 解码协议格式为响应对象
@@ -76,7 +76,7 @@ namespace tyke
          *
          * 从Tyke协议格式的字节流中解析出TykeResponse对象。
          */
-        static BoolResult DecodeResponse(const std::vector<unsigned char>& data_vec, TykeResponse& response,
+        static nonstd::optional<bool> DecodeResponse(const std::vector<unsigned char>& data_vec, TykeResponse& response,
                                    uint32_t& data_size);
 
     private:
@@ -90,7 +90,7 @@ namespace tyke
          * 实现请求和响应的通用编码逻辑，包括元数据JSON序列化和协议头组装。
          */
         template <typename T>
-        static BoolResult Encode(T& msg, std::vector<unsigned char>& data_vec);
+        static void Encode(T& msg, std::vector<unsigned char>& data_vec);
 
         /**
          * @brief 通用解码模板函数
@@ -103,7 +103,7 @@ namespace tyke
          * 实现请求和响应的通用解码逻辑，包括协议头解析和元数据JSON反序列化。
          */
         template <typename T>
-        static BoolResult Decode(const std::vector<unsigned char>& data_vec, T& msg, uint32_t& data_size);
+        static nonstd::optional<bool> Decode(const std::vector<unsigned char>& data_vec, T& msg, uint32_t& data_size);
     };
 } // tyke
 

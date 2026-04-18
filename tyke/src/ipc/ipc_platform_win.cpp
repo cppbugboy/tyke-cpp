@@ -495,7 +495,11 @@ namespace tyke
                         };
                         if (callback)
                         {
-                            callback(client_id, *data_copy, cb_send);
+                            auto optional = callback(client_id, *data_copy, cb_send);
+                            if (!optional)
+                            {
+                                CloseClient(client_id);
+                            }
                         }
                     });
                 }
@@ -530,6 +534,20 @@ namespace tyke
             CloseHandle(pipe);
             std::lock_guard<std::mutex> lock(mutex_);
             clients_.erase(reinterpret_cast<ClientId>(pipe));
+        }
+
+        void CloseClient(const ClientId client_id)
+        {
+            if (clients_.find(client_id) == clients_.end())
+                return;
+
+            auto ctx = clients_.at(client_id);
+            CancelIoEx(ctx->pipe, &ctx->read_ov);
+            CancelIoEx(ctx->pipe, &ctx->write_ov);
+            DisconnectNamedPipe(ctx->pipe);
+            CloseHandle(ctx->pipe);
+            std::lock_guard<std::mutex> lock(mutex_);
+            clients_.erase(reinterpret_cast<ClientId>(ctx->pipe));
         }
 
         std::string server_name_;

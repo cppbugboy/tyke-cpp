@@ -217,7 +217,6 @@ namespace tyke
         ProtocolHeader protocol_header_;                    ///< 协议头
         ResponseMetadata metadata_;                          ///< 响应元数据
         std::vector<unsigned char> content_;                 ///< 内容数据
-        uint32_t data_size_ = 0;                             ///< 数据大小
         bool is_send_ = false;                               ///< 是否已发送标志
         ClientId client_id_{};                               ///< 客户端标识
         SendDataHandler send_data_handler_;                  ///< 发送数据回调函数

@@ -40,14 +40,14 @@ namespace tyke
          * @param json_string 输出的JSON字符串
          * @return 成功返回true，失败返回错误信息
          */
-        BoolResult ToJsonString(std::string& json_string);
+        void ToJsonString(std::string& json_string);
 
         /**
          * @brief 从JSON字符串反序列化
          * @param json_string 输入的JSON字符串
          * @return 成功返回true，失败返回错误信息
          */
-        BoolResult FromJsonString(const std::string& json_string);
+        void FromJsonString(const std::string& json_string);
 
         /**
          * @brief 获取模块名称

@@ -39,16 +39,16 @@ namespace tyke
     void RequestStub::SetFuture(const TykeResponse& response)
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
-        auto it = uuid_future_map_.find(response.metadata_.GetMsgUuid());
+        auto it = uuid_future_map_.find(response.GetMsgUuid());
         if (it != uuid_future_map_.end())
         {
             it->second.promise.set_value(response);
             uuid_future_map_.erase(it);
-            LOG_DEBUG("Future result set, uuid={}", response.metadata_.GetMsgUuid());
+            LOG_DEBUG("Future result set, uuid={}", response.GetMsgUuid());
         }
         else
         {
-            LOG_WARN("Future entry not found for response, uuid={}", response.metadata_.GetMsgUuid());
+            LOG_WARN("Future entry not found for response, uuid={}", response.GetMsgUuid());
         }
     }
 
@@ -82,18 +82,18 @@ namespace tyke
     void RequestStub::ExecFunc(const TykeResponse& response)
     {
         std::unique_lock<std::mutex> lock(uuid_func_map_mutex_);
-        auto it = uuid_func_map_.find(response.metadata_.GetMsgUuid());
+        auto it = uuid_func_map_.find(response.GetMsgUuid());
         if (it != uuid_func_map_.end())
         {
             auto function = it->second.func;
             uuid_func_map_.erase(it);
             lock.unlock();
-            LOG_DEBUG("Executing callback for response, uuid={}", response.metadata_.GetMsgUuid());
+            LOG_DEBUG("Executing callback for response, uuid={}", response.GetMsgUuid());
             function(response);
         }
         else
         {
-            LOG_WARN("Callback entry not found for response, uuid={}", response.metadata_.GetMsgUuid());
+            LOG_WARN("Callback entry not found for response, uuid={}", response.GetMsgUuid());
         }
     }
 
@@ -114,6 +114,15 @@ namespace tyke
                 if (now - it->second.created_at > timeout)
                 {
                     LOG_WARN("Future entry expired, uuid={}", it->first);
+                    try
+                    {
+                        TykeResponse timeout_resp;
+                        timeout_resp.SetResult(kHttpStatusTimeout, "Request Timeout");
+                        it->second.promise.set_value(timeout_resp);
+                    }
+                    catch (...)
+                    {
+                    }
                     it = uuid_future_map_.erase(it);
                 }
                 else

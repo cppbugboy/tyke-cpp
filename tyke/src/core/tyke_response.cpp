@@ -29,7 +29,6 @@ namespace tyke
         protocol_header_ = ProtocolHeader{};
         metadata_ = ResponseMetadata{};
         content_.clear();
-        data_size_ = 0;
         is_send_ = false;
         client_id_ = ClientId{};
         send_data_handler_ = nullptr;
@@ -240,11 +239,14 @@ namespace tyke
 
     metadata_.SetTimestamp(utils::GenerateTimestamp());
     std::vector<unsigned char> data_vec;
-    auto encode_result = DataProc::EncodeResponse(*this, data_vec);
-    if (!encode_result)
+    try
     {
-            LOG_ERROR("Encode response failed: {}", encode_result.error());
-        return nonstd::make_unexpected("encode response failed: " + encode_result.error());
+        DataProc::EncodeResponse(*this, data_vec);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Encode response failed: {}", e.what());
+        return nonstd::make_unexpected("encode response failed");
     }
 
     if (!send_data_handler_(client_id_, data_vec))
@@ -274,11 +276,14 @@ namespace tyke
 
         metadata_.SetTimestamp(utils::GenerateTimestamp());
         std::vector<unsigned char> data_vec;
-        auto encode_result = DataProc::EncodeResponse(*this, data_vec);
-        if (!encode_result)
+        try
         {
-            LOG_ERROR("Encode response failed: {}", encode_result.error());
-            return nonstd::make_unexpected("encode response failed: " + encode_result.error());
+            DataProc::EncodeResponse(*this, data_vec);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("Encode response failed: {}", e.what());
+            return nonstd::make_unexpected("encode response failed");
         }
 
         auto send_result = IpcClient::SendAsync(target_uuid_, data_vec);

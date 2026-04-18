@@ -37,7 +37,7 @@ namespace tyke
          *
          * 作为IPC服务器的数据接收回调，解析数据包并分发到相应的处理器。
          */
-        static uint32_t DataCallback(ClientId client_id, const std::vector<unsigned char>& data_vec,
+        static nonstd::optional<uint32_t> DataCallback(ClientId client_id, const std::vector<unsigned char>& data_vec,
                                      const SendDataHandler& send_data_handler);
 
         /**

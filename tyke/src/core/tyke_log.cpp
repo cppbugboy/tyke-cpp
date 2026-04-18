@@ -28,6 +28,12 @@ namespace tyke
     BoolResult TykeLog::Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
                              uint32_t file_count)
     {
+        if (tyke_logger_)
+        {
+            SetLogLevel(log_level);
+            return true;
+        }
+
         try
         {
             // 创建控制台输出sink

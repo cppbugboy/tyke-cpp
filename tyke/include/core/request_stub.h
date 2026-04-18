@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/tyke_def.h"
 #include "tyke_response.h"
 
 namespace tyke
@@ -74,7 +75,7 @@ namespace tyke
          *
          * 清理超过指定时间未收到响应的Future和回调函数条目。
          */
-        static void CleanupExpired(uint32_t timeout_ms = 30000);
+        static void CleanupExpired(uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
     private:
         /**

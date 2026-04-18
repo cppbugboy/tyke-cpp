@@ -21,8 +21,13 @@ constexpr uint32_t kDefaultTimeoutMs      = 5000;
 constexpr uint32_t kDefaultBufferSize     = 4096;
 constexpr uint32_t kDefaultThreadPoolSize = 4;
 constexpr uint32_t kProtocolHeaderSize    = 28;
-constexpr uint32_t kMaxEpollEvents        = 100;
-constexpr uint32_t kMaxEvent              = 128;
+
+constexpr uint32_t kAesGcmIvLen           = 12;
+constexpr uint32_t kAesGcmTagLen          = 16;
+constexpr uint32_t kAes256KeyLen          = 32;
+constexpr uint32_t kDefaultStubTimeoutMs  = 30000;
+constexpr int      kHttpStatusNotFound    = 404;
+constexpr int      kHttpStatusTimeout     = 408;
 
 /**
  * @brief 协议魔数，用于标识合法的Tyke协议数据包

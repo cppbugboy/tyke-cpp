@@ -33,7 +33,7 @@ namespace tyke
         if (route_entry == nullptr)
         {
             LOG_WARN("Request route not found: {}", request.GetRoute());
-            response.SetResult(404, "Not Found");
+            response.SetResult(kHttpStatusNotFound, "Not Found");
             return;
         }
 

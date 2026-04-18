@@ -164,7 +164,7 @@ namespace tyke
          * @return 成功返回true，失败返回错误信息
          */
         nonstd::expected<bool, std::string> SendAsyncWithFunc(const std::string& send_uuid,
-                                                              std::function<void(TykeResponse &)> func);
+                                                              const std::function<void(const TykeResponse &)> &func);
 
         /**
          * @brief 异步发送请求（Future方式）
@@ -187,7 +187,6 @@ namespace tyke
         ProtocolHeader protocol_header_;           ///< 协议头
         RequestMetadata metadata_;                  ///< 请求元数据
         std::vector<unsigned char> content_;        ///< 内容数据
-        std::function<void(TykeResponse &)> async_func_;  ///< 异步回调函数
 
         static ObjectPool<TykeRequest> pool_;       ///< 对象池实例
     };

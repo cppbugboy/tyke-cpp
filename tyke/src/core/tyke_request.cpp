@@ -28,7 +28,6 @@ namespace tyke
         protocol_header_ = ProtocolHeader{};
         metadata_ = RequestMetadata{};
         content_.clear();
-        async_func_ = nullptr;
     }
 
     /**
@@ -152,11 +151,14 @@ namespace tyke
         metadata_.SetMsgUuid(utils::GenerateUUID()).SetTimestamp(utils::GenerateTimestamp());
 
         std::vector<unsigned char> data_vec;
-        auto encode_result = DataProc::EncodeRequest(*this, data_vec);
-        if (!encode_result)
+        try
         {
-            LOG_ERROR("Encode request failed: {}", encode_result.error());
-            return nonstd::make_unexpected("encode request failed: " + encode_result.error());
+            DataProc::EncodeRequest(*this, data_vec);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("Encode request failed: {}", e.what());
+            return nonstd::make_unexpected("encode request failed");
         }
 
         auto send_result = IpcClient::SendAsync(send_uuid, data_vec);
@@ -184,11 +186,14 @@ namespace tyke
         metadata_.SetMsgUuid(utils::GenerateUUID()).SetTimestamp(utils::GenerateTimestamp());
 
         std::vector<unsigned char> data_vec;
-        auto encode_result = DataProc::EncodeRequest(*this, data_vec);
-        if (!encode_result)
+        try
         {
-            LOG_ERROR("Encode request failed: {}", encode_result.error());
-            return nonstd::make_unexpected("encode request failed: " + encode_result.error());
+            DataProc::EncodeRequest(*this, data_vec);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("Encode request failed: {}", e.what());
+            return nonstd::make_unexpected("encode request failed");
         }
 
         auto send_result = IpcClient::Send(send_uuid, data_vec,
@@ -226,15 +231,14 @@ namespace tyke
      * @param func 响应回调函数
      * @return 成功返回true，失败返回错误信息
      */
-    nonstd::expected<bool, std::string> TykeRequest::SendAsyncWithFunc(const std::string& send_uuid,
-                                                                       std::function<void(TykeResponse &)> func)
+    nonstd::expected<bool, std::string> TykeRequest::SendAsyncWithFunc(const std::string& send_uuid, const std::function<void(const TykeResponse &)> &func)
     {
         LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}", send_uuid, GetRoute());
 
         auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFunc);
         if (result)
         {
-            async_func_ = std::move(func);
+            RequestStub::AddFunc(metadata_.GetMsgUuid(), func);
             LOG_DEBUG("Async callback registered, msg_uuid={}", GetMsgUuid());
         }
         return result;
@@ -251,7 +255,7 @@ namespace tyke
     {
         LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}", send_uuid, GetRoute());
 
-        auto result = EncodeAndSend(send_uuid, MessageType::kResponseAsyncFunc);
+        auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFuture);
         if (!result)
         {
             return nonstd::make_unexpected(result.error());

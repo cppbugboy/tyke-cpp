@@ -435,7 +435,11 @@ namespace tyke
                         };
                         if (callback)
                         {
-                            callback(client_id, *data_copy, cb_send);
+                            const auto optional = callback(client_id, *data_copy, cb_send);
+                            if (!optional)
+                            {
+                                CloseClient(client_id);
+                            }
                         }
                     });
                 }

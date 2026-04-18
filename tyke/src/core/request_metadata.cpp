@@ -16,7 +16,7 @@ namespace tyke
      * @param json_string 输出的JSON字符串
      * @return 成功返回true，失败返回错误信息
      */
-    BoolResult RequestMetadata::ToJsonString(std::string& json_string)
+    void RequestMetadata::ToJsonString(std::string& json_string)
     {
         try
         {
@@ -27,11 +27,10 @@ namespace tyke
                 json[it.first] = VariantToJson(it.second);
             }
             json_string = json.dump();
-            return true;
         }
         catch (const std::exception& e)
         {
-            return nonstd::make_unexpected(std::string("ToJsonString failed: ") + e.what());
+            throw std::runtime_error(e.what());
         }
     }
 
@@ -40,22 +39,23 @@ namespace tyke
      * @param json_string 输入的JSON字符串
      * @return 成功返回true，失败返回错误信息
      */
-    BoolResult RequestMetadata::FromJsonString(const std::string& json_string)
+    void RequestMetadata::FromJsonString(const std::string& json_string)
     {
         try
         {
             const nlohmann::json json = nlohmann::json::parse(json_string);
             *this = json;
-            // 解析自定义元数据
             for (const auto& item : json.items())
             {
-                headers_map_[item.key()] = JsonToVariant(item.value());
+                if (RequestMetadataJsonKeySet().count(item.key()) == 0)
+                {
+                    headers_map_[item.key()] = JsonToVariant(item.value());
+                }
             }
-            return true;
         }
         catch (const std::exception& e)
         {
-            return nonstd::make_unexpected(std::string("FromJsonString failed: ") + e.what());
+            throw std::runtime_error(e.what());
         }
     }
 
