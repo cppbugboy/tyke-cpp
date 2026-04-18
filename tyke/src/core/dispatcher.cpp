@@ -15,7 +15,9 @@
 
 namespace tyke
 {
-    /**
+namespace dispatcher
+{
+/**
      * @brief 分发请求到相应的处理器
      * @param request 请求对象
      * @param response 响应对象
@@ -24,7 +26,7 @@ namespace tyke
      * 按顺序执行过滤器的Before方法，然后执行处理器，
      * 最后按逆序执行过滤器的After方法。
      */
-    void Dispatcher::DispatchRequest(const TykeRequest& request, TykeResponse& response)
+    void DispatchRequest(const TykeRequest& request, TykeResponse& response)
     {
         LOG_DEBUG("Dispatching request: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
 
@@ -73,7 +75,7 @@ namespace tyke
      * 根据响应的路由信息查找对应的处理器和过滤器链，
      * 处理逻辑与请求分发类似。
      */
-    void Dispatcher::DispatchResponse(const TykeResponse& response)
+    void DispatchResponse(const TykeResponse& response)
     {
         LOG_DEBUG("Dispatching response: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
 
@@ -113,4 +115,6 @@ namespace tyke
 
         LOG_DEBUG("Response dispatched successfully: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
     }
+}
+
 } // tyke

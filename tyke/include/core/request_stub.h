@@ -70,6 +70,11 @@ namespace tyke
         static void ExecFunc(const TykeResponse& response);
 
         /**
+         * @brief 删除Func条目
+         * @param msg_uuid 消息UUID
+         */
+        static void DelFunc(const std::string& msg_uuid);
+        /**
          * @brief 清理过期条目
          * @param timeout_ms 超时时间（毫秒），默认30秒
          *
