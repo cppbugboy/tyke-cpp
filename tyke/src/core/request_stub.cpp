@@ -54,50 +54,5 @@ namespace tyke
             LOG_WARN("Callback entry not found for response, uuid={}", response.GetMsgUuid());
         }
     }
-    void RequestStub::CleanupExpired(const uint32_t timeout_ms)
-    {
-        const auto now = std::chrono::steady_clock::now();
-        const auto timeout = std::chrono::milliseconds(timeout_ms);
 
-        {
-            std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
-            for (auto it = uuid_future_map_.begin(); it != uuid_future_map_.end(); )
-            {
-                if (now - it->second.created_at > timeout)
-                {
-                    LOG_WARN("Future entry expired, uuid={}", it->first);
-                    try
-                    {
-                        TykeResponse timeout_resp;
-                        timeout_resp.SetResult(kHttpStatusTimeout, "Request Timeout");
-                        it->second.promise.set_value(timeout_resp);
-                    }
-                    catch (...)
-                    {
-                    }
-                    it = uuid_future_map_.erase(it);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
-            for (auto it = uuid_func_map_.begin(); it != uuid_func_map_.end(); )
-            {
-                if (now - it->second.created_at > timeout)
-                {
-                    LOG_WARN("Callback entry expired, uuid={}", it->first);
-                    it = uuid_func_map_.erase(it);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-        }
-    }
 }

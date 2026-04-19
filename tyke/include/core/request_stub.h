@@ -37,9 +37,6 @@ namespace tyke
         
         static void ExecFunc(const TykeResponse& response);
 
-
-        static void CleanupExpired(uint32_t timeout_ms = kDefaultStubTimeoutMs);
-
     private:
         
         struct FutureEntry
