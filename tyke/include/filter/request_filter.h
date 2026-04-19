@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file request_filter.h
  * @brief 请求过滤器接口声明。定义Before/After拦截方法，支持请求预处理和后处理。
  * @author Nick
@@ -6,9 +6,7 @@
  */
 
 
-
-#ifndef TYKE_REQUESTFILTER_H
-#define TYKE_REQUESTFILTER_H
+#pragma once
 
 #include "core/tyke_request.h"
 
@@ -28,4 +26,4 @@ namespace tyke
         virtual bool After(const TykeRequest& request, TykeResponse& response) = 0;
     };
 }
-#endif
+

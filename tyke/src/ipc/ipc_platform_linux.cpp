@@ -30,7 +30,7 @@ namespace tyke
         ClientConnectionImplLinux() = default;
         ~ClientConnectionImplLinux() override { Close(); }
 
-        BoolResult Connect(const std::string& server_name, uint32_t, uint32_t rw_timeout_ms) override
+        BoolResult Connect(std::string_view server_name, uint32_t, const uint32_t rw_timeout_ms) override
         {
             LOG_INFO("ipc client connecting to: {}", server_name);
             fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -43,22 +43,22 @@ namespace tyke
             setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
             sockaddr_un addr{};
             addr.sun_family = AF_UNIX;
-            snprintf(addr.sun_path, sizeof(addr.sun_path), "/tmp/%s", server_name.c_str());
+            snprintf(addr.sun_path, sizeof(addr.sun_path), "/tmp/%s", server_name.data());
             if (connect(fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0)
             {
                 Close();
-                return nonstd::make_unexpected("connect failed for: " + server_name);
+                return nonstd::make_unexpected(std::string("connect failed for: ") + std::string(server_name));
             }
             return DoHandshake();
         }
 
-        BoolResult WriteEncrypted(const void* data, size_t size, uint32_t) override
+        BoolResult WriteEncrypted(const void* data, const size_t size, uint32_t) override
         {
             const std::vector<uint8_t> pt(static_cast<const uint8_t*>(data), static_cast<const uint8_t*>(data) + size);
             auto encrypt_result = cipher_.Encrypt(pt);
             if (!encrypt_result)
                 return nonstd::make_unexpected("encrypt failed: " + encrypt_result.error());
-            auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
+            const auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
             return WriteExact(frame.data(), frame.size());
         }
 
@@ -69,7 +69,7 @@ namespace tyke
             uint8_t chunk[4096];
             while (true)
             {
-                ssize_t n = recv(fd_, chunk, sizeof(chunk), MSG_NOSIGNAL);
+                const ssize_t n = recv(fd_, chunk, sizeof(chunk), MSG_NOSIGNAL);
                 if (n < 0)
                 {
                     if (errno == EINTR)
@@ -109,13 +109,13 @@ namespace tyke
         bool IsValid() const override { return fd_ >= 0 && cipher_.IsInitialized(); }
 
     private:
-        BoolResult WriteExact(const void* data, size_t size)
+        BoolResult WriteExact(const void* data, size_t size) const
         {
             auto ptr = static_cast<const uint8_t*>(data);
             size_t remaining = size;
             while (remaining > 0)
             {
-                ssize_t sent = send(fd_, ptr, remaining, MSG_NOSIGNAL);
+                const ssize_t sent = send(fd_, ptr, remaining, MSG_NOSIGNAL);
                 if (sent <= 0)
                     return nonstd::make_unexpected("send failed with errno " + std::to_string(errno));
                 ptr += sent;
@@ -127,15 +127,13 @@ namespace tyke
         BoolResult DoHandshake()
         {
             crypto::EcdhKeyExchange ecdh;
-            auto gen_result = ecdh.GenerateKey();
-            if (!gen_result)
+            if (auto gen_result = ecdh.GenerateKey(); !gen_result)
                 return nonstd::make_unexpected("handshake: key generation failed: " + gen_result.error());
             auto pub_der_result = ecdh.GetPublicKeyDer();
             if (!pub_der_result)
                 return nonstd::make_unexpected("handshake: get public key failed: " + pub_der_result.error());
             auto init_frame = crypto::FrameParser::BuildFrame(crypto::kMsgHandshakeInit, pub_der_result.value());
-            auto write_result = WriteExact(init_frame.data(), init_frame.size());
-            if (!write_result)
+            if (auto write_result = WriteExact(init_frame.data(), init_frame.size()); !write_result)
                 return nonstd::make_unexpected("handshake: write init frame failed: " + write_result.error());
 
             std::vector<uint8_t> raw_buf;
@@ -152,16 +150,14 @@ namespace tyke
                     return nonstd::make_unexpected("handshake: recv failed");
                 }
                 raw_buf.insert(raw_buf.end(), chunk, chunk + n);
-                auto extract_result = crypto::FrameParser::ExtractFrame(raw_buf, type, payload);
-                if (extract_result)
+                if (auto extract_result = crypto::FrameParser::ExtractFrame(raw_buf, type, payload))
                 {
                     if (type == crypto::kMsgHandshakeResp)
                     {
                         auto secret_result = ecdh.ComputeSharedSecret(payload);
                         if (!secret_result)
                             return nonstd::make_unexpected("handshake: compute shared secret failed: " + secret_result.error());
-                        auto init_result = cipher_.Init(secret_result.value());
-                        if (!init_result)
+                        if (auto init_result = cipher_.Init(secret_result.value()); !init_result)
                             return nonstd::make_unexpected("handshake: cipher init failed: " + init_result.error());
                         return true;
                     }
@@ -197,13 +193,13 @@ namespace tyke
     public:
         ServerImplLinux() : running_(false), listen_fd_(-1), epoll_fd_(-1), wakeup_fd_(-1) {}
 
-        BoolResult Start(const std::string& server_name, ServerRecvDataCallback callback) override
+        BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) override
         {
             LOG_INFO("ipc server starting on: {}", server_name);
             if (running_.load())
                 return nonstd::make_unexpected("server already running");
             callback_ = std::move(callback);
-            server_name_ = "/tmp/" + server_name;
+            server_name_ = std::string("/tmp/") + std::string(server_name);
             listen_fd_ = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
             if (listen_fd_ < 0)
                 return nonstd::make_unexpected("socket creation failed");
@@ -247,14 +243,14 @@ namespace tyke
             LOG_INFO("ipc server stopping");
             if (!running_.exchange(false))
                 return;
-            uint64_t one = 1;
+            constexpr uint64_t one = 1;
             write(wakeup_fd_, &one, sizeof(one));
             if (worker_.joinable())
                 worker_.join();
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                for (auto& kv : clients_)
-                    close(kv.first);
+                for (const auto &[fst, snd] : clients_)
+                    close(fst);
                 clients_.clear();
             }
             close(listen_fd_);
@@ -263,12 +259,12 @@ namespace tyke
             unlink(server_name_.c_str());
         }
 
-        BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) override
+        BoolResult SendToClient(const ClientId id, const std::vector<uint8_t>& data) override
         {
             std::shared_ptr<ClientContext> ctx;
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                auto it = clients_.find(static_cast<int>(id));
+                const auto it = clients_.find(static_cast<int>(id));
                 if (it == clients_.end())
                     return nonstd::make_unexpected("client not found: " + std::to_string(id));
                 ctx = it->second;
@@ -293,7 +289,7 @@ namespace tyke
             epoll_event events[kMaxEvents];
             while (running_)
             {
-                int n = epoll_wait(epoll_fd_, events, kMaxEvents, -1);
+                const int n = epoll_wait(epoll_fd_, events, kMaxEvents, -1);
                 if (n < 0)
                 {
                     if (errno == EINTR)
@@ -316,8 +312,8 @@ namespace tyke
                             int client = accept4(listen_fd_, nullptr, nullptr, SOCK_NONBLOCK);
                             if (client < 0)
                                 break;
-                            auto ctx = std::make_shared<ClientContext>(client);
                             {
+                                const auto                        ctx = std::make_shared<ClientContext>(client);
                                 std::lock_guard<std::mutex> lock(mutex_);
                                 clients_[client] = ctx;
                             }
@@ -347,8 +343,7 @@ namespace tyke
                             uint8_t buf[4096];
                             while (true)
                             {
-                                ssize_t len = recv(fd, buf, sizeof(buf), MSG_NOSIGNAL);
-                                if (len > 0)
+                                if (const ssize_t len = recv(fd, buf, sizeof(buf), MSG_NOSIGNAL); len > 0)
                                 {
                                     ctx->raw_recv_buf.insert(ctx->raw_recv_buf.end(), buf, buf + len);
                                 }
@@ -392,14 +387,12 @@ namespace tyke
                 {
                     if (type != crypto::kMsgHandshakeInit)
                         return false;
-                    auto gen_result = ctx->ecdh.GenerateKey();
-                    if (!gen_result)
+                    if (auto gen_result = ctx->ecdh.GenerateKey(); !gen_result)
                         return false;
                     auto secret_result = ctx->ecdh.ComputeSharedSecret(payload);
                     if (!secret_result)
                         return false;
-                    auto init_result = ctx->cipher.Init(secret_result.value());
-                    if (!init_result)
+                    if (auto init_result = ctx->cipher.Init(secret_result.value()); !init_result)
                         return false;
                     auto pub_der_result = ctx->ecdh.GetPublicKeyDer();
                     if (!pub_der_result)
@@ -425,15 +418,14 @@ namespace tyke
                     auto callback = callback_;
                     
                     THREAD_POOL_INSTANCE->Enqueue([callback, client_id, data_copy, this]() {
-                        auto cb_send = [this](ClientId id, const std::vector<uint8_t>& buf) -> bool
+                        auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                         {
-                            auto result = SendToClient(id, buf);
+                                    const auto result = SendToClient(id, buf);
                             return result.has_value();
                         };
                         if (callback)
                         {
-                            const auto optional = callback(client_id, *data_copy, cb_send);
-                            if (!optional)
+                            if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
                             {
                                 CloseClient(client_id);
                             }
@@ -444,7 +436,7 @@ namespace tyke
             return true;
         }
 
-        bool StartWrite(const std::shared_ptr<ClientContext>& ctx)
+        bool StartWrite(const std::shared_ptr<ClientContext>& ctx) const
         {
             if (ctx->pending_writes.empty())
                 return true;
@@ -466,7 +458,7 @@ namespace tyke
             return true;
         }
 
-        void CloseClient(int fd)
+        void CloseClient(const int fd)
         {
             epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, nullptr);
             close(fd);

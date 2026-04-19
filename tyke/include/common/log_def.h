@@ -7,8 +7,7 @@
 
 
 
-#ifndef TYKE_LOG_DEF_H
-#define TYKE_LOG_DEF_H
+#pragma once
 
 #include <spdlog/spdlog.h>
 
@@ -27,5 +26,3 @@ __VA_ARGS__)
 #define LOG_ERROR(...)                                                                                                 \
 spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::err,     \
 __VA_ARGS__)
-
-#endif

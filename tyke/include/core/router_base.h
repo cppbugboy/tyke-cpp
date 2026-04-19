@@ -1,17 +1,21 @@
-﻿/**
+/**
  * @file router_base.h
- * @brief 路由器模板基类
+ * @brief 路由器模板基类 (C++17)
  * @author Nick
  * @date 2026/04/19
  *
  * 使用CRTP模式提取请求/响应路由器的公共逻辑，包括路由表管理和路由查找功能。
+ *
+ * C++17特性:
+ * - 使用std::string_view优化GetRouteEntry参数
+ * - 使用if初始化语句简化find操作
  */
 
-#ifndef TYKE_ROUTER_BASE_H
-#define TYKE_ROUTER_BASE_H
+#pragma once
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "common/log_def.h"
@@ -32,10 +36,9 @@ namespace tyke
             return root_group_;
         }
 
-        RouteEntry* GetRouteEntry(const std::string& path)
+        RouteEntry* GetRouteEntry(std::string_view path)
         {
-            auto it = route_table_.find(path);
-            if (it != route_table_.end())
+            if (auto it = route_table_.find(std::string(path)); it != route_table_.end())
             {
                 LOG_DEBUG("Route entry found: path={}", path);
                 return &(it->second);
@@ -58,4 +61,3 @@ namespace tyke
     };
 }
 
-#endif

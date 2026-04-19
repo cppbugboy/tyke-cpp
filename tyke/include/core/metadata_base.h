@@ -1,16 +1,21 @@
-﻿/**
+/**
  * @file metadata_base.h
- * @brief 元数据模板基类。使用CRTP模式提取请求/响应元数据的公共字段和方法。
+ * @brief 元数据模板基类 (C++17)。使用CRTP模式提取请求/响应元数据的公共字段和方法。
  * @author Nick
  * @date 2026/04/19
+ *
+ * C++17特性:
+ * - 使用std::string_view优化setter和getter参数传递
+ * - 使用std::optional替代nonstd::optional
+ * - 使用结构化绑定遍历map
+ * - 使用if初始化语句简化find操作
  */
 
-#ifndef TYKE_METADATA_BASE_H
-#define TYKE_METADATA_BASE_H
+#pragma once
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
-#include <unordered_set>
 
 #include <nlohmann/json.hpp>
 
@@ -28,7 +33,7 @@ namespace tyke
             return module;
         }
 
-        Derived& SetModule(const std::string& in_module)
+        Derived& SetModule(std::string_view in_module)
         {
             module = in_module;
             return static_cast<Derived&>(*this);
@@ -39,7 +44,7 @@ namespace tyke
             return async_uuid;
         }
 
-        Derived& SetAsyncUuid(const std::string& in_async_uuid)
+        Derived& SetAsyncUuid(std::string_view in_async_uuid)
         {
             async_uuid = in_async_uuid;
             return static_cast<Derived&>(*this);
@@ -50,7 +55,7 @@ namespace tyke
             return msg_uuid;
         }
 
-        Derived& SetMsgUuid(const std::string& in_msg_uuid)
+        Derived& SetMsgUuid(std::string_view in_msg_uuid)
         {
             msg_uuid = in_msg_uuid;
             return static_cast<Derived&>(*this);
@@ -61,7 +66,7 @@ namespace tyke
             return route;
         }
 
-        Derived& SetRoute(const std::string& in_route)
+        Derived& SetRoute(std::string_view in_route)
         {
             route = in_route;
             return static_cast<Derived&>(*this);
@@ -72,7 +77,7 @@ namespace tyke
             return content_type;
         }
 
-        Derived& SetContentType(const std::string& in_content_type)
+        Derived& SetContentType(std::string_view in_content_type)
         {
             content_type = in_content_type;
             return static_cast<Derived&>(*this);
@@ -83,13 +88,13 @@ namespace tyke
             return timestamp;
         }
 
-        Derived& SetTimestamp(const std::string& in_timestamp)
+        Derived& SetTimestamp(std::string_view in_timestamp)
         {
             timestamp = in_timestamp;
             return static_cast<Derived&>(*this);
         }
 
-        nonstd::expected<bool, std::string> AddMetadata(const std::string& key, const JsonValue& value)
+        nonstd::expected<bool, std::string> AddMetadata(std::string_view key, const JsonValue& value)
         {
             if (key.empty())
             {
@@ -97,7 +102,7 @@ namespace tyke
             }
             try
             {
-                headers_map_[key] = value;
+                headers_map_[std::string(key)] = value;
             }
             catch (const std::exception& e)
             {
@@ -106,14 +111,13 @@ namespace tyke
             return true;
         }
 
-        nonstd::optional<JsonValue> GetMetadata(const std::string& key) const
+        std::optional<JsonValue> GetMetadata(std::string_view key) const
         {
-            auto it = headers_map_.find(key);
-            if (it != headers_map_.end())
+            if (auto it = headers_map_.find(std::string(key)); it != headers_map_.end())
             {
                 return it->second;
             }
-            return nonstd::nullopt;
+            return std::nullopt;
         }
 
         void ToJsonString(std::string& json_string)
@@ -121,9 +125,9 @@ namespace tyke
             try
             {
                 nlohmann::json json = *static_cast<Derived*>(this);
-                for (const auto& it : headers_map_)
+                for (const auto& [key, value] : headers_map_)
                 {
-                    json[it.first] = VariantToJson(it.second);
+                    json[key] = VariantToJson(value);
                 }
                 json_string = json.dump();
             }
@@ -139,11 +143,11 @@ namespace tyke
             {
                 const nlohmann::json json = nlohmann::json::parse(json_string);
                 *static_cast<Derived*>(this) = json;
-                for (const auto& item : json.items())
+                for (const auto& [key, value] : json.items())
                 {
-                    if (Derived::JsonKeySet().count(item.key()) == 0)
+                    if (Derived::JsonKeySet().count(key) == 0)
                     {
-                        headers_map_[item.key()] = JsonToVariant(item.value());
+                        headers_map_[key] = JsonToVariant(value);
                     }
                 }
             }
@@ -163,5 +167,3 @@ namespace tyke
         std::unordered_map<std::string, JsonValue> headers_map_;
     };
 }
-
-#endif

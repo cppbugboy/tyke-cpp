@@ -8,8 +8,7 @@
  * 以及协议魔数、缓冲区大小、超时时间等常量。
  */
 
-#ifndef TYKE_DEF_H
-#define TYKE_DEF_H
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -82,7 +81,7 @@ enum class MessageType
 struct ProtocolHeader
 {
     char        magic[4] = {'T', 'Y', 'K', 'E'};
-    MessageType msg_type;
+    MessageType msg_type = MessageType::kNone;
     uint32_t    reserved[3]  = {0};
     uint32_t    metadata_len = 0;
     uint32_t    content_len  = 0;
@@ -91,5 +90,3 @@ struct ProtocolHeader
 static_assert(sizeof(ProtocolHeader) == kProtocolHeaderSize, "ProtocolHeader size mismatch with kProtocolHeaderSize");
 
 }
-
-#endif //TYKE_DEF_H

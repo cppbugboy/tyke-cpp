@@ -5,10 +5,7 @@
  * @date 2026/04/19
  */
 
-
-
-#ifndef TYKE_CONTROLLER_BASE_H
-#define TYKE_CONTROLLER_BASE_H
+#pragma once
 
 #define TYKE_CONTROLLER_REGISTER(ClassName) \
 static tyke::ControllerAutoRegister<ClassName> _auto_register_##ClassName;
@@ -26,5 +23,3 @@ namespace tyke
         virtual void RegisterMethod() = 0;
     };
 }
-
-#endif

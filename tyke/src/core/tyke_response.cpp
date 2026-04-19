@@ -1,4 +1,4 @@
-﻿#include "core/tyke_response.h"
+#include "core/tyke_response.h"
 
 #include "common/log_def.h"
 #include "common/tyke_utils.h"
@@ -7,9 +7,6 @@
 
 namespace tyke
 {
-    // 静态对象池实例
-    ObjectPool<TykeResponse> TykeResponse::pool_;
-
     TykeResponse::TykeResponse() = default;
     void TykeResponse::Reset()
     {
@@ -43,7 +40,7 @@ namespace tyke
     {
         return metadata_.GetMsgUuid();
     }
-    TykeResponse& TykeResponse::SetRoute(const std::string& route)
+    TykeResponse& TykeResponse::SetRoute(std::string_view route)
     {
         metadata_.SetRoute(route);
         return *this;
@@ -68,7 +65,7 @@ namespace tyke
     {
         return static_cast<MessageType>(protocol_header_.msg_type);
     }
-    TykeResponse& TykeResponse::SetModule(const std::string& module)
+    TykeResponse& TykeResponse::SetModule(const std::string_view module)
     {
         metadata_.SetModule(module);
         return *this;
@@ -77,7 +74,7 @@ namespace tyke
     {
         return metadata_.GetModule();
     }
-    TykeResponse& TykeResponse::SetMsgUuid(const std::string& msg_uuid)
+    TykeResponse& TykeResponse::SetMsgUuid(const std::string_view msg_uuid)
     {
         metadata_.SetMsgUuid(msg_uuid);
         return *this;
@@ -87,15 +84,15 @@ namespace tyke
         content_type = metadata_.GetContentType();
         content = content_;
     }
-    BoolResult TykeResponse::AddMetadata(const std::string& key, const JsonValue& value)
+    BoolResult TykeResponse::AddMetadata(const std::string_view key, const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);
     }
-    nonstd::optional<JsonValue> TykeResponse::GetMetadata(const std::string& key)
+    std::optional<JsonValue> TykeResponse::GetMetadata(const std::string_view key) const
     {
         return metadata_.GetMetadata(key);
     }
-    TykeResponse& TykeResponse::SetResult(const int status, const std::string& reason)
+    TykeResponse& TykeResponse::SetResult(const int status, const std::string_view reason)
     {
         metadata_.SetStatus(status).SetReason(reason);
         return *this;
@@ -165,8 +162,7 @@ namespace tyke
             return nonstd::make_unexpected("encode response failed");
         }
 
-        auto send_result = IpcClient::SendAsync(target_uuid_, data_vec);
-        if (!send_result)
+        if (auto send_result = IpcClient::SendAsync(target_uuid_, data_vec); !send_result)
         {
             LOG_ERROR("Send async failed: {}", send_result.error());
             return nonstd::make_unexpected("send async failed: " + send_result.error());
@@ -176,7 +172,7 @@ namespace tyke
         LOG_DEBUG("Async response sent successfully, msg_uuid={}", GetMsgUuid());
         return true;
     }
-    TykeResponse& TykeResponse::SetAsyncUuid(const std::string& target_uuid)
+    TykeResponse& TykeResponse::SetAsyncUuid(const std::string_view target_uuid)
     {
         target_uuid_ = target_uuid;
         return *this;

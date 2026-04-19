@@ -8,8 +8,7 @@
  * 实际类型为ControllerBase，两者完全等价。
  */
 
-#ifndef TYKE_REQUEST_CONTROLLER_H
-#define TYKE_REQUEST_CONTROLLER_H
+#pragma once
 
 #include "controller_base.h"
 
@@ -17,5 +16,3 @@ namespace tyke
 {
     using RequestController = ControllerBase;
 }
-
-#endif // TYKE_REQUEST_CONTROLLER_H

@@ -1,4 +1,4 @@
-﻿#include "core/tyke_request.h"
+#include "core/tyke_request.h"
 
 #include <unordered_map>
 
@@ -10,8 +10,6 @@
 
 namespace tyke
 {
-    // 静态对象池实例
-    ObjectPool<TykeRequest> TykeRequest::pool_;
     void TykeRequest::Reset()
     {
         protocol_header_ = ProtocolHeader{};
@@ -59,12 +57,12 @@ namespace tyke
         content_ = content;
         return *this;
     }
-    TykeRequest& TykeRequest::SetModule(const std::string& module)
+    TykeRequest& TykeRequest::SetModule(std::string_view module)
     {
         metadata_.SetModule(module);
         return *this;
     }
-    TykeRequest& TykeRequest::SetRoute(const std::string& route)
+    TykeRequest& TykeRequest::SetRoute(std::string_view route)
     {
         metadata_.SetRoute(route);
         return *this;
@@ -120,7 +118,7 @@ namespace tyke
                                       [&response](const std::vector<unsigned char>& recv_data) -> bool
                                       {
                                           uint32_t data_size = 0;
-                                          auto decode_result = DataProc::DecodeResponse(recv_data, response, data_size);
+                                           const auto decode_result = DataProc::DecodeResponse(recv_data, response, data_size);
                                           return decode_result.has_value();
                                       });
         if (!send_result)
@@ -166,11 +164,11 @@ namespace tyke
         LOG_DEBUG("Future registered, msg_uuid={}", GetMsgUuid());
         return response_future;
     }
-    nonstd::expected<bool, std::string> TykeRequest::AddMetadata(const std::string& key, const JsonValue& value)
+    nonstd::expected<bool, std::string> TykeRequest::AddMetadata(const std::string_view key, const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);
     }
-    nonstd::optional<JsonValue> TykeRequest::GetMetadata(const std::string& key)
+    std::optional<JsonValue> TykeRequest::GetMetadata(const std::string_view key) const
     {
         return metadata_.GetMetadata(key);
     }

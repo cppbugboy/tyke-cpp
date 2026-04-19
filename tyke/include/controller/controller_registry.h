@@ -5,37 +5,10 @@
  * @date 2026/04/19
  */
 
-
-
-#ifndef TYKE_CONTROLLER_REGISTRY_H
-#define TYKE_CONTROLLER_REGISTRY_H
-
-#include <memory>
-#include <vector>
-#include "controller_base.h"
-#include "component/singleton.h"
+#pragma once
 
 namespace tyke
 {
-
-    class ControllerRegistry
-    {
-    public:
-        ControllerRegistry() = delete;
-        ~ControllerRegistry() = delete;
-        ControllerRegistry(const ControllerRegistry&) = delete;
-        ControllerRegistry& operator=(const ControllerRegistry&) = delete;
-        ControllerRegistry(ControllerRegistry&&) = delete;
-        ControllerRegistry& operator=(ControllerRegistry&&) = delete;
-
-
-        static void RegisterController(ControllerBase* ctrl)
-        {
-            ctrl->RegisterMethod();
-        }
-    };
-
-
     template <typename T>
     class ControllerAutoRegister
     {
@@ -43,9 +16,7 @@ namespace tyke
 
         ControllerAutoRegister()
         {
-            ControllerRegistry::RegisterController(T::GetInstance());
+            T::GetInstance()->RegisterMethod();
         }
     };
 }
-
-#endif

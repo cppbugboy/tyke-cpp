@@ -5,10 +5,8 @@
  * @date 2026/04/19
  */
 
+#pragma once
 
-
-#ifndef TYKE_ROUTER_H
-#define TYKE_ROUTER_H
 #include "request_router_group.h"
 #include "core/router_base.h"
 
@@ -27,5 +25,3 @@ namespace tyke
         ~RequestRouter() override = default;
     };
 }
-
-#endif

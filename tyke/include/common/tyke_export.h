@@ -5,8 +5,7 @@
  * @date 2026/04/19
  */
 
-#ifndef TYKE_EXPORT_H
-#define TYKE_EXPORT_H
+#pragma once
 
 #if defined(_WIN32) || defined(__CYGWIN__)
     #ifdef TYKE_BUILDING_DLL
@@ -22,6 +21,4 @@
     #else
         #define TYKE_API
     #endif
-#endif
-
 #endif

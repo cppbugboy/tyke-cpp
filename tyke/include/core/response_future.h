@@ -6,9 +6,8 @@
  */
 
 
+#pragma once
 
-#ifndef TYKE_RESPONSE_FUTURE_H
-#define TYKE_RESPONSE_FUTURE_H
 #include <future>
 #include <string>
 
@@ -31,5 +30,3 @@ namespace tyke
         std::future<TykeResponse> future_;
     };
 }
-
-#endif

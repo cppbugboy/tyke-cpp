@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file response_filter.h
  * @brief 响应过滤器接口声明。定义Before/After拦截方法，支持响应预处理和后处理。
  * @author Nick
@@ -6,9 +6,7 @@
  */
 
 
-
-#ifndef TYKE_RESPONSEFILTER_H
-#define TYKE_RESPONSEFILTER_H
+#pragma once
 
 #include "core/tyke_response.h"
 
@@ -28,4 +26,3 @@ namespace tyke
         virtual bool After(const TykeResponse& response) = 0;
     };
 }
-#endif

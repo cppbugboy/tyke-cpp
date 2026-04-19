@@ -22,16 +22,23 @@ namespace tyke
         log_level_ = log_level;
         file_size_mb_ = file_size_mb;
         file_count_ = file_count;
-        TYKE_LOG_INSTANCE->Init(log_path_, log_level_, file_size_mb_, file_count_);
+        if (!TYKE_LOG_INSTANCE->Init(log_path_, log_level_, file_size_mb_, file_count_))
+        {
+            fmt::print("Tyke framework initialization failed: {}", log_path_);
+        }
         return *this;
     }
-    BoolResult TykeFramework::Start(const std::string& listen_uuid) const
+    BoolResult TykeFramework::Start(std::string_view listen_uuid) const
     {
         if (!TYKE_LOG_INSTANCE->IsInitialized())
         {
-            TYKE_LOG_INSTANCE->Init(
+            if (!TYKE_LOG_INSTANCE->Init(
                 log_path_.empty() ? utils::GetTempDir() + "/tyke.log" : log_path_,
-                log_level_, file_size_mb_, file_count_);
+                log_level_, file_size_mb_, file_count_))
+            {
+                fmt::print("Tyke framework start failed: {}", log_path_);
+                return false;
+            }
         }
 
         LOG_INFO("Tyke framework starting, listen_uuid={}", listen_uuid);

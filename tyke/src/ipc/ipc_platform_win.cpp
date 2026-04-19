@@ -1,4 +1,4 @@
-﻿#ifdef _WIN32
+#ifdef _WIN32
 #include "ipc/ipc_internal_platform.h"
 #include "ipc/ipc_crypto.h"
 #include "common/log_def.h"
@@ -27,35 +27,35 @@ namespace tyke
             Close();
         }
 
-        BoolResult Connect(const std::string& server_name, uint32_t timeout_ms, uint32_t) override
+        BoolResult Connect(std::string_view server_name, const uint32_t timeout_ms, uint32_t) override
         {
             LOG_INFO("ipc client connecting to: {}", server_name);
             if (!event_)
                 return nonstd::make_unexpected("event handle is null");
-            std::string name = R"(\\.\pipe\)" + server_name;
+            const std::string name = std::string(R"(\\.\pipe\)") + std::string(server_name);
             if (!WaitNamedPipeA(name.c_str(), timeout_ms))
-                return nonstd::make_unexpected("WaitNamedPipe failed for: " + server_name);
+                return nonstd::make_unexpected(std::string("WaitNamedPipe failed for: ") + std::string(server_name));
             pipe_ = CreateFileA(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
                                 FILE_FLAG_OVERLAPPED,
                                 nullptr);
             if (pipe_ == INVALID_HANDLE_VALUE)
-                return nonstd::make_unexpected("CreateFile failed for pipe: " + server_name);
+                return nonstd::make_unexpected(std::string("CreateFile failed for pipe: ") + std::string(server_name));
             DWORD mode = PIPE_READMODE_MESSAGE;
             SetNamedPipeHandleState(pipe_, &mode, nullptr, nullptr);
             return DoHandshake(timeout_ms);
         }
 
-        BoolResult WriteEncrypted(const void* data, size_t size, uint32_t timeout_ms) override
+        BoolResult WriteEncrypted(const void* data, const size_t size, const uint32_t timeout_ms) override
         {
             const std::vector<uint8_t> pt(static_cast<const uint8_t*>(data), static_cast<const uint8_t*>(data) + size);
             auto encrypt_result = cipher_.Encrypt(pt);
             if (!encrypt_result)
                 return nonstd::make_unexpected("encrypt failed: " + encrypt_result.error());
-            auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
+            const auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
             return WriteExact(frame.data(), frame.size(), timeout_ms);
         }
 
-        BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms) override
+        BoolResult ReadLoop(const ClientRecvDataCallback& callback, const uint32_t timeout_ms) override
         {
             std::vector<uint8_t> raw_buf;
             std::vector<uint8_t> plain_buf;
@@ -66,11 +66,9 @@ namespace tyke
                 OVERLAPPED ov{};
                 ov.hEvent = event_;
                 DWORD bytes_read = 0;
-                BOOL result = ReadFile(pipe_, chunk, sizeof(chunk), &bytes_read, &ov);
-                if (!result)
+                if (const BOOL result = ReadFile(pipe_, chunk, sizeof(chunk), &bytes_read, &ov); !result)
                 {
-                    DWORD error = GetLastError();
-                    if (error == ERROR_IO_PENDING || error == ERROR_MORE_DATA)
+                    if (const DWORD error = GetLastError(); error == ERROR_IO_PENDING || error == ERROR_MORE_DATA)
                     {
                         if (WaitForSingleObject(ov.hEvent, timeout_ms) != WAIT_OBJECT_0)
                             return nonstd::make_unexpected("read loop: wait timeout");
@@ -131,7 +129,7 @@ namespace tyke
         }
 
     private:
-        BoolResult WriteExact(const void* data, size_t size, uint32_t timeout_ms)
+        BoolResult WriteExact(const void* data, size_t size, uint32_t timeout_ms) const
         {
             auto ptr = static_cast<const uint8_t*>(data);
             size_t remaining = size;
@@ -141,7 +139,7 @@ namespace tyke
                 OVERLAPPED ov{};
                 ov.hEvent = event_;
                 DWORD written = 0;
-                BOOL result = WriteFile(pipe_, ptr, static_cast<DWORD>(remaining), &written, &ov);
+                const BOOL result = WriteFile(pipe_, ptr, static_cast<DWORD>(remaining), &written, &ov);
                 if (!result)
                 {
                     if (GetLastError() == ERROR_IO_PENDING)
@@ -164,11 +162,10 @@ namespace tyke
             return true;
         }
 
-        BoolResult DoHandshake(uint32_t timeout)
+        BoolResult DoHandshake(uint32_t timeout) const
         {
             crypto::EcdhKeyExchange ecdh;
-            auto gen_result = ecdh.GenerateKey();
-            if (!gen_result)
+            if (auto gen_result = ecdh.GenerateKey(); !gen_result)
                 return nonstd::make_unexpected("handshake: key generation failed: " + gen_result.error());
 
             auto pub_der_result = ecdh.GetPublicKeyDer();
@@ -176,8 +173,7 @@ namespace tyke
                 return nonstd::make_unexpected("handshake: get public key failed: " + pub_der_result.error());
 
             auto init_frame = crypto::FrameParser::BuildFrame(crypto::kMsgHandshakeInit, pub_der_result.value());
-            auto write_result = WriteExact(init_frame.data(), init_frame.size(), timeout);
-            if (!write_result)
+            if (auto write_result = WriteExact(init_frame.data(), init_frame.size(), timeout); !write_result)
                 return nonstd::make_unexpected("handshake: write init frame failed: " + write_result.error());
 
             std::vector<uint8_t> raw_buf;
@@ -208,16 +204,14 @@ namespace tyke
                 if (bytes == 0)
                     return nonstd::make_unexpected("handshake: connection closed");
                 raw_buf.insert(raw_buf.end(), chunk, chunk + bytes);
-                auto extract_result = crypto::FrameParser::ExtractFrame(raw_buf, type, payload);
-                if (extract_result)
+                if (auto extract_result = crypto::FrameParser::ExtractFrame(raw_buf, type, payload))
                 {
                     if (type == crypto::kMsgHandshakeResp)
                     {
                         auto secret_result = ecdh.ComputeSharedSecret(payload);
                         if (!secret_result)
                             return nonstd::make_unexpected("handshake: compute shared secret failed: " + secret_result.error());
-                        auto init_result = cipher_.Init(secret_result.value());
-                        if (!init_result)
+                        if (auto init_result = cipher_.Init(secret_result.value()); !init_result)
                             return nonstd::make_unexpected("handshake: cipher init failed: " + init_result.error());
                         return true;
                     }
@@ -273,13 +267,13 @@ namespace tyke
         {
         }
 
-        BoolResult Start(const std::string& server_name, ServerRecvDataCallback callback) override
+        BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) override
         {
             LOG_INFO("ipc server starting on: {}", server_name);
             if (running_.load())
                 return nonstd::make_unexpected("server already running");
             callback_ = std::move(callback);
-            server_name_ = R"(\\.\pipe\)" + server_name;
+            server_name_ = std::string(R"(\\.\pipe\)") + std::string(server_name);
             iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
             if (!iocp_)
                 return nonstd::make_unexpected("CreateIoCompletionPort failed");
@@ -297,7 +291,7 @@ namespace tyke
                 worker_.join();
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                for (auto& kv : clients_)
+                for (const auto & kv : clients_)
                 {
                     DisconnectNamedPipe(kv.second->pipe);
                     CloseHandle(kv.second->pipe);
@@ -307,12 +301,12 @@ namespace tyke
             CloseHandle(iocp_);
         }
 
-        BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) override
+        BoolResult SendToClient(const ClientId id, const std::vector<uint8_t>& data) override
         {
             std::shared_ptr<ClientContext> ctx;
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                auto it = clients_.find(id);
+                const auto it = clients_.find(id);
                 if (it == clients_.end())
                     return nonstd::make_unexpected("client not found: " + std::to_string(id));
                 ctx = it->second;
@@ -339,7 +333,7 @@ namespace tyke
                 DWORD bytes = 0;
                 ULONG_PTR key = 0;
                 OVERLAPPED* ov = nullptr;
-                BOOL ok = GetQueuedCompletionStatus(iocp_, &bytes, &key, &ov, INFINITE);
+                const BOOL ok = GetQueuedCompletionStatus(iocp_, &bytes, &key, &ov, INFINITE);
                 if (!running_)
                     break;
                 auto* ctx_raw = reinterpret_cast<ClientContext*>(key);
@@ -364,7 +358,11 @@ namespace tyke
                 if (!ctx->connected)
                 {
                     ctx->connected = true;
-                    CreateListeningPipe();
+                    if (const auto result = CreateListeningPipe(); !result)
+                    {
+                        SPDLOG_ERROR("CreateListeningPipe failed");
+                        continue;
+                    }
                     PostRead(ctx);
                 }
                 else if (ov == &ctx->read_ov)
@@ -399,7 +397,7 @@ namespace tyke
                                            PIPE_UNLIMITED_INSTANCES, 4096, 4096, 0, nullptr);
             if (pipe == INVALID_HANDLE_VALUE)
                 return nonstd::make_unexpected("CreateNamedPipe failed");
-            auto ctx = std::make_shared<ClientContext>();
+            const auto ctx = std::make_shared<ClientContext>();
             ctx->pipe = pipe;
             if (!CreateIoCompletionPort(pipe, iocp_, reinterpret_cast<ULONG_PTR>(ctx.get()), 0))
             {
@@ -410,11 +408,9 @@ namespace tyke
                 std::lock_guard<std::mutex> lock(mutex_);
                 clients_[reinterpret_cast<ClientId>(pipe)] = ctx;
             }
-            BOOL pending = ConnectNamedPipe(pipe, &ctx->read_ov);
-            if (!pending)
+            if (const BOOL pending = ConnectNamedPipe(pipe, &ctx->read_ov); !pending)
             {
-                DWORD err = GetLastError();
-                if (err == ERROR_PIPE_CONNECTED)
+                if (const DWORD err = GetLastError(); err == ERROR_PIPE_CONNECTED)
                 {
                     PostQueuedCompletionStatus(iocp_, 0, reinterpret_cast<ULONG_PTR>(ctx.get()), &ctx->read_ov);
                 }
@@ -430,8 +426,9 @@ namespace tyke
         void PostRead(const std::shared_ptr<ClientContext>& ctx)
         {
             DWORD bytes = 0;
-            BOOL ok = ReadFile(ctx->pipe, ctx->raw_read_buf, sizeof(ctx->raw_read_buf), &bytes, &ctx->read_ov);
-            if (!ok && GetLastError() != ERROR_IO_PENDING && GetLastError() != ERROR_MORE_DATA)
+            if (const BOOL ok =
+                        ReadFile(ctx->pipe, ctx->raw_read_buf, sizeof(ctx->raw_read_buf), &bytes, &ctx->read_ov);
+                !ok && GetLastError() != ERROR_IO_PENDING && GetLastError() != ERROR_MORE_DATA)
                 CloseClient(ctx);
         }
 
@@ -445,14 +442,12 @@ namespace tyke
                 {
                     if (type != crypto::kMsgHandshakeInit)
                         return false;
-                    auto gen_result = ctx->ecdh.GenerateKey();
-                    if (!gen_result)
+                    if (auto gen_result = ctx->ecdh.GenerateKey(); !gen_result)
                         return false;
                     auto secret_result = ctx->ecdh.ComputeSharedSecret(payload);
                     if (!secret_result)
                         return false;
-                    auto init_result = ctx->cipher.Init(secret_result.value());
-                    if (!init_result)
+                    if (auto init_result = ctx->cipher.Init(secret_result.value()); !init_result)
                         return false;
                     auto pub_der_result = ctx->ecdh.GetPublicKeyDer();
                     if (!pub_der_result)
@@ -478,15 +473,14 @@ namespace tyke
                     auto callback = callback_;
                     
                     THREAD_POOL_INSTANCE->Enqueue([callback, client_id, data_copy, this]() {
-                        auto cb_send = [this](ClientId id, const std::vector<uint8_t>& buf) -> bool
+                        auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                         {
-                            auto result = SendToClient(id, buf);
+                                    const auto result = SendToClient(id, buf);
                             return result.has_value();
                         };
                         if (callback)
                         {
-                            const auto optional = callback(client_id, *data_copy, cb_send);
-                            if (!optional)
+                            if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
                             {
                                 CloseClient(client_id);
                             }
@@ -505,7 +499,7 @@ namespace tyke
             ctx->writing = true;
             memset(&ctx->write_ov, 0, sizeof(ctx->write_ov));
             DWORD bytes = 0;
-            BOOL ok = WriteFile(ctx->pipe, ctx->pending_writes.data(), static_cast<DWORD>(ctx->pending_writes.size()),
+            const BOOL ok = WriteFile(ctx->pipe, ctx->pending_writes.data(), static_cast<DWORD>(ctx->pending_writes.size()),
                                 &bytes, &ctx->write_ov);
             if (!ok && GetLastError() != ERROR_IO_PENDING)
             {

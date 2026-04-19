@@ -13,7 +13,6 @@
 
 #include "request_router.h"
 #include "response_router.h"
-#include "common/tyke_def.h"
 #include "common/tyke_result.h"
 #include "component/singleton.h"
 #include "ipc/ipc_server.h"
@@ -34,13 +33,13 @@ namespace tyke
                                     uint32_t file_count);
 
 
-        BoolResult Start(const std::string& listen_uuid) const;
+        BoolResult Start(std::string_view listen_uuid) const;
 
 
-        RequestRouter* GetRequestRouter();
+        static RequestRouter * GetRequestRouter();
 
 
-        ResponseRouter* GetResponseRouter();
+        static ResponseRouter * GetResponseRouter();
 
     private:
         TykeFramework();

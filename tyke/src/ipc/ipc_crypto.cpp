@@ -2,16 +2,12 @@
 #include "common/log_def.h"
 #include "common/tyke_def.h"
 
-#include <cstring>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
-#include <openssl/core_names.h>
 #include <openssl/rand.h>
 
-namespace tyke
+namespace tyke::crypto
 {
-    namespace crypto
-    {
         struct EvpCipherCtxDeleter
         {
             void operator()(EVP_CIPHER_CTX* ctx) const { EVP_CIPHER_CTX_free(ctx); }
@@ -30,7 +26,7 @@ namespace tyke
         };
         using EvpPkeyCtxPtr = std::unique_ptr<EVP_PKEY_CTX, EvpPkeyCtxDeleter>;
 
-        static void EncodeU32(uint32_t val, std::vector<uint8_t>& out)
+        static void EncodeU32(const uint32_t val, std::vector<uint8_t>& out)
         {
             out.push_back(static_cast<uint8_t>((val >> 24) & 0xFF));
             out.push_back(static_cast<uint8_t>((val >> 16) & 0xFF));
@@ -46,10 +42,10 @@ namespace tyke
                    static_cast<uint32_t>(data[3]);
         }
 
-        std::vector<uint8_t> FrameParser::BuildFrame(uint8_t type, const std::vector<uint8_t>& payload)
+        std::vector<uint8_t> FrameParser::BuildFrame(const uint8_t type, const std::vector<uint8_t>& payload)
         {
             std::vector<uint8_t> frame;
-            uint32_t total_len = 1 + static_cast<uint32_t>(payload.size());
+            const uint32_t total_len = 1 + static_cast<uint32_t>(payload.size());
             EncodeU32(total_len, frame);
             frame.push_back(type);
             frame.insert(frame.end(), payload.begin(), payload.end());
@@ -61,7 +57,7 @@ namespace tyke
             if (buffer.size() < 5)
                 return nonstd::make_unexpected("buffer too small for frame header");
 
-            uint32_t total_len = DecodeU32(buffer.data());
+            const uint32_t total_len = DecodeU32(buffer.data());
             if (buffer.size() < 4 + total_len)
                 return nonstd::make_unexpected("buffer incomplete: expected " +
                     std::to_string(4 + total_len) + " bytes, got " + std::to_string(buffer.size()));
@@ -82,10 +78,9 @@ namespace tyke
         }
 
         EcdhKeyExchange::~EcdhKeyExchange()
-        {
-        }
+        = default;
 
-        BoolResult EcdhKeyExchange::GenerateKey()
+        BoolResult EcdhKeyExchange::GenerateKey() const
         {
             impl_->pkey.reset();
 
@@ -107,7 +102,7 @@ namespace tyke
                 return nonstd::make_unexpected("no ECDH key available");
             }
 
-            int len = i2d_PUBKEY(impl_->pkey.get(), nullptr);
+            const int len = i2d_PUBKEY(impl_->pkey.get(), nullptr);
             if (len <= 0)
             {
                 LOG_ERROR("Failed to get public key DER length");
@@ -132,14 +127,14 @@ namespace tyke
             }
 
             const uint8_t* ptr = peer_pub_der.data();
-            EvpPkeyPtr peer_pkey(d2i_PUBKEY(nullptr, &ptr, static_cast<long>(peer_pub_der.size())));
+            const EvpPkeyPtr peer_pkey(d2i_PUBKEY(nullptr, &ptr, static_cast<long>(peer_pub_der.size())));
             if (!peer_pkey)
             {
                 LOG_ERROR("Failed to parse peer public key DER");
                 return nonstd::make_unexpected("failed to parse peer public key DER");
             }
 
-            EvpPkeyCtxPtr ctx(EVP_PKEY_CTX_new(impl_->pkey.get(), nullptr));
+            const EvpPkeyCtxPtr ctx(EVP_PKEY_CTX_new(impl_->pkey.get(), nullptr));
             if (!ctx)
             {
                 LOG_ERROR("Failed to create PKEY context");
@@ -185,7 +180,7 @@ namespace tyke
         {
         }
 
-        BoolResult AesGcmCipher::Init(const std::vector<uint8_t>& shared_secret)
+        BoolResult AesGcmCipher::Init(const std::vector<uint8_t>& shared_secret) const
         {
             if (shared_secret.empty())
             {
@@ -224,7 +219,7 @@ namespace tyke
                 return nonstd::make_unexpected("RAND_bytes for IV failed");
             }
 
-            EvpCipherCtxPtr ctx(EVP_CIPHER_CTX_new());
+            const EvpCipherCtxPtr ctx(EVP_CIPHER_CTX_new());
             if (!ctx)
             {
                 LOG_ERROR("Failed to create cipher context");
@@ -284,10 +279,10 @@ namespace tyke
 
             const uint8_t* iv = ciphertext.data();
             const uint8_t* enc_data = ciphertext.data() + kAesGcmIvLen;
-            size_t enc_len = ciphertext.size() - kAesGcmIvLen - kAesGcmTagLen;
+            const size_t enc_len = ciphertext.size() - kAesGcmIvLen - kAesGcmTagLen;
             const uint8_t* tag = ciphertext.data() + ciphertext.size() - kAesGcmTagLen;
 
-            EvpCipherCtxPtr ctx(EVP_CIPHER_CTX_new());
+            const EvpCipherCtxPtr ctx(EVP_CIPHER_CTX_new());
             if (!ctx)
             {
                 LOG_ERROR("Failed to create cipher context");
@@ -326,5 +321,4 @@ namespace tyke
             plaintext.resize(static_cast<size_t>(out_len + final_len));
             return plaintext;
         }
-    }
 }

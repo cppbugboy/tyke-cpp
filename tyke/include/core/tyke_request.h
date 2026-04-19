@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file tyke_request.h
  * @brief 请求对象声明。封装IPC请求的元数据、内容和发送功能，支持同步和异步发送。
  * @author Nick
@@ -6,10 +6,10 @@
  */
 
 
+#pragma once
 
-#ifndef TYKE_REQUEST_H
-#define TYKE_REQUEST_H
 #include <future>
+#include <string_view>
 
 #include "common/tyke_result.h"
 #include "request_metadata.h"
@@ -44,19 +44,19 @@ namespace tyke
         
         TykeRequest& SetContent(const ContentType& content_type, const std::vector<unsigned char>& content);
 
-        
+
         void GetContent(std::string& content_type, std::vector<unsigned char>& content) const;
 
-        
-        TykeRequest& SetModule(const std::string& module);
 
-        
+        TykeRequest& SetModule(std::string_view module);
+
+
         const std::string& GetModule() const;
 
-        
-        TykeRequest& SetRoute(const std::string& route);
 
-        
+        TykeRequest& SetRoute(std::string_view route);
+
+
         const std::string& GetRoute() const;
 
         
@@ -66,10 +66,10 @@ namespace tyke
         const std::string& GetAsyncUuid() const;
 
         
-        nonstd::expected<bool, std::string> AddMetadata(const std::string& key, const JsonValue& value);
+        nonstd::expected<bool, std::string> AddMetadata(std::string_view key, const JsonValue& value);
 
-        
-        nonstd::optional<JsonValue> GetMetadata(const std::string& key);
+
+        std::optional<JsonValue> GetMetadata(std::string_view key) const;
 
         
         nonstd::expected<bool, std::string> Send(const std::string& send_uuid, TykeResponse& response);
@@ -93,7 +93,7 @@ namespace tyke
         RequestMetadata metadata_;
         std::vector<unsigned char> content_;
 
-        static ObjectPool<TykeRequest> pool_;
+        inline static ObjectPool<TykeRequest> pool_;
     };
 
     
@@ -113,5 +113,3 @@ namespace tyke
         return TykeRequestPtr(TykeRequest::Acquire());
     }
 }
-
-#endif

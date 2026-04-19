@@ -6,9 +6,7 @@
 #include "core/response_router.h"
 #include "common/log_def.h"
 
-namespace tyke
-{
-namespace dispatcher
+namespace tyke::dispatcher
 {
     void DispatchRequest(const TykeRequest& request, TykeResponse& response)
     {
@@ -23,12 +21,12 @@ namespace dispatcher
             return;
         }
 
-        for (auto it = route_entry->filter_chain.begin(); it != route_entry->filter_chain.end(); ++it)
+        for (const auto& filter : route_entry->filter_chain)
         {
-            LOG_DEBUG("Executing request filter Before: {}, msg_uuid={}", typeid(**it).name(), request.GetMsgUuid());
-            if (!(*it)->Before(request, response))
+            LOG_DEBUG("Executing request filter Before: {}, msg_uuid={}", typeid(*filter).name(), request.GetMsgUuid());
+            if (!filter->Before(request, response))
             {
-                LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(), request.GetMsgUuid());
+                LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(), request.GetMsgUuid());
                 return;
             }
         }
@@ -61,12 +59,12 @@ namespace dispatcher
             return;
         }
 
-        for (auto it = route_entry->filter_chain.begin(); it != route_entry->filter_chain.end(); ++it)
+        for (const auto& filter : route_entry->filter_chain)
         {
-            LOG_DEBUG("Executing response filter Before: {}, msg_uuid={}", typeid(**it).name(), response.GetMsgUuid());
-            if (!(*it)->Before(response))
+            LOG_DEBUG("Executing response filter Before: {}, msg_uuid={}", typeid(*filter).name(), response.GetMsgUuid());
+            if (!filter->Before(response))
             {
-                LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(), response.GetMsgUuid());
+                LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(), response.GetMsgUuid());
                 return;
             }
         }
@@ -87,5 +85,3 @@ namespace dispatcher
         LOG_DEBUG("Response dispatched successfully: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
     }
 }
-
-} // tyke

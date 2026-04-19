@@ -5,10 +5,8 @@
  * @date 2026/04/19
  */
 
+#pragma once
 
-
-#ifndef TYKE_RESPONSE_ROUTER_GROUP_H
-#define TYKE_RESPONSE_ROUTER_GROUP_H
 #include <functional>
 #include <string>
 #include <vector>
@@ -26,5 +24,3 @@ namespace tyke
 
     using ResponseRouterGroup = RouterGroup<ResponseFilter, ResponseHandlerFunc>;
 }
-
-#endif

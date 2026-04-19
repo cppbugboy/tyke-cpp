@@ -8,8 +8,7 @@
  * 实际类型为ControllerBase，两者完全等价。
  */
 
-#ifndef TYKE_RESPONSE_CONTROLLER_H
-#define TYKE_RESPONSE_CONTROLLER_H
+#pragma once
 
 #include "controller_base.h"
 
@@ -17,5 +16,3 @@ namespace tyke
 {
     using ResponseController = ControllerBase;
 }
-
-#endif // TYKE_RESPONSE_CONTROLLER_H

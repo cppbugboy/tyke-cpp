@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file request_stub.cpp
  * @brief 请求存根实现。管理异步请求的回调函数、Future对象及超时清理逻辑。
  * @author Nick
@@ -11,12 +11,6 @@
 
 namespace tyke
 {
-
-    std::unordered_map<std::string, RequestStub::FutureEntry> RequestStub::uuid_future_map_;
-    std::mutex RequestStub::uuid_future_map_mutex_;
-
-    std::unordered_map<std::string, RequestStub::FuncEntry> RequestStub::uuid_func_map_;
-    std::mutex RequestStub::uuid_func_map_mutex_;
     void RequestStub::AddFuture(const std::string& uuid, std::promise<TykeResponse>& promise)
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
@@ -26,8 +20,7 @@ namespace tyke
     void RequestStub::SetFuture(const TykeResponse& response)
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
-        auto it = uuid_future_map_.find(response.GetMsgUuid());
-        if (it != uuid_future_map_.end())
+        if (const auto it = uuid_future_map_.find(response.GetMsgUuid()); it != uuid_future_map_.end())
         {
             it->second.promise.set_value(response);
             uuid_future_map_.erase(it);
@@ -53,10 +46,9 @@ namespace tyke
     void RequestStub::ExecFunc(const TykeResponse& response)
     {
         std::unique_lock<std::mutex> lock(uuid_func_map_mutex_);
-        auto it = uuid_func_map_.find(response.GetMsgUuid());
-        if (it != uuid_func_map_.end())
+        if (const auto it = uuid_func_map_.find(response.GetMsgUuid()); it != uuid_func_map_.end())
         {
-            auto function = it->second.func;
+            const auto function = it->second.func;
             uuid_func_map_.erase(it);
             lock.unlock();
             LOG_DEBUG("Executing callback for response, uuid={}", response.GetMsgUuid());
@@ -67,10 +59,10 @@ namespace tyke
             LOG_WARN("Callback entry not found for response, uuid={}", response.GetMsgUuid());
         }
     }
-    void RequestStub::CleanupExpired(uint32_t timeout_ms)
+    void RequestStub::CleanupExpired(const uint32_t timeout_ms)
     {
-        auto now = std::chrono::steady_clock::now();
-        auto timeout = std::chrono::milliseconds(timeout_ms);
+        const auto now = std::chrono::steady_clock::now();
+        const auto timeout = std::chrono::milliseconds(timeout_ms);
 
         {
             std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);

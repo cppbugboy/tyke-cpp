@@ -1,11 +1,16 @@
-/**
+﻿/**
  * @file thread_pool.hpp
- * @brief 线程池类
+ * @brief 线程池类 (C++17)
  * @author Nick
  * @date 2026/04/17
  *
  * ThreadPool是线程安全的线程池类，支持任务队列和异步任务执行。
  * 继承自Singleton<ThreadPool>，全局只有一个实例。
+ *
+ * C++17特性:
+ * - 使用std::optional替代nonstd::optional作为Enqueue返回值
+ * - 使用std::invoke_result_t替代已废弃的std::result_of
+ * - 使用lambda + std::apply替代std::bind进行参数绑定
  *
  * 使用示例：
  * @code
@@ -17,8 +22,7 @@
  * @endcode
  */
 
-#ifndef THREAD_POOL_H
-#define THREAD_POOL_H
+#pragma once
 
 #include <atomic>
 #include <condition_variable>
@@ -26,9 +30,10 @@
 #include <future>
 #include <memory>
 #include <mutex>
-#include <nonstd/optional.hpp>
+#include <optional>
 #include <queue>
 #include <thread>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -74,8 +79,8 @@ namespace tyke
                         {
                             std::function<void()> task;
                             {
-                                std::unique_lock<std::mutex> lock(this->queue_mutex_);
-                                this->condition_.wait(lock, [this]
+                                std::unique_lock<std::mutex> lock2(this->queue_mutex_);
+                                this->condition_.wait(lock2, [this]
                                 {
                                     return this->stop_.load(std::memory_order_acquire) || !this->tasks_.empty();
                                 });
@@ -104,7 +109,7 @@ namespace tyke
          *
          * true=优雅退出(等待队列中任务执行完), false=强制退出(丢弃未执行任务)
          */
-        void Stop(bool waitForTasks = true)
+        void Stop(const bool waitForTasks = true)
         {
             {
                 std::unique_lock<std::mutex> lock(queue_mutex_);
@@ -147,29 +152,27 @@ namespace tyke
          */
         template<class F, class... Args>
         auto Enqueue(F&& f, Args&&... args)
-            -> nonstd::optional<std::future<typename std::result_of<F(Args...)>::type>>
+            -> std::optional<std::future<std::invoke_result_t<F, Args...>>>
         {
-            using return_type = typename std::result_of<F(Args...)>::type;
+            using return_type = std::invoke_result_t<F, Args...>;
 
-            // 1. 无锁检查，提升性能：如果已停止，直接拒绝入队
             if (stop_.load(std::memory_order_acquire))
             {
-                return nonstd::nullopt;
+                return std::nullopt;
             }
 
-            // C++11 环境下的经典 bind 写法
             auto task = std::make_shared<std::packaged_task<return_type()>>(
-                std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+                [f = std::forward<F>(f), tup = std::make_tuple(std::forward<Args>(args)...)]() mutable
+                -> return_type { return std::apply(f, std::move(tup)); }
             );
 
             std::future<return_type> res = task->get_future();
             {
                 std::unique_lock<std::mutex> lock(queue_mutex_);
 
-                // 2. Double-Check：获取锁后再次检查，防止在加锁的间隙线程池被 Stop()
                 if (stop_.load(std::memory_order_acquire))
                 {
-                    return nonstd::nullopt;
+                    return std::nullopt;
                 }
 
                 tasks_.emplace([task]() { (*task)(); });
@@ -204,4 +207,3 @@ namespace tyke
         std::atomic<bool> stop_;                        ///< 停止标志
     };
 }
-#endif

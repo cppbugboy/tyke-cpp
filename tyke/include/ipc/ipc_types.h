@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file ipc_types.h
  * @brief IPC模块类型定义
  * @author Nick
@@ -7,13 +7,11 @@
  * 定义IPC模块使用的类型别名、常量和回调函数类型。
  */
 
-#ifndef IPC_TYPES_H_
-#define IPC_TYPES_H_
+#pragma once
 
 #include <cstdint>
 #include <functional>
 #include <vector>
-#include <string>
 #include "common/tyke_result.h"
 
 namespace tyke
@@ -41,13 +39,11 @@ namespace tyke
      * @param ClientId 客户端标识
      * @param std::vector<uint8_t> 接收到的原始数据
      * @param ServerSendDataCallback 发送数据的回调函数
-     * @return nonstd::optional<uint32_t> - 有值时表示已消费字节数（0表示数据不合法已丢弃），
-     *         无值(nonstd::nullopt)表示数据不完整需等待更多数据
+     * @return std::optional<uint32_t> - 有值时表示已消费字节数（0表示数据不合法已丢弃），
+     *         无值(std::nullopt)表示数据不完整需等待更多数据
      */
-    using ServerRecvDataCallback = std::function<nonstd::optional<uint32_t>(ClientId, const std::vector<uint8_t> &,
+    using ServerRecvDataCallback = std::function<std::optional<uint32_t>(ClientId, const std::vector<uint8_t> &,
                                                  const ServerSendDataCallback&
     )
     >;
 } // namespace tyke
-
-#endif // IPC_TYPES_H_

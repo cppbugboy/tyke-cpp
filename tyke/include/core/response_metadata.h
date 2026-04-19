@@ -6,15 +6,13 @@
  */
 
 
+#pragma once
 
-#ifndef TYKE_RESPONSE_META_DATA_H
-#define TYKE_RESPONSE_META_DATA_H
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <nlohmann/json.hpp>
 
-#include "common/tyke_result.h"
-#include "common/common_def.h"
 #include "core/metadata_base.h"
 
 namespace tyke
@@ -31,7 +29,7 @@ namespace tyke
         }
 
         const std::string& GetReason() const { return reason; }
-        ResponseMetadata& SetReason(const std::string& in_reason)
+        ResponseMetadata& SetReason(std::string_view in_reason)
         {
             reason = in_reason;
             return *this;
@@ -74,5 +72,3 @@ namespace tyke
         std::string reason;
     };
 }
-
-#endif

@@ -5,10 +5,8 @@
  * @date 2026/04/19
  */
 
+#pragma once
 
-
-#ifndef TYKE_RESPONSE_ROUTER_H
-#define TYKE_RESPONSE_ROUTER_H
 #include "response_router_group.h"
 #include "core/router_base.h"
 
@@ -27,4 +25,4 @@ namespace tyke
         ~ResponseRouter() override = default;
     };
 }
-#endif
+

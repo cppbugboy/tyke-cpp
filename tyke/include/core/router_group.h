@@ -6,12 +6,11 @@
  */
 
 
+#pragma once
 
-#ifndef TYKE_ROUTER_GROUP_H
-#define TYKE_ROUTER_GROUP_H
-#include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -30,7 +29,7 @@ namespace tyke
         };
 
 
-        RouterGroup(const std::string& prefix,
+        RouterGroup(std::string_view prefix,
                     std::unordered_map<std::string, RouteEntry>* global_registry,
                     const std::shared_ptr<RouterGroup>& parent = nullptr)
             : prefix_(prefix), parent_(parent), global_registry_(global_registry)
@@ -82,5 +81,3 @@ namespace tyke
         std::unordered_map<std::string, RouteEntry>* global_registry_;
     };
 }
-
-#endif

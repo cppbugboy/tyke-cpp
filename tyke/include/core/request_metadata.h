@@ -6,14 +6,11 @@
  */
 
 
+#pragma once
 
-#ifndef TYKE_REQUEST_META_DATA_H
-#define TYKE_REQUEST_META_DATA_H
 #include <string>
 #include <unordered_set>
 #include <nlohmann/json.hpp>
-#include "common/tyke_result.h"
-#include "common/common_def.h"
 #include "core/metadata_base.h"
 
 namespace tyke
@@ -53,5 +50,3 @@ namespace tyke
         }
     };
 }
-
-#endif

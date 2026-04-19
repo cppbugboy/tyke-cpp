@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file ipc_server.h
  * @brief IPC服务端声明。跨平台IPC服务器，支持Windows命名管道和Linux域套接字。
  * @author Nick
@@ -6,14 +6,13 @@
  */
 
 
-
-#ifndef IPC_SERVER_H_
-#define IPC_SERVER_H_
+#pragma once
 
 #include "ipc_types.h"
 #include "common/tyke_result.h"
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace tyke
 {
@@ -31,17 +30,15 @@ namespace tyke
         IpcServer& operator=(const IpcServer&) = delete;
 
 
-        BoolResult Start(const std::string& server_name, ServerRecvDataCallback callback);
+        BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) const;
 
 
-        void Stop();
+        void Stop() const;
 
 
-        BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data);
+        BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) const;
 
     private:
         std::unique_ptr<class IServerImpl> impl_;
     };
 }
-
-#endif

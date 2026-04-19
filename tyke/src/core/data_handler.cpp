@@ -16,11 +16,9 @@
 #include "core/tyke_request.h"
 #include "core/tyke_response.h"
 
-namespace tyke
+namespace tyke::data_handler
 {
-namespace data_handler
-{
-nonstd::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector<unsigned char>& data_vec,
+std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector<unsigned char>& data_vec,
                                    const SendDataHandler& send_data_handler)
 {
     LOG_DEBUG("DataCallback invoked, client_id={}, data_size={}", client_id, data_vec.size());
@@ -41,7 +39,7 @@ nonstd::optional<uint32_t> DataCallback(const ClientId client_id, const std::vec
     if (std::memcmp(header.magic, kProtocolMagic, sizeof(header.magic)) != 0)
     {
         LOG_WARN("Protocol magic mismatch, expected=TYKE, discarding {} bytes", data_vec.size());
-        return nonstd::nullopt;
+        return std::nullopt;
     }
 
     LOG_DEBUG("Received message, type={}, metadata_len={}, content_len={}",
@@ -55,9 +53,8 @@ nonstd::optional<uint32_t> DataCallback(const ClientId client_id, const std::vec
             // 处理同步请求
             try
             {
-                const auto tyke_request_ptr = MakeRequestPtr();
-                const auto decode_result = DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used);
-                if (decode_result)
+                if (const auto tyke_request_ptr = MakeRequestPtr();
+                    DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
                 {
                     LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
                     RequestHandler(client_id, *tyke_request_ptr, send_data_handler);
@@ -65,7 +62,7 @@ nonstd::optional<uint32_t> DataCallback(const ClientId client_id, const std::vec
             }
             catch (...)
             {
-                return nonstd::nullopt;
+                return std::nullopt;
             }
 
             break;
@@ -77,9 +74,8 @@ nonstd::optional<uint32_t> DataCallback(const ClientId client_id, const std::vec
             // 处理异步请求
             try
             {
-                const auto tyke_request_ptr = MakeRequestPtr();
-                const auto decode_result = DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used);
-                if (decode_result)
+                if (const auto tyke_request_ptr = MakeRequestPtr();
+                    DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
                 {
                     LOG_DEBUG("Processing async request, route={}, msg_type={}",
                               tyke_request_ptr->GetRoute(), static_cast<int>(header.msg_type));
@@ -88,7 +84,7 @@ nonstd::optional<uint32_t> DataCallback(const ClientId client_id, const std::vec
             }
             catch (...)
             {
-                return nonstd::nullopt;
+                return std::nullopt;
             }
 
             break;
@@ -100,9 +96,8 @@ nonstd::optional<uint32_t> DataCallback(const ClientId client_id, const std::vec
             // 处理异步响应
             try
             {
-                const auto tyke_response_ptr = MakeResponsePtr();
-                auto decode_result = DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used);
-                if (decode_result)
+                if (const auto tyke_response_ptr = MakeResponsePtr();
+                    DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used))
                 {
                     LOG_DEBUG("Processing async response, route={}, msg_uuid={}",
                               tyke_response_ptr->GetRoute(), tyke_response_ptr->GetMsgUuid());
@@ -111,7 +106,7 @@ nonstd::optional<uint32_t> DataCallback(const ClientId client_id, const std::vec
             }
             catch (...)
             {
-                return nonstd::nullopt;
+                return std::nullopt;
             }
             break;
         }
@@ -128,7 +123,7 @@ void RequestHandler(const ClientId client_id, const TykeRequest& request,
     LOG_DEBUG("RequestHandler: client_id={}, route={}, msg_uuid={}",
               client_id, request.GetRoute(), request.GetMsgUuid());
 
-    auto response_ptr = MakeResponsePtr();
+    const auto response_ptr = MakeResponsePtr();
     response_ptr->SetClientId(client_id)
             .SetMessageType(MessageType::kResponse)
             .SetModule(request.GetModule())
@@ -141,8 +136,7 @@ void RequestHandler(const ClientId client_id, const TykeRequest& request,
     dispatcher::DispatchRequest(request, *response_ptr);
 
     // 发送响应
-    auto send_result = response_ptr->Send();
-    if (!send_result)
+    if (auto send_result = response_ptr->Send(); !send_result)
     {
         LOG_ERROR("Send response failed: {}", send_result.error());
     }
@@ -153,7 +147,7 @@ void RequestHandlerAsync(const TykeRequest& request)
     LOG_DEBUG("RequestHandlerAsync: route={}, msg_uuid={}",
               request.GetRoute(), request.GetMsgUuid());
 
-    auto response_ptr = MakeResponsePtr();
+    const auto response_ptr = MakeResponsePtr();
     response_ptr->SetAsyncUuid(request.GetAsyncUuid())
             .SetMessageType(MessageType::kResponseAsync)
             .SetModule(request.GetModule())
@@ -173,8 +167,7 @@ void RequestHandlerAsync(const TykeRequest& request)
     dispatcher::DispatchRequest(request, *response_ptr);
 
     // 异步发送响应
-    auto send_result = response_ptr->SendAsync();
-    if (!send_result)
+    if (auto send_result = response_ptr->SendAsync(); !send_result)
     {
         LOG_ERROR("Send async response failed: {}", send_result.error());
     }
@@ -205,4 +198,3 @@ void ResponseHandler(const TykeResponse& response)
     }
 }
 }
-} // tyke

@@ -16,15 +16,14 @@
 
 #include <chrono>
 #include <cstring>
+#include <filesystem>
 #include <iomanip>
 #include <random>
 #include <regex>
 #include <sstream>
 
-namespace tyke
+namespace tyke::utils
 {
-    namespace utils
-    {
         std::string GenerateUUID()
         {
 
@@ -84,45 +83,29 @@ namespace tyke
             return oss.str();
         }
 
-        bool IsValidUUID(const std::string& uuid)
+        bool IsValidUUID(std::string_view uuid)
         {
 
             static const std::regex uuid_regex("^\\{?[0-9a-fA-F]{8}-"
                 "([0-9a-fA-F]{4}-){3}"
                 "[0-9a-fA-F]{12}\\}?$");
 
-            bool valid = std::regex_match(uuid, uuid_regex);
+            const bool valid = std::regex_match(std::string(uuid), uuid_regex);
             LOG_DEBUG("uuid validation for '{}': {}", uuid, valid ? "valid" : "invalid");
             return valid;
         }
 
         std::string GetTempDir()
         {
-#ifdef _WIN32
-            char path[MAX_PATH] = {0};
-            const DWORD length = GetTempPathA(MAX_PATH, path);
-            if (length > 0)
+            std::error_code ec;
+            const auto temp = std::filesystem::temp_directory_path(ec);
+            if (ec)
             {
-                LOG_DEBUG("temp dir: {}", path);
-                return std::string(path);
+                LOG_WARN("Failed to get temp dir: {}", ec.message());
+                return "";
             }
-            LOG_WARN("failed to get temp dir on Windows");
-#else
-
-            const char* vars[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
-            for (const char* v : vars)
-            {
-                const char* path = std::getenv(v);
-                if (path)
-                {
-                    LOG_DEBUG("temp dir from env {}: {}", v, path);
-                    return std::string(path);
-                }
-            }
-            LOG_DEBUG("temp dir fallback to /tmp");
-            return "/tmp";
-#endif
-            return "";
+            std::string temp_dir = temp.string();
+            LOG_DEBUG("temp dir: {}", temp_dir);
+            return temp_dir;
         }
-    }
 }

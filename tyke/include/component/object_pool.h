@@ -8,8 +8,7 @@
  * 通过Acquire获取对象、Release归还对象实现对象复用。
  */
 
-#ifndef TYKE_OBJECT_POOL_H
-#define TYKE_OBJECT_POOL_H
+#pragma once
 
 #include <mutex>
 #include <vector>
@@ -90,5 +89,3 @@ namespace tyke
         std::vector<T*> pool_;
     };
 }
-
-#endif

@@ -6,14 +6,12 @@
  */
 
 
+#pragma once
 
-#ifndef TYKE_REQUEST_STUB_H
-#define TYKE_REQUEST_STUB_H
 #include <chrono>
 #include <future>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "common/tyke_def.h"
 #include "tyke_response.h"
@@ -60,12 +58,10 @@ namespace tyke
             std::chrono::steady_clock::time_point created_at;
         };
 
-        static std::unordered_map<std::string, FutureEntry> uuid_future_map_;
-        static std::mutex uuid_future_map_mutex_;
+        inline static std::unordered_map<std::string, FutureEntry> uuid_future_map_;
+        inline static std::mutex uuid_future_map_mutex_;
 
-        static std::unordered_map<std::string, FuncEntry> uuid_func_map_;
-        static std::mutex uuid_func_map_mutex_;
+        inline static std::unordered_map<std::string, FuncEntry> uuid_func_map_;
+        inline static std::mutex uuid_func_map_mutex_;
     };
 }
-
-#endif

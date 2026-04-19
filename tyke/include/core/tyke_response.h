@@ -7,14 +7,14 @@
 
 
 
-#ifndef TYKE_RESPONSE_H
-#define TYKE_RESPONSE_H
+#pragma once
 
 #include "response_metadata.h"
 #include "common/tyke_def.h"
 #include "common/tyke_result.h"
 #include "ipc/ipc_types.h"
 #include "component/object_pool.h"
+#include <string_view>
 
 namespace tyke
 {
@@ -45,25 +45,25 @@ namespace tyke
         
         TykeResponse& SetMessageType(MessageType msg_type);
 
-        
+
         MessageType GetMessageType() const;
 
-        
-        TykeResponse& SetModule(const std::string& module);
 
-        
+        TykeResponse& SetModule(std::string_view module);
+
+
         const std::string& GetModule() const;
 
-        
-        TykeResponse& SetMsgUuid(const std::string& msg_uuid);
 
-        
+        TykeResponse& SetMsgUuid(std::string_view msg_uuid);
+
+
         const std::string& GetMsgUuid() const;
 
-        
-        TykeResponse& SetRoute(const std::string& route);
 
-        
+        TykeResponse& SetRoute(std::string_view route);
+
+
         const std::string& GetRoute() const;
 
         
@@ -74,19 +74,19 @@ namespace tyke
                                  const std::vector<unsigned char>& response_content);
 
         
-        nonstd::expected<bool, std::string> AddMetadata(const std::string& key, const JsonValue& value);
+        nonstd::expected<bool, std::string> AddMetadata(std::string_view key, const JsonValue& value);
 
-        
-        nonstd::optional<JsonValue> GetMetadata(const std::string& key);
 
-        
-        TykeResponse& SetResult(int status, const std::string& reason);
+        std::optional<JsonValue> GetMetadata(std::string_view key) const;
+
+
+        TykeResponse& SetResult(int status, std::string_view reason);
 
         
         void GetResult(int& status, std::string& reason) const;
 
         
-        TykeResponse& SetAsyncUuid(const std::string& target_uuid);
+        TykeResponse& SetAsyncUuid(std::string_view target_uuid);
 
         
         const std::string& GetAsyncUuid() const;
@@ -112,7 +112,7 @@ namespace tyke
         SendDataHandler send_data_handler_;
         std::string target_uuid_;
 
-        static ObjectPool<TykeResponse> pool_;
+        inline static ObjectPool<TykeResponse> pool_;
     };
 
     
@@ -132,5 +132,3 @@ namespace tyke
         return TykeResponsePtr(TykeResponse::Acquire());
     }
 }
-
-#endif

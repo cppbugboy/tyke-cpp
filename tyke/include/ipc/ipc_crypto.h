@@ -6,20 +6,15 @@
  */
 
 
-
-#ifndef IPC_CRYPTO_H_
-#define IPC_CRYPTO_H_
+#pragma once
 
 #include <cstdint>
 #include <vector>
 #include <memory>
 #include "common/tyke_result.h"
 
-namespace tyke
+namespace tyke::crypto
 {
-
-    namespace crypto
-    {
 
         constexpr uint8_t kMsgHandshakeInit = 0x01;
 
@@ -49,7 +44,7 @@ namespace tyke
             ~EcdhKeyExchange();
 
 
-            BoolResult GenerateKey();
+            BoolResult GenerateKey() const;
 
 
             ByteVecResult GetPublicKeyDer() const;
@@ -73,7 +68,7 @@ namespace tyke
             ~AesGcmCipher();
 
 
-            BoolResult Init(const std::vector<uint8_t>& shared_secret);
+            BoolResult Init(const std::vector<uint8_t>& shared_secret) const;
 
 
             bool IsInitialized() const;
@@ -88,7 +83,4 @@ namespace tyke
             struct Impl;
             std::unique_ptr<Impl> impl_;
         };
-    }
 }
-
-#endif

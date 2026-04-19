@@ -19,7 +19,7 @@ void DataProc::Encode(T &msg, std::vector<unsigned char> &data_vec)
         msg.metadata_.ToJsonString(metadata_string);
 
         // 计算各部分大小
-        const size_t header_size  = sizeof(ProtocolHeader);
+        constexpr size_t header_size  = sizeof(ProtocolHeader);
         const size_t meta_size    = metadata_string.size();
         const size_t content_size = msg.content_.size();
         const size_t total_size   = header_size + meta_size + content_size;
@@ -57,13 +57,13 @@ void DataProc::Encode(T &msg, std::vector<unsigned char> &data_vec)
     catch (...) { throw; }
 }
 template<typename T>
-nonstd::optional<bool> DataProc::Decode(const std::vector<unsigned char> &data_vec, T &msg, uint32_t &data_size)
+std::optional<bool> DataProc::Decode(const std::vector<unsigned char> &data_vec, T &msg, uint32_t &data_size)
 {
     try
     {
         data_size                = 0;
         const size_t vec_size    = data_vec.size();
-        const size_t header_size = sizeof(ProtocolHeader);
+        constexpr size_t header_size = sizeof(ProtocolHeader);
 
         // 检查数据长度是否足够包含协议头
         if (vec_size < header_size)
@@ -119,7 +119,7 @@ void DataProc::EncodeRequest(TykeRequest &request, std::vector<unsigned char> &d
     }
     catch (...) { throw; }
 }
-nonstd::optional<bool> DataProc::DecodeRequest(const std::vector<unsigned char> &data_vec, TykeRequest &request,
+std::optional<bool> DataProc::DecodeRequest(const std::vector<unsigned char> &data_vec, TykeRequest &request,
                                    uint32_t &data_size)
 {
     try
@@ -136,7 +136,7 @@ void DataProc::EncodeResponse(TykeResponse &response, std::vector<unsigned char>
     }
     catch (...) { throw; }
 }
-nonstd::optional<bool> DataProc::DecodeResponse(const std::vector<unsigned char> &data_vec, TykeResponse &response,
+std::optional<bool> DataProc::DecodeResponse(const std::vector<unsigned char> &data_vec, TykeResponse &response,
                                     uint32_t &data_size)
 {
     try

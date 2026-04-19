@@ -1,17 +1,18 @@
 /**
  * @file singleton.h
- * @brief 单例模式模板类
+ * @brief 单例模式模板类 (C++17)
  * @author Nick
  * @date 2026/04/19
  *
  * 使用CRTP模式和std::call_once实现线程安全单例。
  * 派生类需将Singleton<Derived>声明为友元。
+ *
+ * C++17特性:
+ * - 使用inline static成员变量，消除模板类外部定义的需要
  */
 
-#ifndef TYKE_SINGLETON_H
-#define TYKE_SINGLETON_H
+#pragma once
 
-#include <memory>
 #include <mutex>
 
 namespace tyke
@@ -53,15 +54,7 @@ namespace tyke
         virtual ~Singleton() = default;
 
     private:
-        static T* instance_;
-        static std::once_flag flag_;
+        inline static T* instance_ = nullptr;
+        inline static std::once_flag flag_;
     };
-
-    template <typename T>
-    T* Singleton<T>::instance_ = nullptr;
-
-    template <typename T>
-    std::once_flag Singleton<T>::flag_;
 }
-
-#endif

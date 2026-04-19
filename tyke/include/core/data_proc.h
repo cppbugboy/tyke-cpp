@@ -5,13 +5,10 @@
  * @date 2026/04/19
  */
 
+#pragma once
 
-
-#ifndef TYKE_DATA_PROC_H
-#define TYKE_DATA_PROC_H
 #include "tyke_request.h"
 #include "response_metadata.h"
-#include "common/tyke_def.h"
 #include "common/tyke_result.h"
 
 namespace tyke
@@ -24,14 +21,14 @@ namespace tyke
         static void EncodeRequest(TykeRequest& request, std::vector<unsigned char>& data_vec);
 
         
-        static nonstd::optional<bool> DecodeRequest(const std::vector<unsigned char>& data_vec, TykeRequest& request,
+        static std::optional<bool> DecodeRequest(const std::vector<unsigned char>& data_vec, TykeRequest& request,
                                   uint32_t& data_size);
 
         
         static void EncodeResponse(TykeResponse& response, std::vector<unsigned char>& data_vec);
 
         
-        static nonstd::optional<bool> DecodeResponse(const std::vector<unsigned char>& data_vec, TykeResponse& response,
+        static std::optional<bool> DecodeResponse(const std::vector<unsigned char>& data_vec, TykeResponse& response,
                                    uint32_t& data_size);
 
     private:
@@ -41,8 +38,6 @@ namespace tyke
 
         
         template <typename T>
-        static nonstd::optional<bool> Decode(const std::vector<unsigned char>& data_vec, T& msg, uint32_t& data_size);
+        static std::optional<bool> Decode(const std::vector<unsigned char>& data_vec, T& msg, uint32_t& data_size);
     };
 }
-
-#endif

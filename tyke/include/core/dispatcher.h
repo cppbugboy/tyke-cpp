@@ -6,21 +6,13 @@
  */
 
 
+#pragma once
 
-#ifndef TYKE_DISPATCHER_H
-#define TYKE_DISPATCHER_H
 #include "core/tyke_request.h"
 
-namespace tyke
+namespace tyke::dispatcher
 {
-    
-namespace dispatcher
-{
-
 void DispatchRequest(const TykeRequest& request, TykeResponse& response);
 
 void DispatchResponse(const TykeResponse& response);
 }
-}
-
-#endif

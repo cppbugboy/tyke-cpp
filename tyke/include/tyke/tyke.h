@@ -6,9 +6,7 @@
  */
 
 
-
-#ifndef TYKE_TYKE_H
-#define TYKE_TYKE_H
+#pragma once
 
 #include "core/tyke_framework.h"
 #include "core/tyke_request.h"
@@ -22,5 +20,3 @@
 #include "common/log_def.h"
 #include "filter/request_filter.h"
 #include "filter/response_filter.h"
-
-#endif
