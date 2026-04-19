@@ -62,6 +62,7 @@ namespace tyke
         
         const std::string& GetMsgUuid() const;
 
+        TykeRequest& SetAsyncUuid(std::string_view async_uuid);
         
         const std::string& GetAsyncUuid() const;
 

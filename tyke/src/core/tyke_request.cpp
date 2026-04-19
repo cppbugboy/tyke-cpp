@@ -176,6 +176,11 @@ namespace tyke
     {
         return metadata_.GetMsgUuid();
     }
+    TykeRequest &TykeRequest::SetAsyncUuid(std::string_view async_uuid)
+    {
+        metadata_.SetAsyncUuid(async_uuid);
+        return *this;
+    }
     const std::string& TykeRequest::GetAsyncUuid() const
     {
         return metadata_.GetAsyncUuid();
