@@ -120,24 +120,29 @@ namespace tyke
             return std::nullopt;
         }
 
-        void ToJsonString(std::string& json_string)
+        nonstd::expected<bool, std::string> ToJsonString(std::string& json_string) const
         {
             try
             {
-                nlohmann::json json = *static_cast<Derived*>(this);
+                nlohmann::json json = *static_cast<const Derived*>(this);
                 for (const auto& [key, value] : headers_map_)
                 {
                     json[key] = VariantToJson(value);
                 }
                 json_string = json.dump();
+                return true;
             }
-            catch (const std::exception&)
+            catch (const nlohmann::json::exception& e)
             {
-                throw;
+                return nonstd::make_unexpected(std::string("JSON serialization error: ") + e.what());
+            }
+            catch (const std::exception& e)
+            {
+                return nonstd::make_unexpected(std::string("Serialization failed: ") + e.what());
             }
         }
 
-        void FromJsonString(const std::string& json_string)
+        nonstd::expected<bool, std::string> FromJsonString(const std::string& json_string)
         {
             try
             {
@@ -150,10 +155,15 @@ namespace tyke
                         headers_map_[key] = JsonToVariant(value);
                     }
                 }
+                return true;
             }
-            catch (const std::exception&)
+            catch (const nlohmann::json::exception& e)
             {
-                throw;
+                return nonstd::make_unexpected(std::string("JSON parse error: ") + e.what());
+            }
+            catch (const std::exception& e)
+            {
+                return nonstd::make_unexpected(std::string("Deserialization failed: ") + e.what());
             }
         }
 

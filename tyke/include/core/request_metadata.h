@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file request_metadata.h
  * @brief 请求元数据声明。继承MetadataBase，存储请求的模块名、路由、UUID等元信息。
  * @author Nick
@@ -33,12 +33,12 @@ namespace tyke
 
         friend void from_json(const nlohmann::json& j, RequestMetadata& t)
         {
-            j.at("module").get_to(t.module);
-            j.at("async_uuid").get_to(t.async_uuid);
-            j.at("msg_uuid").get_to(t.msg_uuid);
-            j.at("route").get_to(t.route);
-            j.at("content_type").get_to(t.content_type);
-            j.at("timestamp").get_to(t.timestamp);
+            t.module = j.value("module", std::string{});
+            t.async_uuid = j.value("async_uuid", std::string{});
+            t.msg_uuid = j.value("msg_uuid", std::string{});
+            t.route = j.value("route", std::string{});
+            t.content_type = j.value("content_type", std::string{});
+            t.timestamp = j.value("timestamp", std::string{});
         }
 
         static const std::unordered_set<std::string>& JsonKeySet()

@@ -9,6 +9,8 @@
 
 #include "core/data_handler.h"
 
+#include <nlohmann/json.hpp>
+
 #include "common/log_def.h"
 #include "core/data_proc.h"
 #include "core/dispatcher.h"
@@ -21,37 +23,33 @@ namespace tyke::data_handler
 std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector<unsigned char>& data_vec,
                                    const SendDataHandler& send_data_handler)
 {
-    LOG_DEBUG("DataCallback invoked, client_id={}, data_size={}", client_id, data_vec.size());
-
-    // 检查数据长度是否足够包含协议头
-    if (data_vec.size() <= sizeof(ProtocolHeader))
+    try
     {
-        LOG_WARN("Data too short for protocol header, size={}, discarding", data_vec.size());
-        return 0;
-    }
+        LOG_DEBUG("DataCallback invoked, client_id={}, data_size={}", client_id, data_vec.size());
 
-    // 解析协议头
-    ProtocolHeader header;
-    constexpr size_t header_size = sizeof(ProtocolHeader);
-    std::memcpy(&header, data_vec.data(), header_size);
-
-    // 验证协议魔数
-    if (std::memcmp(header.magic, kProtocolMagic, sizeof(header.magic)) != 0)
-    {
-        LOG_WARN("Protocol magic mismatch, expected=TYKE, discarding {} bytes", data_vec.size());
-        return std::nullopt;
-    }
-
-    LOG_DEBUG("Received message, type={}, metadata_len={}, content_len={}",
-              static_cast<int>(header.msg_type), header.metadata_len, header.content_len);
-
-    uint32_t used = 0;
-    switch (header.msg_type)
-    {
-        case MessageType::kRequest:
+        if (data_vec.size() <= sizeof(ProtocolHeader))
         {
-            // 处理同步请求
-            try
+            LOG_WARN("Data too short for protocol header, size={}, discarding", data_vec.size());
+            return 0;
+        }
+
+        ProtocolHeader header;
+        constexpr size_t header_size = sizeof(ProtocolHeader);
+        std::memcpy(&header, data_vec.data(), header_size);
+
+        if (std::memcmp(header.magic, kProtocolMagic, sizeof(header.magic)) != 0)
+        {
+            LOG_WARN("Protocol magic mismatch, expected=TYKE, discarding {} bytes", data_vec.size());
+            return std::nullopt;
+        }
+
+        LOG_DEBUG("Received message, type={}, metadata_len={}, content_len={}",
+                  static_cast<int>(header.msg_type), header.metadata_len, header.content_len);
+
+        uint32_t used = 0;
+        switch (header.msg_type)
+        {
+            case MessageType::kRequest:
             {
                 if (const auto tyke_request_ptr = MakeRequestPtr();
                     DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
@@ -59,20 +57,11 @@ std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector
                     LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
                     RequestHandler(client_id, *tyke_request_ptr, send_data_handler);
                 }
+                break;
             }
-            catch (...)
-            {
-                return std::nullopt;
-            }
-
-            break;
-        }
-        case MessageType::kRequestAsync:
-        case MessageType::kRequestAsyncFunc:
-        case MessageType::kRequestAsyncFuture:
-        {
-            // 处理异步请求
-            try
+            case MessageType::kRequestAsync:
+            case MessageType::kRequestAsyncFunc:
+            case MessageType::kRequestAsyncFuture:
             {
                 if (const auto tyke_request_ptr = MakeRequestPtr();
                     DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
@@ -81,20 +70,11 @@ std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector
                               tyke_request_ptr->GetRoute(), static_cast<int>(header.msg_type));
                     RequestHandlerAsync(*tyke_request_ptr);
                 }
+                break;
             }
-            catch (...)
-            {
-                return std::nullopt;
-            }
-
-            break;
-        }
-        case MessageType::kResponseAsync:
-        case MessageType::kResponseAsyncFunc:
-        case MessageType::kResponseAsyncFuture:
-        {
-            // 处理异步响应
-            try
+            case MessageType::kResponseAsync:
+            case MessageType::kResponseAsyncFunc:
+            case MessageType::kResponseAsyncFuture:
             {
                 if (const auto tyke_response_ptr = MakeResponsePtr();
                     DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used))
@@ -103,18 +83,29 @@ std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector
                               tyke_response_ptr->GetRoute(), tyke_response_ptr->GetMsgUuid());
                     ResponseHandler(*tyke_response_ptr);
                 }
+                break;
             }
-            catch (...)
-            {
-                return std::nullopt;
-            }
-            break;
+            default:
+                LOG_WARN("Unknown message type: {}", static_cast<int>(header.msg_type));
+                break;
         }
-        default:
-            LOG_WARN("Unknown message type: {}", static_cast<int>(header.msg_type));
-            break;
+        return used;
     }
-    return used;
+    catch (const nlohmann::json::exception& e)
+    {
+        LOG_ERROR("DataCallback JSON error: id={}, message={}", e.id, e.what());
+        return std::nullopt;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("DataCallback exception: {}", e.what());
+        return std::nullopt;
+    }
+    catch (...)
+    {
+        LOG_ERROR("DataCallback unknown exception");
+        return std::nullopt;
+    }
 }
 
 void RequestHandler(const ClientId client_id, const TykeRequest& request,
