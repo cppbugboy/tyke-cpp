@@ -1,30 +1,58 @@
 /**
  * @file server.cpp
- * @brief Tyke服务器示例程序
+ * @brief Tyke示例服务端程序。启动IPC服务器，注册请求/响应控制器，处理客户端请求。
  * @author Nick
- * @date 2026/04/17
- *
- * 演示如何启动Tyke服务器并监听客户端连接。
+ * @date 2026/04/19
  */
 
-#include "tyke/tyke.h"
-#include <fmt/format.h>
+#include <csignal>
 #include <thread>
+
+#include <fmt/format.h>
+
+#include "tyke/tyke.h"
+#include "controllers/example_request_controller.h"
+#include "controllers/example_response_controller.h"
+
+TYKE_CONTROLLER_REGISTER(ExampleRequestController)
+TYKE_CONTROLLER_REGISTER(ExampleResponseController)
+
+static volatile bool g_running = true;
+
+void SignalHandler(int signal)
+{
+    g_running = false;
+    fmt::print("\n收到信号 {}，正在关闭服务端...\n", signal);
+}
 
 int main()
 {
-    // 启动服务器，使用指定的UUID作为IPC端点标识
-    auto start_result = tyke::App()->Start("39649d81-81c5-4f6e-b6a9-e768b55063be");
-    if (!start_result)
+    signal(SIGINT, SignalHandler);
+    signal(SIGTERM, SignalHandler);
+
+    fmt::print("========================================\n");
+    fmt::print("  Tyke 示例服务端\n");
+    fmt::print("========================================\n\n");
+
+    auto* framework = tyke::App();
+    framework->SetThreadPoolCount(4);
+    framework->SetLogConfig("./tyke_server.log", "debug", 1024, 5);
+
+    auto result = framework->Start("tyke_server_example");
+    if (!result.has_value())
     {
-        fmt::print("start failed: {}\n", start_result.error());
+        fmt::print("服务端启动失败: {}\n", result.error());
         return 1;
     }
 
-    // 服务器主循环
-    while (true)
+    fmt::print("服务端已启动，监听UUID: tyke_server_example\n");
+    fmt::print("按 Ctrl+C 停止服务端...\n\n");
+
+    while (g_running)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+
+    fmt::print("服务端已关闭\n");
     return 0;
 }

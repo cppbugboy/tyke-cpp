@@ -15,7 +15,7 @@
 
 namespace tyke
 {
-    
+
     class RequestMetadata : public MetadataBase<RequestMetadata>
     {
     public:

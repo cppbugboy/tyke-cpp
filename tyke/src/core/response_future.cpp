@@ -6,7 +6,6 @@
  */
 
 #include "core/response_future.h"
-#include "core/request_stub.h"
 
 namespace tyke
 {
@@ -16,9 +15,6 @@ namespace tyke
     }
     TykeResponse ResponseFuture::GetResponse()
     {
-        auto response = future_.get();
-
-        RequestStub::DelFuture(msg_uuid_);
-        return response;
+        return future_.get();
     }
 }

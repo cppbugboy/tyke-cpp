@@ -44,13 +44,13 @@ namespace tyke
         }
 
 
-        std::shared_ptr<RouterGroup> AddSubGroup(const std::string& sub_prefix)
+        std::shared_ptr<RouterGroup> Group(const std::string& sub_prefix)
         {
             return std::make_shared<RouterGroup>(prefix_ + sub_prefix, global_registry_, this->shared_from_this());
         }
 
 
-        void AddRouteHandler(const std::string& path, HandlerFunc handler)
+        void Route(const std::string& path, HandlerFunc handler)
         {
             const std::string full_path = prefix_ + path;
             std::vector<std::shared_ptr<FilterType>> full_chain;
@@ -60,7 +60,6 @@ namespace tyke
                 (*global_registry_)[full_path] = {std::move(handler), std::move(full_chain)};
             }
         }
-
 
         void CollectFilters(std::vector<std::shared_ptr<FilterType>>& chain) const
         {

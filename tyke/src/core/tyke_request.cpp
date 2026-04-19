@@ -157,8 +157,9 @@ namespace tyke
         }
 
         std::promise<TykeResponse> promise;
+        auto future = promise.get_future();
         RequestStub::AddFuture(metadata_.GetMsgUuid(), promise);
-        ResponseFuture response_future(metadata_.GetMsgUuid(), promise.get_future());
+        ResponseFuture response_future(metadata_.GetMsgUuid(), std::move(future));
         LOG_DEBUG("Future registered, msg_uuid={}", GetMsgUuid());
         return response_future;
     }

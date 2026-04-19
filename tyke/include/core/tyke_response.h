@@ -110,7 +110,6 @@ namespace tyke
         bool is_send_ = false;
         ClientId client_id_{};
         SendDataHandler send_data_handler_;
-        std::string target_uuid_;
 
         inline static ObjectPool<TykeResponse> pool_;
     };

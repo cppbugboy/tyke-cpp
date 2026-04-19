@@ -16,7 +16,6 @@ namespace tyke
         is_send_ = false;
         client_id_ = ClientId{};
         send_data_handler_ = nullptr;
-        target_uuid_.clear();
     }
     TykeResponse* TykeResponse::Acquire()
     {
@@ -142,7 +141,7 @@ namespace tyke
 }
     BoolResult TykeResponse::SendAsync()
     {
-        LOG_DEBUG("SendAsync: route={}, msg_uuid={}, target_uuid={}", GetRoute(), GetMsgUuid(), target_uuid_);
+        LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}", GetRoute(), GetMsgUuid(), metadata_.GetAsyncUuid());
 
         if (is_send_)
         {
@@ -162,7 +161,7 @@ namespace tyke
             return nonstd::make_unexpected("encode response failed");
         }
 
-        if (auto send_result = IpcClient::SendAsync(target_uuid_, data_vec); !send_result)
+        if (auto send_result = IpcClient::SendAsync(metadata_.GetAsyncUuid(), data_vec); !send_result)
         {
             LOG_ERROR("Send async failed: {}", send_result.error());
             return nonstd::make_unexpected("send async failed: " + send_result.error());
@@ -172,14 +171,14 @@ namespace tyke
         LOG_DEBUG("Async response sent successfully, msg_uuid={}", GetMsgUuid());
         return true;
     }
-    TykeResponse& TykeResponse::SetAsyncUuid(const std::string_view target_uuid)
+    TykeResponse& TykeResponse::SetAsyncUuid(const std::string_view async_uuid)
     {
-        target_uuid_ = target_uuid;
+        metadata_.SetAsyncUuid(async_uuid);
         return *this;
     }
     const std::string& TykeResponse::GetAsyncUuid() const
     {
-        return target_uuid_;
+        return metadata_.GetAsyncUuid();
     }
     TykeResponse& TykeResponse::SetSendDataHandler(const SendDataHandler& send_data_handler)
     {
