@@ -116,7 +116,7 @@ void SendAsyncRequest(const std::string& listen_uuid)
                  request_ptr->GetRoute(), listen_uuid);
 
     // SendAsync第二个参数是recv_uuid，用于指定响应接收地址
-    auto result = request_ptr->SendAsync(SERVER_UUID, listen_uuid);
+    auto result = request_ptr->SendAsync(SERVER_UUID);
 
     if (!result.has_value())
     {
@@ -219,7 +219,7 @@ void SendAsyncWithFutureRequest(const std::string& listen_uuid)
     fmt::println("发送SendAsyncWithFuture请求: route={}", request_ptr->GetRoute());
 
     // 发送请求并获取Future对象
-    auto future_result = request_ptr->SendAsyncWithFuture(SERVER_UUID, listen_uuid);
+    auto future_result = request_ptr->SendAsyncWithFuture(SERVER_UUID);
 
     if (!future_result.has_value())
     {

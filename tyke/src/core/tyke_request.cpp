@@ -130,8 +130,7 @@ namespace tyke
         LOG_DEBUG("Sync request completed, msg_uuid={}", GetMsgUuid());
         return true;
 }
-    nonstd::expected<bool, std::string> TykeRequest::SendAsync(const std::string& send_uuid,
-                                                               const std::string&)
+    nonstd::expected<bool, std::string> TykeRequest::SendAsync(const std::string& send_uuid)
     {
         return EncodeAndSend(send_uuid, MessageType::kRequestAsync);
     }
@@ -147,8 +146,7 @@ namespace tyke
         }
         return result;
     }
-    nonstd::expected<ResponseFuture, std::string> TykeRequest::SendAsyncWithFuture(const std::string& send_uuid,
-        const std::string&)
+    nonstd::expected<ResponseFuture, std::string> TykeRequest::SendAsyncWithFuture(const std::string& send_uuid)
     {
         LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}", send_uuid, GetRoute());
 

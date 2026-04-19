@@ -76,15 +76,14 @@ namespace tyke
         nonstd::expected<bool, std::string> Send(const std::string& send_uuid, TykeResponse& response);
 
         
-        nonstd::expected<bool, std::string> SendAsync(const std::string& send_uuid, const std::string& recv_uuid);
+        nonstd::expected<bool, std::string> SendAsync(const std::string& send_uuid);
 
         
         nonstd::expected<bool, std::string> SendAsyncWithFunc(const std::string& send_uuid,
                                                               const std::function<void(const TykeResponse &)> &func);
 
         
-        nonstd::expected<ResponseFuture, std::string> SendAsyncWithFuture(
-            const std::string& send_uuid, const std::string& recv_uuid);
+        nonstd::expected<ResponseFuture, std::string> SendAsyncWithFuture(const std::string& send_uuid);
 
     private:
         
