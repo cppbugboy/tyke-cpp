@@ -31,12 +31,7 @@ namespace tyke
             LOG_WARN("Future entry not found for response, uuid={}", response.GetMsgUuid());
         }
     }
-    void RequestStub::DelFuture(const std::string& msg_uuid)
-    {
-        std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
-        uuid_future_map_.erase(msg_uuid);
-        LOG_DEBUG("Future entry deleted, uuid={}", msg_uuid);
-    }
+
     void RequestStub::AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func)
     {
         std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);

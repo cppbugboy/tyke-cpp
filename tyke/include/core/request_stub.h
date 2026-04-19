@@ -32,9 +32,6 @@ namespace tyke
         static void SetFuture(const TykeResponse& response);
 
         
-        static void DelFuture(const std::string& msg_uuid);
-
-        
         static void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func);
 
         
