@@ -15,6 +15,11 @@
 
 namespace tyke
 {
+    bool TykeLog::IsInitialized() const
+    {
+        return tyke_logger_ != nullptr;
+    }
+
     BoolResult TykeLog::Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
                              uint32_t file_count)
     {

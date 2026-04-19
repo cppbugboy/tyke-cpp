@@ -32,7 +32,7 @@ namespace tyke
         BoolResult Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
                   uint32_t file_count);
 
-        bool IsInitialized() const { return tyke_logger_ != nullptr; }
+        bool IsInitialized() const;
 
         
         void SetLogLevel(const std::string& log_level) const;
