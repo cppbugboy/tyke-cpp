@@ -1,14 +1,4 @@
-/**
- * @file data_proc.cpp
- * @brief 数据编解码处理器实现
- * @author Nick
- * @date 2026/04/17
- *
- * 实现DataProc类的具体逻辑，提供请求和响应的序列化与反序列化功能。
- * 协议格式: [ProtocolHeader(固定28字节)][Metadata JSON][Content Binary]
- */
-
-#include "core/data_proc.h"
+﻿#include "core/data_proc.h"
 
 #include <algorithm>
 #include <cstring>
@@ -19,15 +9,6 @@
 
 namespace tyke
 {
-/**
-     * @brief 通用编码模板函数
-     * @tparam T 请求或响应类型
-     * @param msg 待编码的消息对象
-     * @param data_vec 输出的字节向量
-     * @return 成功返回true，失败返回错误信息
-     *
-     * 实现请求和响应的通用编码逻辑，包括元数据JSON序列化和协议头组装。
-     */
 template<typename T>
 void DataProc::Encode(T &msg, std::vector<unsigned char> &data_vec)
 {
@@ -73,22 +54,8 @@ void DataProc::Encode(T &msg, std::vector<unsigned char> &data_vec)
         LOG_DEBUG("Encode completed: header={} bytes, metadata={} bytes, content={} bytes, total={} bytes", header_size,
                   meta_size, content_size, total_size);
     }
-    catch (const std::exception &e)
-    {
-        throw std::runtime_error(e.what());
-    }
+    catch (...) { throw; }
 }
-
-/**
-     * @brief 通用解码模板函数
-     * @tparam T 请求或响应类型
-     * @param data_vec 待解码的字节向量
-     * @param msg 输出的消息对象
-     * @param data_size 解码的数据大小
-     * @return 成功返回true，失败返回错误信息
-     *
-     * 实现请求和响应的通用解码逻辑，包括协议头解析和元数据JSON反序列化。
-     */
 template<typename T>
 nonstd::optional<bool> DataProc::Decode(const std::vector<unsigned char> &data_vec, T &msg, uint32_t &data_size)
 {
@@ -140,39 +107,18 @@ nonstd::optional<bool> DataProc::Decode(const std::vector<unsigned char> &data_v
         LOG_DEBUG("Decode completed: header={} bytes, metadata={} bytes, content={} bytes, total={} bytes", header_size,
                   meta_len, cont_len, data_size);
     }
-    catch (const std::exception &e)
-    {
-        throw std::runtime_error(e.what());
-    }
+    catch (...) { throw; }
 
     return true;
 }
-
-/**
-     * @brief 编码请求对象为协议格式
-     * @param request 待编码的请求对象
-     * @param data_vec 输出的字节向量
-     * @return 成功返回true，失败返回错误信息
-     */
 void DataProc::EncodeRequest(TykeRequest &request, std::vector<unsigned char> &data_vec)
 {
     try
     {
         Encode(request, data_vec);
     }
-    catch (const std::exception &e)
-    {
-        throw std::runtime_error(e.what());
-    }
+    catch (...) { throw; }
 }
-
-/**
-     * @brief 解码协议格式为请求对象
-     * @param data_vec 待解码的字节向量
-     * @param request 输出的请求对象
-     * @param data_size 解码的数据大小
-     * @return 成功返回true，失败返回错误信息
-     */
 nonstd::optional<bool> DataProc::DecodeRequest(const std::vector<unsigned char> &data_vec, TykeRequest &request,
                                    uint32_t &data_size)
 {
@@ -180,37 +126,16 @@ nonstd::optional<bool> DataProc::DecodeRequest(const std::vector<unsigned char> 
     {
         return Decode(data_vec, request, data_size);
     }
-    catch (const std::exception &e)
-    {
-        throw std::runtime_error(e.what());
-    }
+    catch (...) { throw; }
 }
-
-/**
-     * @brief 编码响应对象为协议格式
-     * @param response 待编码的响应对象
-     * @param data_vec 输出的字节向量
-     * @return 成功返回true，失败返回错误信息
-     */
 void DataProc::EncodeResponse(TykeResponse &response, std::vector<unsigned char> &data_vec)
 {
     try
     {
         Encode(response, data_vec);
     }
-    catch (const std::exception &e)
-    {
-        throw std::runtime_error(e.what());
-    }
+    catch (...) { throw; }
 }
-
-/**
-     * @brief 解码协议格式为响应对象
-     * @param data_vec 待解码的字节向量
-     * @param response 输出的响应对象
-     * @param data_size 解码的数据大小
-     * @return 成功返回true，失败返回错误信息
-     */
 nonstd::optional<bool> DataProc::DecodeResponse(const std::vector<unsigned char> &data_vec, TykeResponse &response,
                                     uint32_t &data_size)
 {
@@ -218,9 +143,7 @@ nonstd::optional<bool> DataProc::DecodeResponse(const std::vector<unsigned char>
     {
         return Decode(data_vec, response, data_size);
     }
-    catch (const std::exception &e)
-    {
-        throw std::runtime_error(e.what());
-    }
+    catch (...) { throw; }
 }
 }// namespace tyke
+

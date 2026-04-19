@@ -20,19 +20,19 @@
 #ifndef THREAD_POOL_H
 #define THREAD_POOL_H
 
-#include <vector>
-#include <queue>
-#include <memory>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <future>
-#include <functional>
 #include <atomic>
-#include <type_traits>
+#include <condition_variable>
+#include <functional>
+#include <future>
+#include <memory>
+#include <mutex>
 #include <nonstd/optional.hpp>
+#include <queue>
+#include <thread>
+#include <type_traits>
+#include <vector>
 
-#include "singleton.hpp"
+#include "singleton.h"
 
 namespace tyke
 {

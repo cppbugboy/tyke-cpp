@@ -1,10 +1,8 @@
 /**
  * @file request_stub.cpp
- * @brief 请求存根实现
+ * @brief 请求存根实现。管理异步请求的回调函数、Future对象及超时清理逻辑。
  * @author Nick
- * @date 2026/04/17
- *
- * 实现RequestStub类的具体逻辑，管理异步请求的回调函数和Future对象。
+ * @date 2026/04/19
  */
 
 #include "core/request_stub.h"
@@ -13,29 +11,18 @@
 
 namespace tyke
 {
-    // 静态成员初始化
+
     std::unordered_map<std::string, RequestStub::FutureEntry> RequestStub::uuid_future_map_;
     std::mutex RequestStub::uuid_future_map_mutex_;
 
     std::unordered_map<std::string, RequestStub::FuncEntry> RequestStub::uuid_func_map_;
     std::mutex RequestStub::uuid_func_map_mutex_;
-
-    /**
-     * @brief 添加Future条目
-     * @param uuid 消息UUID
-     * @param promise Promise对象
-     */
     void RequestStub::AddFuture(const std::string& uuid, std::promise<TykeResponse>& promise)
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
         uuid_future_map_.emplace(uuid, FutureEntry{std::move(promise), std::chrono::steady_clock::now()});
         LOG_DEBUG("Future entry added, uuid={}", uuid);
     }
-
-    /**
-     * @brief 设置Future结果
-     * @param response 响应对象
-     */
     void RequestStub::SetFuture(const TykeResponse& response)
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
@@ -51,34 +38,18 @@ namespace tyke
             LOG_WARN("Future entry not found for response, uuid={}", response.GetMsgUuid());
         }
     }
-
-    /**
-     * @brief 删除Future条目
-     * @param msg_uuid 消息UUID
-     */
     void RequestStub::DelFuture(const std::string& msg_uuid)
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
         uuid_future_map_.erase(msg_uuid);
         LOG_DEBUG("Future entry deleted, uuid={}", msg_uuid);
     }
-
-    /**
-     * @brief 添加回调函数条目
-     * @param msg_uuid 消息UUID
-     * @param func 回调函数
-     */
     void RequestStub::AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func)
     {
         std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
         uuid_func_map_.emplace(msg_uuid, FuncEntry{func, std::chrono::steady_clock::now()});
         LOG_DEBUG("Callback entry added, uuid={}", msg_uuid);
     }
-
-    /**
-     * @brief 执行回调函数
-     * @param response 响应对象
-     */
     void RequestStub::ExecFunc(const TykeResponse& response)
     {
         std::unique_lock<std::mutex> lock(uuid_func_map_mutex_);
@@ -96,17 +67,11 @@ namespace tyke
             LOG_WARN("Callback entry not found for response, uuid={}", response.GetMsgUuid());
         }
     }
-
-    /**
-     * @brief 清理过期条目
-     * @param timeout_ms 超时时间（毫秒）
-     */
     void RequestStub::CleanupExpired(uint32_t timeout_ms)
     {
         auto now = std::chrono::steady_clock::now();
         auto timeout = std::chrono::milliseconds(timeout_ms);
 
-        // 清理过期的Future条目
         {
             std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
             for (auto it = uuid_future_map_.begin(); it != uuid_future_map_.end(); )
@@ -132,7 +97,6 @@ namespace tyke
             }
         }
 
-        // 清理过期的回调函数条目
         {
             std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
             for (auto it = uuid_func_map_.begin(); it != uuid_func_map_.end(); )
@@ -149,4 +113,4 @@ namespace tyke
             }
         }
     }
-} // tyke
+}

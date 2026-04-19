@@ -2,35 +2,16 @@ cmake_minimum_required(VERSION 3.16)
 
 project(tyke VERSION 1.0.0 LANGUAGES CXX)
 
-set(TYKE_SOURCES
-    src/common/tyke_utils.cpp
-    src/core/data_handler.cpp
-    src/core/data_proc.cpp
-    src/core/dispatcher.cpp
-    src/core/request_metadata.cpp
-    src/core/request_router.cpp
-    src/core/request_stub.cpp
-    src/core/response_future.cpp
-    src/core/response_metadata.cpp
-    src/core/response_router.cpp
-    src/core/tyke_framework.cpp
-    src/core/tyke_log.cpp
-    src/core/tyke_request.cpp
-    src/core/tyke_response.cpp
-    src/ipc/ipc_client.cpp
-    src/ipc/ipc_client_pool.cpp
-    src/ipc/ipc_crypto.cpp
-    src/ipc/ipc_platform_linux.cpp
-    src/ipc/ipc_platform_win.cpp
-    src/ipc/ipc_server.cpp
-)
+file(GLOB_RECURSE TYKE_INC include/*.h)
+file(GLOB_RECURSE TYKE_SRC src/*.cpp)
+
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(BUILD_BOTH_LIBS "Build both static and shared libraries" OFF)
 
 if(BUILD_BOTH_LIBS)
-    add_library(tyke_static STATIC ${TYKE_SOURCES})
-    add_library(tyke_shared SHARED ${TYKE_SOURCES})
+    add_library(tyke_static STATIC ${TYKE_INC} ${TYKE_SRC})
+    add_library(tyke_shared SHARED ${TYKE_INC} ${TYKE_SRC})
     
     target_compile_definitions(tyke_shared PRIVATE TYKE_BUILDING_DLL)
     
@@ -94,10 +75,10 @@ if(BUILD_BOTH_LIBS)
     
 else()
     if(BUILD_SHARED_LIBS)
-        add_library(tyke SHARED ${TYKE_SOURCES})
+        add_library(tyke SHARED ${TYKE_INC} ${TYKE_SRC})
         target_compile_definitions(tyke PRIVATE TYKE_BUILDING_DLL)
     else()
-        add_library(tyke STATIC ${TYKE_SOURCES})
+        add_library(tyke STATIC ${TYKE_INC} ${TYKE_SRC})
     endif()
     
     target_include_directories(tyke

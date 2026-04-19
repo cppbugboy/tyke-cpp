@@ -1,19 +1,11 @@
 /**
- * @file object_pool.hpp
+ * @file object_pool.h
  * @brief 对象池模板类
  * @author Nick
- * @date 2026/04/17
+ * @date 2026/04/19
  *
- * ObjectPool是线程安全的对象池模板类，用于对象的复用，减少内存分配开销。
- * 适用于频繁创建和销毁的对象，如请求/响应对象。
- *
- * 使用示例：
- * @code
- *   ObjectPool<MyObject> pool;
- *   MyObject* obj = pool.Acquire();
- *   // 使用obj...
- *   pool.Release(obj);
- * @endcode
+ * 线程安全的对象复用池，减少频繁内存分配开销。
+ * 通过Acquire获取对象、Release归还对象实现对象复用。
  */
 
 #ifndef TYKE_OBJECT_POOL_H
@@ -26,25 +18,19 @@ namespace tyke
 {
     /**
      * @brief 对象池模板类
-     * @tparam T 对象类型
      *
-     * 线程安全的对象池，支持对象的获取和释放。
-     * 池为空时自动创建新对象，释放时将对象归还池中。
+     * 线程安全的对象复用池。Acquire时优先从池中取空闲对象，
+     * 池为空时创建新对象；Release时将对象归还池中。
+     * 对象在池销毁时统一释放。
+     *
+     * @tparam T 池化管理的对象类型
      */
     template <typename T>
     class ObjectPool
     {
     public:
-        /**
-         * @brief 构造函数
-         */
         ObjectPool() = default;
 
-        /**
-         * @brief 析构函数
-         *
-         * 释放池中所有对象。
-         */
         ~ObjectPool()
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -55,15 +41,12 @@ namespace tyke
             pool_.clear();
         }
 
-        // 禁用拷贝和赋值，防止资源被意外接管或释放
         ObjectPool(const ObjectPool&) = delete;
         ObjectPool& operator=(const ObjectPool&) = delete;
 
         /**
-         * @brief 从池中获取对象
-         * @return 对象指针
-         *
-         * 池为空时创建新对象，否则返回池中的对象。
+         * @brief 从池中获取一个对象
+         * @return T* 对象指针，池为空时创建新对象
          */
         T* Acquire()
         {
@@ -78,10 +61,8 @@ namespace tyke
         }
 
         /**
-         * @brief 将对象释放回池中
-         * @param obj 对象指针
-         *
-         * 将对象归还池中以供复用。
+         * @brief 将对象归还到池中
+         * @param obj 待归还的对象指针，为nullptr时忽略
          */
         void Release(T* obj)
         {
@@ -92,9 +73,7 @@ namespace tyke
         }
 
         /**
-         * @brief 清空池中所有对象
-         *
-         * 删除池中所有对象并清空池。
+         * @brief 清空池中所有对象并释放内存
          */
         void Clear()
         {
@@ -107,9 +86,9 @@ namespace tyke
         }
 
     private:
-        std::mutex mutex_;      ///< 互斥锁，保证线程安全
-        std::vector<T*> pool_;  ///< 对象池
+        std::mutex mutex_;
+        std::vector<T*> pool_;
     };
-} // tyke
+}
 
-#endif //TYKE_OBJECT_POOL_H
+#endif

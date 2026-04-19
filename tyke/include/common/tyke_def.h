@@ -88,6 +88,8 @@ struct ProtocolHeader
     uint32_t    content_len  = 0;
 };
 
+static_assert(sizeof(ProtocolHeader) == kProtocolHeaderSize, "ProtocolHeader size mismatch with kProtocolHeaderSize");
+
 }
 
 #endif //TYKE_DEF_H

@@ -1,18 +1,8 @@
-/**
- * @file ipc_platform_win.cpp
- * @brief IPC平台实现 - Windows版本
- * @author Nick
- * @date 2026/04/17
- *
- * 实现Windows平台下的IPC通信，使用命名管道（Named Pipe）作为底层传输机制。
- * 支持加密通信和异步I/O操作。
- */
-
-#ifdef _WIN32
+﻿#ifdef _WIN32
 #include "ipc/ipc_internal_platform.h"
 #include "ipc/ipc_crypto.h"
 #include "common/log_def.h"
-#include "component/thread_pool.hpp"
+#include "component/thread_pool.h"
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -495,7 +485,7 @@ namespace tyke
                         };
                         if (callback)
                         {
-                            auto optional = callback(client_id, *data_copy, cb_send);
+                            const auto optional = callback(client_id, *data_copy, cb_send);
                             if (!optional)
                             {
                                 CloseClient(client_id);
@@ -538,16 +528,19 @@ namespace tyke
 
         void CloseClient(const ClientId client_id)
         {
-            if (clients_.find(client_id) == clients_.end())
-                return;
-
-            auto ctx = clients_.at(client_id);
+            std::shared_ptr<ClientContext> ctx;
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                auto it = clients_.find(client_id);
+                if (it == clients_.end())
+                    return;
+                ctx = it->second;
+                clients_.erase(it);
+            }
             CancelIoEx(ctx->pipe, &ctx->read_ov);
             CancelIoEx(ctx->pipe, &ctx->write_ov);
             DisconnectNamedPipe(ctx->pipe);
             CloseHandle(ctx->pipe);
-            std::lock_guard<std::mutex> lock(mutex_);
-            clients_.erase(reinterpret_cast<ClientId>(ctx->pipe));
         }
 
         std::string server_name_;

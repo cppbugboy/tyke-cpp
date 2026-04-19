@@ -36,7 +36,14 @@ namespace tyke
     /// 服务器发送数据回调函数类型
     using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<uint8_t> &)>;
 
-    /// 服务器接收数据回调函数类型
+    /**
+     * @brief 服务器接收数据回调函数类型
+     * @param ClientId 客户端标识
+     * @param std::vector<uint8_t> 接收到的原始数据
+     * @param ServerSendDataCallback 发送数据的回调函数
+     * @return nonstd::optional<uint32_t> - 有值时表示已消费字节数（0表示数据不合法已丢弃），
+     *         无值(nonstd::nullopt)表示数据不完整需等待更多数据
+     */
     using ServerRecvDataCallback = std::function<nonstd::optional<uint32_t>(ClientId, const std::vector<uint8_t> &,
                                                  const ServerSendDataCallback&
     )

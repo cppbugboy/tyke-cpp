@@ -1,11 +1,11 @@
 /**
  * @file request_router_group.h
- * @brief 请求路由组类型定义
+ * @brief 请求路由分组声明。支持层级路由结构，每个分组可包含子分组和路由条目。
  * @author Nick
- * @date 2026/04/17
- *
- * 定义请求路由相关的类型别名，包括处理器函数类型和路由条目类型。
+ * @date 2026/04/19
  */
+
+
 
 #ifndef TYKE_REQUEST_ROUTER_GROUP_H
 #define TYKE_REQUEST_ROUTER_GROUP_H
@@ -19,14 +19,12 @@
 
 namespace tyke
 {
-    /// 请求处理器函数类型
+
     using RequestHandlerFunc = std::function<void(const TykeRequest&, TykeResponse&)>;
 
-    /// 请求路由条目类型（包含处理器和过滤器链）
-    using RequestRouteEntry = typename RouterGroup<RequestFilter, RequestHandlerFunc>::RouteEntry;
+    using RequestRouteEntry = RouterGroup<RequestFilter, RequestHandlerFunc>::RouteEntry;
 
-    /// 请求路由组类型
     using RequestRouterGroup = RouterGroup<RequestFilter, RequestHandlerFunc>;
-} // tyke
+}
 
-#endif //TYKE_REQUEST_ROUTER_GROUP_H
+#endif

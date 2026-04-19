@@ -1,8 +1,8 @@
 /**
  * @file common_def.h
- * @brief Tyke框架通用类型定义与JSON转换工具
+ * @brief 通用类型定义与JSON转换工具
  * @author Nick
- * @date 2026/04/16
+ * @date 2026/04/19
  *
  * 定义JsonValue变体类型及其与nlohmann::json之间的转换函数，
  * 用于元数据(headers)的动态类型存储与JSON序列化/反序列化。
@@ -16,41 +16,16 @@
 #include <nonstd/variant.hpp>
 
 /**
- * @brief JSON值变体类型，支持多种基础数据类型的动态存储
+ * @brief JSON值变体类型
  *
- * 可存储以下类型：空值(monostate)、布尔值、整数、长整数、浮点数、字符串。
- * 用于元数据(headers_map_)中值的统一表示。
+ * 支持monostate(空)、bool、int、long long、double、string六种类型，
+ * 用于元数据中动态类型值的存储。
  */
 using JsonValue = nonstd::variant<nonstd::monostate, bool, int, long long, double, std::string>;
 
 /**
- * @brief 请求元数据JSON序列化时需要排除的键集合
- *
- * 这些字段已通过NLOHMANN_DEFINE_TYPE_INTRUSIVE宏直接序列化，
- * 不需要额外写入headers_map_。
- */
-inline const std::unordered_set<std::string>& RequestMetadataJsonKeySet()
-{
-    static const std::unordered_set<std::string> set = {
-        "module", "msg_uuid", "route", "content_type", "timestamp"
-    };
-    return set;
-}
-
-/**
- * @brief 响应元数据JSON序列化时需要排除的键集合
- */
-inline const std::unordered_set<std::string>& ResponseMetadataJsonKeySet()
-{
-    static const std::unordered_set<std::string> set = {
-        "module", "msg_uuid", "route", "content_type", "timestamp", "status", "reason"
-    };
-    return set;
-}
-
-/**
- * @brief 将JsonValue变体转换为nlohmann::json对象
- * @param v 待转换的JsonValue值
+ * @brief 将JsonValue转换为nlohmann::json对象
+ * @param v 源变体值
  * @return 对应的JSON对象
  */
 inline nlohmann::json VariantToJson(const JsonValue& v)
@@ -75,9 +50,9 @@ inline nlohmann::json VariantToJson(const JsonValue& v)
 }
 
 /**
- * @brief 将nlohmann::json对象转换为JsonValue变体
- * @param j 待转换的JSON对象
- * @return 对应的JsonValue值，无法识别的类型转为字符串兜底
+ * @brief 将nlohmann::json对象转换为JsonValue
+ * @param j 源JSON对象
+ * @return 对应的变体值，无法识别的类型回退为字符串
  */
 inline JsonValue JsonToVariant(const nlohmann::json& j)
 {
@@ -94,4 +69,4 @@ inline JsonValue JsonToVariant(const nlohmann::json& j)
     return j.dump();
 }
 
-#endif //TYKE_COMMON_DEF_H
+#endif

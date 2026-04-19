@@ -1,10 +1,8 @@
 /**
  * @file tyke_utils.cpp
- * @brief Tyke框架通用工具函数实现
+ * @brief 工具函数实现。提供UUID生成、时间戳生成、临时目录获取等通用工具函数的实现。
  * @author Nick
- * @date 2026/04/16
- *
- * 实现UUID生成、时间戳生成、UUID格式校验、临时目录获取等基础工具函数。
+ * @date 2026/04/19
  */
 
 #include "common/tyke_utils.h"
@@ -29,7 +27,7 @@ namespace tyke
     {
         std::string GenerateUUID()
         {
-            // 使用随机数生成器构造UUID v4格式
+
             std::random_device rd;
             std::mt19937 gen(rd());
             std::uniform_int_distribution<> dis(0, 15);
@@ -37,26 +35,26 @@ namespace tyke
 
             std::stringstream ss;
             ss << std::hex;
-            // 8位十六进制
+
             for (int i = 0; i < 8; i++)
                 ss << dis(gen);
             ss << "-";
-            // 4位十六进制
+
             for (int i = 0; i < 4; i++)
                 ss << dis(gen);
-            // 版本号固定为4（UUID v4）
+
             ss << "-4";
-            // 3位十六进制
+
             for (int i = 0; i < 3; i++)
                 ss << dis(gen);
             ss << "-";
-            // 变体位高位固定为10xx，取值范围8-11
+
             ss << dis2(gen);
-            // 3位十六进制
+
             for (int i = 0; i < 3; i++)
                 ss << dis(gen);
             ss << "-";
-            // 12位十六进制
+
             for (int i = 0; i < 12; i++)
                 ss << dis(gen);
 
@@ -67,7 +65,7 @@ namespace tyke
         std::string GenerateTimestamp()
         {
             const auto now = std::chrono::system_clock::now();
-            // 提取毫秒部分
+
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() %
                 1000;
             auto timer = std::chrono::system_clock::to_time_t(now);
@@ -79,7 +77,6 @@ namespace tyke
             localtime_r(&timer, &bt);
 #endif
 
-            // 格式化为 "YYYY-MM-DD HH:MM:SS.mmm"
             std::ostringstream oss;
             oss << std::put_time(&bt, "%Y-%m-%d %H:%M:%S");
             oss << '.' << std::setfill('0') << std::setw(3) << ms;
@@ -89,7 +86,7 @@ namespace tyke
 
         bool IsValidUUID(const std::string& uuid)
         {
-            // 正则表达式匹配标准UUID格式，支持带花括号和不带花括号两种形式
+
             static const std::regex uuid_regex("^\\{?[0-9a-fA-F]{8}-"
                 "([0-9a-fA-F]{4}-){3}"
                 "[0-9a-fA-F]{12}\\}?$");
@@ -111,7 +108,7 @@ namespace tyke
             }
             LOG_WARN("failed to get temp dir on Windows");
 #else
-            // 依次检查环境变量
+
             const char* vars[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
             for (const char* v : vars)
             {
@@ -128,4 +125,4 @@ namespace tyke
             return "";
         }
     }
-} // tyke
+}

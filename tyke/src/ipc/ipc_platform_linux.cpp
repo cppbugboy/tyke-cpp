@@ -1,11 +1,8 @@
 /**
  * @file ipc_platform_linux.cpp
- * @brief IPC平台实现 - Linux版本
+ * @brief Linux平台IPC实现。基于Unix域套接字和epoll的IPC服务端实现。
  * @author Nick
- * @date 2026/04/17
- *
- * 实现Linux平台下的IPC通信，使用Unix域套接字（Unix Domain Socket）作为底层传输机制。
- * 支持加密通信和epoll多路复用。
+ * @date 2026/04/19
  */
 
 #ifndef _WIN32
@@ -23,7 +20,7 @@
 #include <unordered_map>
 #include <atomic>
 
-#include "component/thread_pool.hpp"
+#include "component/thread_pool.h"
 
 namespace tyke
 {
@@ -495,5 +492,5 @@ namespace tyke
     {
         return std::unique_ptr<IServerImpl>(new ServerImplLinux());
     }
-} // namespace tyke
-#endif // !_WIN32
+}
+#endif
