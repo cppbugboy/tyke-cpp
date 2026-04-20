@@ -17,7 +17,7 @@ namespace tyke
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
         uuid_future_map_.emplace(uuid, FutureEntry{std::move(promise), std::chrono::steady_clock::now(), timeout_ms});
-        TimingWheel::GetInstance()->AddTask(uuid, timeout_ms, TaskEntry::FUTURE);
+        TimingWheel::GetInstance()->AddTask(uuid, timeout_ms, TaskEntry::kFuture);
         LOG_DEBUG("Future entry added, uuid={}, timeout={}ms", uuid, timeout_ms);
     }
     void RequestStub::SetFuture(const TykeResponse& response)
@@ -50,7 +50,7 @@ namespace tyke
     {
         std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
         uuid_func_map_.emplace(msg_uuid, FuncEntry{func, std::chrono::steady_clock::now(), timeout_ms});
-        TimingWheel::GetInstance()->AddTask(msg_uuid, timeout_ms, TaskEntry::FUNC);
+        TimingWheel::GetInstance()->AddTask(msg_uuid, timeout_ms, TaskEntry::kFunc);
         LOG_DEBUG("Callback entry added, uuid={}, timeout={}ms", msg_uuid, timeout_ms);
     }
     void RequestStub::ExecFunc(const TykeResponse& response)

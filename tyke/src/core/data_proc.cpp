@@ -1,3 +1,10 @@
+/**
+ * @file data_proc.cpp
+ * @brief 数据编解码实现，包含协议序列化和反序列化。
+ * @author Nick
+ * @date 2026/04/20
+ */
+
 #include "core/data_proc.h"
 
 #include <algorithm>
@@ -13,29 +20,6 @@ namespace
 {
 constexpr uint32_t kMaxMetadataLen = 4 * 1024 * 1024;
 constexpr uint32_t kMaxContentLen  = 64 * 1024 * 1024;
-
-inline uint16_t to_le16(uint16_t v)
-{
-    const auto* p = reinterpret_cast<const unsigned char*>(&v);
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    return static_cast<uint16_t>(p[0] | (p[1] << 8));
-#else
-    return v;
-#endif
-}
-
-inline uint32_t to_le32(uint32_t v)
-{
-    const auto* p = reinterpret_cast<const unsigned char*>(&v);
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    return static_cast<uint32_t>(static_cast<uint32_t>(p[0]) |
-                                  (static_cast<uint32_t>(p[1]) << 8) |
-                                  (static_cast<uint32_t>(p[2]) << 16) |
-                                  (static_cast<uint32_t>(p[3]) << 24));
-#else
-    return v;
-#endif
-}
 
 inline void write_le32(unsigned char* buf, uint32_t val)
 {
@@ -63,7 +47,7 @@ void serialize_header(const ProtocolHeader& hdr, unsigned char* out)
     write_le32(out + 24, hdr.content_len);
 }
 
-bool deserialize_header(const unsigned char* data, ProtocolHeader& hdr)
+void deserialize_header(const unsigned char* data, ProtocolHeader& hdr)
 {
     std::memcpy(hdr.magic, data, 4);
     hdr.msg_type      = static_cast<MessageType>(read_le32(data + 4));
@@ -72,7 +56,6 @@ bool deserialize_header(const unsigned char* data, ProtocolHeader& hdr)
     hdr.reserved[2]   = read_le32(data + 16);
     hdr.metadata_len  = read_le32(data + 20);
     hdr.content_len   = read_le32(data + 24);
-    return true;
 }
 }
 template<typename T>
@@ -211,20 +194,24 @@ std::optional<bool> DataProc::Decode(const std::vector<unsigned char> &data_vec,
 }
 void DataProc::EncodeRequest(TykeRequest &request, std::vector<unsigned char> &data_vec)
 {
+    LOG_INFO("Encoding request, route={}", request.GetRoute());
     Encode(request, data_vec);
 }
 std::optional<bool> DataProc::DecodeRequest(const std::vector<unsigned char> &data_vec, TykeRequest &request,
                                    uint32_t &data_size)
 {
+    LOG_INFO("Decoding request, size={}", data_vec.size());
     return Decode(data_vec, request, data_size);
 }
 void DataProc::EncodeResponse(TykeResponse &response, std::vector<unsigned char> &data_vec)
 {
+    LOG_INFO("Encoding response, route={}", response.GetRoute());
     Encode(response, data_vec);
 }
 std::optional<bool> DataProc::DecodeResponse(const std::vector<unsigned char> &data_vec, TykeResponse &response,
                                     uint32_t &data_size)
 {
+    LOG_INFO("Decoding response, size={}", data_vec.size());
     return Decode(data_vec, response, data_size);
 }
 }// namespace tyke

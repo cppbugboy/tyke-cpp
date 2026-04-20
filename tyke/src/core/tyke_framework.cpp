@@ -1,3 +1,10 @@
+/**
+ * @file tyke_framework.cpp
+ * @brief Tyke 框架主入口实现。
+ * @author Nick
+ * @date 2026/04/20
+ */
+
 #include "core/tyke_framework.h"
 
 #include "common/tyke_utils.h"

@@ -1,5 +1,5 @@
-﻿/**
- * @file thread_pool.hpp
+/**
+ * @file thread_pool.h
  * @brief 线程池类 (C++17)
  * @author Nick
  * @date 2026/04/17

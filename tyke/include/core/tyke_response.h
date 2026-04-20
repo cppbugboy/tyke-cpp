@@ -98,9 +98,11 @@ namespace tyke
         TykeResponse& SetClientId(ClientId client_id);
 
         
+        /// 发送响应到请求方。
         BoolResult Send();
 
         
+        /// 异步发送响应到请求方。
         BoolResult SendAsync();
 
     private:

@@ -57,7 +57,6 @@ namespace tyke::utils
             for (int i = 0; i < 12; i++)
                 ss << dis(gen);
 
-            LOG_DEBUG("generated uuid: {}", ss.str());
             return ss.str();
         }
 
@@ -90,9 +89,7 @@ namespace tyke::utils
                 "([0-9a-fA-F]{4}-){3}"
                 "[0-9a-fA-F]{12}\\}?$");
 
-            const bool valid = std::regex_match(std::string(uuid), uuid_regex);
-            LOG_DEBUG("uuid validation for '{}': {}", uuid, valid ? "valid" : "invalid");
-            return valid;
+            return std::regex_match(std::string(uuid), uuid_regex);
         }
 
         std::string GetTempDir()

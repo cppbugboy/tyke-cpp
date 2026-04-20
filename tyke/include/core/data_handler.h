@@ -1,6 +1,6 @@
 /**
  * @file data_handler.h
- * @brief 数据处理器声明。解析IPC数据包并通过MessageDispatcher分发到相应处理器。
+ * @brief 数据处理器声明。解析IPC数据包并通过路由分发到相应处理器。
  * @author Nick
  * @date 2026/04/19
  */

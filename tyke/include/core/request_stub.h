@@ -26,23 +26,29 @@ namespace tyke
         ~RequestStub() = delete;
 
         
+        /// 注册 Future 通道，等待指定 UUID 的响应。
         static void AddFuture(const std::string& uuid, std::promise<TykeResponse>& promise,
                               uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
         
+        /// 将响应数据发送到匹配的 Future 通道。
         static void SetFuture(const TykeResponse& response);
 
         
+        /// 注册回调函数，等待指定 UUID 的响应。
         static void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func,
                             uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
         
+        /// 执行匹配的回调函数处理响应。
         static void ExecFunc(const TykeResponse& response);
 
         
+        /// 清理过期的 Future 通道条目。
         static void CleanupExpiredFuture(const std::string& uuid);
 
         
+        /// 清理过期的回调函数条目。
         static void CleanupExpiredFunc(const std::string& uuid);
 
     private:

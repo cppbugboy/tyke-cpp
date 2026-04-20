@@ -29,6 +29,11 @@
 
 namespace tyke
 {
+    /**
+     * @brief 定时任务条目。
+     *
+     * 支持两种类型：回调函数(kFunc)和 Future(kFuture)。
+     */
     struct TaskEntry
     {
         std::string uuid;
@@ -36,8 +41,8 @@ namespace tyke
         uint32_t timeout_ms;
         enum Type
         {
-            FUNC,
-            FUTURE
+            kFunc,
+            kFuture
         } type;
     };
 
@@ -52,6 +57,16 @@ namespace tyke
         std::vector<TimingWheelLevelConfig> levels;
     };
 
+    /**
+     * @brief 时间轮的单级实现。
+     *
+     * 每级包含若干槽位，通过层级嵌套实现大范围超时覆盖。
+     */
+    /**
+     * @brief 多级时间轮，用于高效的定时任务管理。
+     *
+     * 支持添加、移除定时任务，以及按 tick 推进时间轮。
+     */
     class TimingWheelLevel
     {
     public:
@@ -71,6 +86,11 @@ namespace tyke
         std::vector<std::list<TaskEntry>> slots_;
     };
 
+    /**
+     * @brief 多级时间轮，用于高效的定时任务管理。
+     *
+     * 支持添加、移除定时任务，以及按 tick 推进时间轮。
+     */
     class TimingWheel : public Singleton<TimingWheel>
     {
         friend class Singleton<TimingWheel>;

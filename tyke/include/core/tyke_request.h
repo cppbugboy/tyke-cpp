@@ -34,6 +34,7 @@ namespace tyke
         static void Release(TykeRequest* req);
 
         
+        /// 重置请求的所有字段到默认值。
         void Reset();
 
         
@@ -74,23 +75,27 @@ namespace tyke
         std::optional<JsonValue> GetMetadata(std::string_view key) const;
 
         
-        nonstd::expected<bool, std::string> Send(const std::string& send_uuid, TykeResponse& response,
-                                                  uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+        /// 同步发送请求并等待响应。
+        BoolResult Send(const std::string& send_uuid, TykeResponse& response,
+                        uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
-        nonstd::expected<bool, std::string> SendAsync(const std::string& send_uuid,
-                                                       uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+        /// 异步发送请求，不等待响应。
+        BoolResult SendAsync(const std::string& send_uuid,
+                             uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
-        nonstd::expected<bool, std::string> SendAsyncWithFunc(const std::string& send_uuid,
-                                                              const std::function<void(const TykeResponse &)> &func,
-                                                              uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+        /// 异步发送请求，注册回调函数处理响应。
+        BoolResult SendAsyncWithFunc(const std::string& send_uuid,
+                                     const std::function<void(const TykeResponse &)> &func,
+                                     uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
+        /// 异步发送请求，返回 Future 对象用于等待响应。
         nonstd::expected<ResponseFuture, std::string> SendAsyncWithFuture(const std::string& send_uuid,
                                                                            uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
     private:
 
-        nonstd::expected<bool, std::string> EncodeAndSend(const std::string& send_uuid, MessageType msg_type,
-                                                           uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+        BoolResult EncodeAndSend(const std::string& send_uuid, MessageType msg_type,
+                                  uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
         ProtocolHeader protocol_header_;
         RequestMetadata metadata_;

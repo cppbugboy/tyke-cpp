@@ -1,4 +1,11 @@
-﻿#include "core/dispatcher.h"
+/**
+ * @file dispatcher.cpp
+ * @brief 请求/响应分发器实现。
+ * @author Nick
+ * @date 2026/04/20
+ */
+
+#include "core/dispatcher.h"
 
 #include <chrono>
 

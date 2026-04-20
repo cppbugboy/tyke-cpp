@@ -11,48 +11,48 @@ namespace tyke
 {
     int ResponseMetadata::GetStatus() const
     {
-        return status;
+        return status_;
     }
 
-    ResponseMetadata& ResponseMetadata::SetStatus(int in_status)
+    ResponseMetadata& ResponseMetadata::SetStatus(int status)
     {
-        status = in_status;
+        status_ = status;
         return *this;
     }
 
     const std::string& ResponseMetadata::GetReason() const
     {
-        return reason;
+        return reason_;
     }
 
-    ResponseMetadata& ResponseMetadata::SetReason(std::string_view in_reason)
+    ResponseMetadata& ResponseMetadata::SetReason(std::string_view reason)
     {
-        reason = in_reason;
+        reason_ = reason;
         return *this;
     }
 
     void to_json(nlohmann::json& j, const ResponseMetadata& t)
     {
         j = nlohmann::json{
-            {"module", t.module},
-            {"msg_uuid", t.msg_uuid},
-            {"route", t.route},
-            {"content_type", t.content_type},
-            {"timestamp", t.timestamp},
-            {"status", t.status},
-            {"reason", t.reason}
+            {"module", t.module_},
+            {"msg_uuid", t.msg_uuid_},
+            {"route", t.route_},
+            {"content_type", t.content_type_},
+            {"timestamp", t.timestamp_},
+            {"status", t.status_},
+            {"reason", t.reason_}
         };
     }
 
     void from_json(const nlohmann::json& j, ResponseMetadata& t)
     {
-        t.module = j.value("module", std::string{});
-        t.msg_uuid = j.value("msg_uuid", std::string{});
-        t.route = j.value("route", std::string{});
-        t.content_type = j.value("content_type", std::string{});
-        t.timestamp = j.value("timestamp", std::string{});
-        t.status = j.value("status", 0);
-        t.reason = j.value("reason", std::string{});
+        t.module_ = j.value("module", std::string{});
+        t.msg_uuid_ = j.value("msg_uuid", std::string{});
+        t.route_ = j.value("route", std::string{});
+        t.content_type_ = j.value("content_type", std::string{});
+        t.timestamp_ = j.value("timestamp", std::string{});
+        t.status_ = j.value("status", 0);
+        t.reason_ = j.value("reason", std::string{});
     }
 
     const std::unordered_set<std::string>& ResponseMetadata::JsonKeySet()

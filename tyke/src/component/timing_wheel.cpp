@@ -208,7 +208,7 @@ namespace tyke
 
             task_location_.erase(entry.uuid);
 
-            if (entry.type == TaskEntry::FUTURE)
+            if (entry.type == TaskEntry::kFuture)
             {
                 LOG_WARN("TimingWheel: future task expired, uuid={}, timeout={}ms", entry.uuid, entry.timeout_ms);
                 RequestStub::CleanupExpiredFuture(entry.uuid);

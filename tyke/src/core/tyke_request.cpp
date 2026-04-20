@@ -1,3 +1,10 @@
+/**
+ * @file tyke_request.cpp
+ * @brief Tyke 请求对象实现。
+ * @author Nick
+ * @date 2026/04/20
+ */
+
 #include "core/tyke_request.h"
 
 #include <unordered_map>
@@ -67,8 +74,8 @@ namespace tyke
         metadata_.SetRoute(route);
         return *this;
     }
-    nonstd::expected<bool, std::string> TykeRequest::EncodeAndSend(const std::string& send_uuid, MessageType msg_type,
-                                                                     uint32_t timeout_ms)
+    BoolResult TykeRequest::EncodeAndSend(const std::string& send_uuid, MessageType msg_type,
+                                           uint32_t timeout_ms)
     {
         LOG_DEBUG("EncodeAndSend: send_uuid={}, route={}, msg_type={}, timeout={}ms",
                   send_uuid, GetRoute(), static_cast<int>(msg_type), timeout_ms);
@@ -97,8 +104,8 @@ namespace tyke
         LOG_DEBUG("Request sent successfully, msg_uuid={}", GetMsgUuid());
         return true;
     }
-    nonstd::expected<bool, std::string> TykeRequest::Send(const std::string& send_uuid, TykeResponse& response,
-                                                           uint32_t timeout_ms)
+    BoolResult TykeRequest::Send(const std::string& send_uuid, TykeResponse& response,
+                                  uint32_t timeout_ms)
 {
     LOG_DEBUG("Send: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
 
@@ -132,13 +139,13 @@ namespace tyke
         LOG_DEBUG("Sync request completed, msg_uuid={}", GetMsgUuid());
         return true;
 }
-    nonstd::expected<bool, std::string> TykeRequest::SendAsync(const std::string& send_uuid,
-                                                                uint32_t timeout_ms)
+    BoolResult TykeRequest::SendAsync(const std::string& send_uuid,
+                                       uint32_t timeout_ms)
     {
         return EncodeAndSend(send_uuid, MessageType::kRequestAsync, timeout_ms);
     }
-    nonstd::expected<bool, std::string> TykeRequest::SendAsyncWithFunc(const std::string& send_uuid, const std::function<void(const TykeResponse &)> &func,
-                                                                        uint32_t timeout_ms)
+    BoolResult TykeRequest::SendAsyncWithFunc(const std::string& send_uuid, const std::function<void(const TykeResponse &)> &func,
+                                               uint32_t timeout_ms)
     {
         LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
 

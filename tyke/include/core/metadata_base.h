@@ -30,67 +30,67 @@ namespace tyke
     public:
         const std::string& GetModule() const
         {
-            return module;
+            return module_;
         }
 
-        Derived& SetModule(std::string_view in_module)
+        Derived& SetModule(std::string_view module)
         {
-            module = in_module;
+            module_ = module;
             return static_cast<Derived&>(*this);
         }
 
         const std::string& GetAsyncUuid() const
         {
-            return async_uuid;
+            return async_uuid_;
         }
 
-        Derived& SetAsyncUuid(std::string_view in_async_uuid)
+        Derived& SetAsyncUuid(std::string_view async_uuid)
         {
-            async_uuid = in_async_uuid;
+            async_uuid_ = async_uuid;
             return static_cast<Derived&>(*this);
         }
 
         const std::string& GetMsgUuid() const
         {
-            return msg_uuid;
+            return msg_uuid_;
         }
 
-        Derived& SetMsgUuid(std::string_view in_msg_uuid)
+        Derived& SetMsgUuid(std::string_view msg_uuid)
         {
-            msg_uuid = in_msg_uuid;
+            msg_uuid_ = msg_uuid;
             return static_cast<Derived&>(*this);
         }
 
         const std::string& GetRoute() const
         {
-            return route;
+            return route_;
         }
 
-        Derived& SetRoute(std::string_view in_route)
+        Derived& SetRoute(std::string_view route)
         {
-            route = in_route;
+            route_ = route;
             return static_cast<Derived&>(*this);
         }
 
         const std::string& GetContentType() const
         {
-            return content_type;
+            return content_type_;
         }
 
-        Derived& SetContentType(std::string_view in_content_type)
+        Derived& SetContentType(std::string_view content_type)
         {
-            content_type = in_content_type;
+            content_type_ = content_type;
             return static_cast<Derived&>(*this);
         }
 
         const std::string& GetTimestamp() const
         {
-            return timestamp;
+            return timestamp_;
         }
 
-        Derived& SetTimestamp(std::string_view in_timestamp)
+        Derived& SetTimestamp(std::string_view timestamp)
         {
-            timestamp = in_timestamp;
+            timestamp_ = timestamp;
             return static_cast<Derived&>(*this);
         }
 
@@ -168,12 +168,12 @@ namespace tyke
         }
 
     protected:
-        std::string module;
-        std::string async_uuid;
-        std::string msg_uuid;
-        std::string route;
-        std::string content_type;
-        std::string timestamp;
+        std::string module_;
+        std::string async_uuid_;
+        std::string msg_uuid_;
+        std::string route_;
+        std::string content_type_;
+        std::string timestamp_;
         std::unordered_map<std::string, JsonValue> headers_map_;
     };
 }

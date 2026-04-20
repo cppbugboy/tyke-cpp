@@ -79,7 +79,13 @@ enum class MessageType
  * 数据包格式: [ProtocolHeader][Metadata JSON][Content Binary]
  */
 #pragma pack(push, 1)
-struct ProtocolHeader
+/**
+     * @brief Tyke IPC 协议头部结构。
+     *
+     * 包含魔数标识、消息类型、预留字段和元数据/内容长度。
+     * 使用 #pragma pack(1) 确保跨平台字节对齐一致性。
+     */
+    struct ProtocolHeader
 {
     char        magic[4] = {'T', 'Y', 'K', 'E'};
     MessageType msg_type = MessageType::kNone;

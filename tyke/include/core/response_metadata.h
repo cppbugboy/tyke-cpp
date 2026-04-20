@@ -5,7 +5,6 @@
  * @date 2026/04/19
  */
 
-
 #pragma once
 
 #include <string>
@@ -22,10 +21,10 @@ namespace tyke
     {
     public:
         int GetStatus() const;
-        ResponseMetadata& SetStatus(int in_status);
+        ResponseMetadata& SetStatus(int status);
 
         const std::string& GetReason() const;
-        ResponseMetadata& SetReason(std::string_view in_reason);
+        ResponseMetadata& SetReason(std::string_view reason);
 
         friend void to_json(nlohmann::json& j, const ResponseMetadata& t);
         friend void from_json(const nlohmann::json& j, ResponseMetadata& t);
@@ -33,7 +32,7 @@ namespace tyke
         static const std::unordered_set<std::string>& JsonKeySet();
 
     private:
-        int status = 0;
-        std::string reason;
+        int status_ = 0;
+        std::string reason_;
     };
 }
