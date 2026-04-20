@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file tyke_response.h
  * @brief 响应对象声明。封装IPC响应的元数据、内容和发送功能。
  * @author Nick
@@ -74,7 +74,7 @@ namespace tyke
                                  const std::vector<unsigned char>& response_content);
 
         
-        nonstd::expected<bool, std::string> AddMetadata(std::string_view key, const JsonValue& value);
+        std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value);
 
 
         std::optional<JsonValue> GetMetadata(std::string_view key) const;

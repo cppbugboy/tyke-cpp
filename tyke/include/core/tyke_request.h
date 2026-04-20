@@ -68,7 +68,7 @@ namespace tyke
         const std::string& GetAsyncUuid() const;
 
         
-        nonstd::expected<bool, std::string> AddMetadata(std::string_view key, const JsonValue& value);
+        std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value);
 
 
         std::optional<JsonValue> GetMetadata(std::string_view key) const;

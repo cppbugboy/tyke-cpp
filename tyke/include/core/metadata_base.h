@@ -94,19 +94,19 @@ namespace tyke
             return static_cast<Derived&>(*this);
         }
 
-        nonstd::expected<bool, std::string> AddMetadata(std::string_view key, const JsonValue& value)
+        std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value)
         {
             if (key.empty())
             {
-                return nonstd::make_unexpected("Metadata key cannot be empty");
+                return std::nullopt;
             }
             try
             {
                 headers_map_[std::string(key)] = value;
             }
-            catch (const std::exception& e)
+            catch (...)
             {
-                return nonstd::make_unexpected(std::string("Failed to add metadata: ") + e.what());
+                return std::nullopt;
             }
             return true;
         }

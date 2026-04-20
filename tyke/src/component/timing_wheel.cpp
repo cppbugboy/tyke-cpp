@@ -150,9 +150,15 @@ namespace tyke
     {
         LOG_INFO("TimingWheel tick loop started");
 
+        uint32_t tick_interval_ms = 200;
+        if (!levels_.empty())
+        {
+            tick_interval_ms = levels_[0].GetTickIntervalMs();
+        }
+
         while (!stopped_.load())
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            std::this_thread::sleep_for(std::chrono::milliseconds(tick_interval_ms));
 
             if (stopped_.load())
                 break;

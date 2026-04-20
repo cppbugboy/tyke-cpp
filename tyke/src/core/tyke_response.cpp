@@ -83,7 +83,7 @@ namespace tyke
         content_type = metadata_.GetContentType();
         content = content_;
     }
-    BoolResult TykeResponse::AddMetadata(const std::string_view key, const JsonValue& value)
+    std::optional<bool> TykeResponse::AddMetadata(const std::string_view key, const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);
     }

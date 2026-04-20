@@ -78,6 +78,7 @@ enum class MessageType
  * 每个数据包的固定头部，包含协议标识、消息类型和负载长度信息。
  * 数据包格式: [ProtocolHeader][Metadata JSON][Content Binary]
  */
+#pragma pack(push, 1)
 struct ProtocolHeader
 {
     char        magic[4] = {'T', 'Y', 'K', 'E'};
@@ -86,6 +87,7 @@ struct ProtocolHeader
     uint32_t    metadata_len = 0;
     uint32_t    content_len  = 0;
 };
+#pragma pack(pop)
 
 static_assert(sizeof(ProtocolHeader) == kProtocolHeaderSize, "ProtocolHeader size mismatch with kProtocolHeaderSize");
 

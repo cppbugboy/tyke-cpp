@@ -30,6 +30,8 @@ namespace tyke
     public:
         ObjectPool() = default;
 
+        explicit ObjectPool(size_t max_capacity) : max_capacity_(max_capacity) {}
+
         ~ObjectPool()
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -43,10 +45,6 @@ namespace tyke
         ObjectPool(const ObjectPool&) = delete;
         ObjectPool& operator=(const ObjectPool&) = delete;
 
-        /**
-         * @brief 从池中获取一个对象
-         * @return T* 对象指针，池为空时创建新对象
-         */
         T* Acquire()
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -59,21 +57,19 @@ namespace tyke
             return obj;
         }
 
-        /**
-         * @brief 将对象归还到池中
-         * @param obj 待归还的对象指针，为nullptr时忽略
-         */
         void Release(T* obj)
         {
             if (!obj)
                 return;
             std::lock_guard<std::mutex> lock(mutex_);
+            if (max_capacity_ > 0 && pool_.size() >= max_capacity_)
+            {
+                delete obj;
+                return;
+            }
             pool_.push_back(obj);
         }
 
-        /**
-         * @brief 清空池中所有对象并释放内存
-         */
         void Clear()
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -87,5 +83,6 @@ namespace tyke
     private:
         std::mutex mutex_;
         std::vector<T*> pool_;
+        size_t max_capacity_ = 0;
     };
 }

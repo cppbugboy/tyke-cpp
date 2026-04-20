@@ -22,17 +22,26 @@ namespace tyke
     }
     void RequestStub::SetFuture(const TykeResponse& response)
     {
-        std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
-        if (const auto it = uuid_future_map_.find(response.GetMsgUuid()); it != uuid_future_map_.end())
+        std::promise<TykeResponse> extracted_promise;
+        bool found = false;
         {
-            it->second.promise.set_value(response);
-            uuid_future_map_.erase(it);
-            TimingWheel::GetInstance()->RemoveTask(response.GetMsgUuid());
-            LOG_DEBUG("Future result set, uuid={}", response.GetMsgUuid());
+            std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
+            if (const auto it = uuid_future_map_.find(response.GetMsgUuid()); it != uuid_future_map_.end())
+            {
+                extracted_promise = std::move(it->second.promise);
+                uuid_future_map_.erase(it);
+                found = true;
+                LOG_DEBUG("Future result set, uuid={}", response.GetMsgUuid());
+            }
+            else
+            {
+                LOG_WARN("Future entry not found for response, uuid={}", response.GetMsgUuid());
+            }
         }
-        else
+        if (found)
         {
-            LOG_WARN("Future entry not found for response, uuid={}", response.GetMsgUuid());
+            TimingWheel::GetInstance()->RemoveTask(response.GetMsgUuid());
+            extracted_promise.set_value(response);
         }
     }
 
@@ -46,19 +55,26 @@ namespace tyke
     }
     void RequestStub::ExecFunc(const TykeResponse& response)
     {
-        std::unique_lock<std::mutex> lock(uuid_func_map_mutex_);
-        if (const auto it = uuid_func_map_.find(response.GetMsgUuid()); it != uuid_func_map_.end())
+        std::function<void(const TykeResponse&)> extracted_func;
+        bool found = false;
         {
-            const auto function = it->second.func;
-            uuid_func_map_.erase(it);
-            TimingWheel::GetInstance()->RemoveTask(response.GetMsgUuid());
-            lock.unlock();
-            LOG_DEBUG("Executing callback for response, uuid={}", response.GetMsgUuid());
-            function(response);
+            std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
+            if (const auto it = uuid_func_map_.find(response.GetMsgUuid()); it != uuid_func_map_.end())
+            {
+                extracted_func = std::move(it->second.func);
+                uuid_func_map_.erase(it);
+                found = true;
+            }
+            else
+            {
+                LOG_WARN("Callback entry not found for response, uuid={}", response.GetMsgUuid());
+            }
         }
-        else
+        if (found)
         {
-            LOG_WARN("Callback entry not found for response, uuid={}", response.GetMsgUuid());
+            TimingWheel::GetInstance()->RemoveTask(response.GetMsgUuid());
+            LOG_DEBUG("Executing callback for response, uuid={}", response.GetMsgUuid());
+            extracted_func(response);
         }
     }
 

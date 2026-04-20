@@ -168,7 +168,7 @@ namespace tyke
         LOG_DEBUG("Future registered, msg_uuid={}", GetMsgUuid());
         return response_future;
     }
-    nonstd::expected<bool, std::string> TykeRequest::AddMetadata(const std::string_view key, const JsonValue& value)
+    std::optional<bool> TykeRequest::AddMetadata(const std::string_view key, const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);
     }

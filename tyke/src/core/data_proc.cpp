@@ -9,6 +9,72 @@
 
 namespace tyke
 {
+namespace
+{
+constexpr uint32_t kMaxMetadataLen = 4 * 1024 * 1024;
+constexpr uint32_t kMaxContentLen  = 64 * 1024 * 1024;
+
+inline uint16_t to_le16(uint16_t v)
+{
+    const auto* p = reinterpret_cast<const unsigned char*>(&v);
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    return static_cast<uint16_t>(p[0] | (p[1] << 8));
+#else
+    return v;
+#endif
+}
+
+inline uint32_t to_le32(uint32_t v)
+{
+    const auto* p = reinterpret_cast<const unsigned char*>(&v);
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    return static_cast<uint32_t>(static_cast<uint32_t>(p[0]) |
+                                  (static_cast<uint32_t>(p[1]) << 8) |
+                                  (static_cast<uint32_t>(p[2]) << 16) |
+                                  (static_cast<uint32_t>(p[3]) << 24));
+#else
+    return v;
+#endif
+}
+
+inline void write_le32(unsigned char* buf, uint32_t val)
+{
+    buf[0] = static_cast<unsigned char>(val & 0xFF);
+    buf[1] = static_cast<unsigned char>((val >> 8) & 0xFF);
+    buf[2] = static_cast<unsigned char>((val >> 16) & 0xFF);
+    buf[3] = static_cast<unsigned char>((val >> 24) & 0xFF);
+}
+
+inline uint32_t read_le32(const unsigned char* buf)
+{
+    return static_cast<uint32_t>(buf[0]) |
+           (static_cast<uint32_t>(buf[1]) << 8) |
+           (static_cast<uint32_t>(buf[2]) << 16) |
+           (static_cast<uint32_t>(buf[3]) << 24);
+}
+
+void serialize_header(const ProtocolHeader& hdr, unsigned char* out)
+{
+    std::memcpy(out, hdr.magic, 4);
+    write_le32(out + 4, static_cast<uint32_t>(hdr.msg_type));
+    for (int i = 0; i < 3; ++i)
+        write_le32(out + 8 + i * 4, hdr.reserved[i]);
+    write_le32(out + 20, hdr.metadata_len);
+    write_le32(out + 24, hdr.content_len);
+}
+
+bool deserialize_header(const unsigned char* data, ProtocolHeader& hdr)
+{
+    std::memcpy(hdr.magic, data, 4);
+    hdr.msg_type      = static_cast<MessageType>(read_le32(data + 4));
+    hdr.reserved[0]   = read_le32(data + 8);
+    hdr.reserved[1]   = read_le32(data + 12);
+    hdr.reserved[2]   = read_le32(data + 16);
+    hdr.metadata_len  = read_le32(data + 20);
+    hdr.content_len   = read_le32(data + 24);
+    return true;
+}
+}
 template<typename T>
 void DataProc::Encode(T &msg, std::vector<unsigned char> &data_vec)
 {
@@ -35,7 +101,7 @@ void DataProc::Encode(T &msg, std::vector<unsigned char> &data_vec)
 
         unsigned char *ptr = data_vec.data();
 
-        std::memcpy(ptr, &msg.protocol_header_, header_size);
+        serialize_header(msg.protocol_header_, ptr);
         ptr += header_size;
 
         if (meta_size > 0)
@@ -78,7 +144,7 @@ std::optional<bool> DataProc::Decode(const std::vector<unsigned char> &data_vec,
             return false;
         }
 
-        std::memcpy(&msg.protocol_header_, data_vec.data(), header_size);
+        deserialize_header(data_vec.data(), msg.protocol_header_);
 
         if (std::memcmp(msg.protocol_header_.magic, kProtocolMagic, sizeof(msg.protocol_header_.magic)) != 0)
         {
@@ -88,6 +154,18 @@ std::optional<bool> DataProc::Decode(const std::vector<unsigned char> &data_vec,
 
         const uint32_t meta_len = msg.protocol_header_.metadata_len;
         const uint32_t cont_len = msg.protocol_header_.content_len;
+
+        if (meta_len > kMaxMetadataLen)
+        {
+            LOG_ERROR("Metadata length exceeds limit: {} > {}", meta_len, kMaxMetadataLen);
+            return false;
+        }
+
+        if (cont_len > kMaxContentLen)
+        {
+            LOG_ERROR("Content length exceeds limit: {} > {}", cont_len, kMaxContentLen);
+            return false;
+        }
 
         if (vec_size < header_size + meta_len + cont_len)
         {
