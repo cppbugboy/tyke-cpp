@@ -1,8 +1,9 @@
-﻿#include "core/tyke_framework.h"
+#include "core/tyke_framework.h"
 
 #include "common/tyke_utils.h"
 #include "common/log_def.h"
 #include "component/thread_pool.h"
+#include "component/timing_wheel.h"
 #include "core/data_handler.h"
 #include "core/tyke_log.h"
 #include "ipc/ipc_server.h"
@@ -47,6 +48,9 @@ namespace tyke
         THREAD_POOL_INSTANCE->Init(thread_pool_count_);
         LOG_DEBUG("Thread pool initialized with {} threads", thread_pool_count_);
 
+        TimingWheel::GetInstance()->Init();
+        LOG_DEBUG("TimingWheel initialized");
+
         if (!ipc_server_)
         {
             LOG_ERROR("IPC server is not initialized");
@@ -79,6 +83,7 @@ namespace tyke
     TykeFramework::~TykeFramework()
     {
         LOG_INFO("Tyke framework shutting down");
+        TimingWheel::GetInstance()->Stop();
         THREAD_POOL_INSTANCE->Stop();
         TYKE_LOG_INSTANCE->Stop();
     }

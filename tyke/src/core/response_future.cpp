@@ -7,6 +7,8 @@
 
 #include "core/response_future.h"
 
+#include "common/log_def.h"
+
 namespace tyke
 {
     ResponseFuture::ResponseFuture(const std::string& msg_uuid, std::future<TykeResponse> future)
@@ -16,5 +18,19 @@ namespace tyke
     TykeResponse ResponseFuture::GetResponse()
     {
         return future_.get();
+    }
+
+    TykeResponse ResponseFuture::GetResponse(uint32_t timeout_ms)
+    {
+        auto status = future_.wait_for(std::chrono::milliseconds(timeout_ms));
+        if (status == std::future_status::ready)
+        {
+            return future_.get();
+        }
+        LOG_WARN("GetResponse timeout, msg_uuid={}, timeout={}ms", msg_uuid_, timeout_ms);
+        TykeResponse timeout_response;
+        timeout_response.SetMsgUuid(msg_uuid_);
+        timeout_response.SetResult(-1, "timeout");
+        return timeout_response;
     }
 }

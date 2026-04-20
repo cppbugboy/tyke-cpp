@@ -26,16 +26,24 @@ namespace tyke
         ~RequestStub() = delete;
 
         
-        static void AddFuture(const std::string& uuid, std::promise<TykeResponse>& promise);
+        static void AddFuture(const std::string& uuid, std::promise<TykeResponse>& promise,
+                              uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
         
         static void SetFuture(const TykeResponse& response);
 
         
-        static void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func);
+        static void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func,
+                            uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
         
         static void ExecFunc(const TykeResponse& response);
+
+        
+        static void CleanupExpiredFuture(const std::string& uuid);
+
+        
+        static void CleanupExpiredFunc(const std::string& uuid);
 
     private:
         
@@ -43,13 +51,14 @@ namespace tyke
         {
             std::promise<TykeResponse> promise;
             std::chrono::steady_clock::time_point created_at;
+            uint32_t timeout_ms;
         };
 
-        
         struct FuncEntry
         {
             std::function<void(const TykeResponse&)> func;
             std::chrono::steady_clock::time_point created_at;
+            uint32_t timeout_ms;
         };
 
         inline static std::unordered_map<std::string, FutureEntry> uuid_future_map_;

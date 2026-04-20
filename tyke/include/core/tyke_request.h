@@ -16,6 +16,7 @@
 #include "tyke_response.h"
 #include "response_future.h"
 #include "common/tyke_def.h"
+#include "ipc/ipc_types.h"
 #include "component/object_pool.h"
 
 namespace tyke
@@ -73,21 +74,23 @@ namespace tyke
         std::optional<JsonValue> GetMetadata(std::string_view key) const;
 
         
-        nonstd::expected<bool, std::string> Send(const std::string& send_uuid, TykeResponse& response);
+        nonstd::expected<bool, std::string> Send(const std::string& send_uuid, TykeResponse& response,
+                                                  uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
-        
-        nonstd::expected<bool, std::string> SendAsync(const std::string& send_uuid);
+        nonstd::expected<bool, std::string> SendAsync(const std::string& send_uuid,
+                                                       uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
-        
         nonstd::expected<bool, std::string> SendAsyncWithFunc(const std::string& send_uuid,
-                                                              const std::function<void(const TykeResponse &)> &func);
+                                                              const std::function<void(const TykeResponse &)> &func,
+                                                              uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
-        
-        nonstd::expected<ResponseFuture, std::string> SendAsyncWithFuture(const std::string& send_uuid);
+        nonstd::expected<ResponseFuture, std::string> SendAsyncWithFuture(const std::string& send_uuid,
+                                                                           uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
     private:
-        
-        nonstd::expected<bool, std::string> EncodeAndSend(const std::string& send_uuid, MessageType msg_type);
+
+        nonstd::expected<bool, std::string> EncodeAndSend(const std::string& send_uuid, MessageType msg_type,
+                                                           uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
         ProtocolHeader protocol_header_;
         RequestMetadata metadata_;

@@ -25,6 +25,8 @@ namespace tyke
         
         TykeResponse GetResponse();
 
+        TykeResponse GetResponse(uint32_t timeout_ms);
+
     private:
         std::string msg_uuid_;
         std::future<TykeResponse> future_;
