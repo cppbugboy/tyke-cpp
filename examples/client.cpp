@@ -19,7 +19,7 @@
 TYKE_CONTROLLER_REGISTER(ExampleResponseController)
 
 static const std::string kServerUuid = "tyke_server_example";
-static const std::string kClientListenerUuid = "tyke_client_listener";
+static const std::string kClientListenerUuid = "tyke_client_listener_cpp";
 
 static volatile bool g_running = true;
 

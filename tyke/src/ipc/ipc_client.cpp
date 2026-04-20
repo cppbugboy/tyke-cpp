@@ -7,6 +7,7 @@
 
 #include "ipc/ipc_client.h"
 #include "ipc/ipc_internal_platform.h"
+#include "ipc/connection_pool_factory.h"
 #include "common/log_def.h"
 
 namespace tyke
@@ -67,25 +68,34 @@ namespace tyke
     {
         LOG_DEBUG("IpcClient::Send: server_name={}, request_size={} bytes", server_name, request.size());
 
-        const IpcConnection conn;
-        if (auto connect_result = conn.Connect(server_name, timeout_ms, timeout_ms); !connect_result)
+        auto* pool = ConnectionPoolFactory::GetInstance()->GetPool(std::string(server_name));
+        auto conn_result = pool->Acquire();
+        if (!conn_result)
         {
-            LOG_ERROR("IpcClient::Send connect failed: {}", connect_result.error());
-            return nonstd::make_unexpected("send: " + connect_result.error());
+            LOG_ERROR("IpcClient::Send acquire connection failed: {}", conn_result.error());
+            return nonstd::make_unexpected("send: " + conn_result.error());
         }
 
-        if (auto write_result = conn.WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
+        IpcConnection* conn = conn_result.value();
+        bool should_reconnect = false;
+
+        if (auto write_result = conn->WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
         {
             LOG_ERROR("IpcClient::Send write failed: {}", write_result.error());
+            should_reconnect = true;
+            pool->Release(conn, should_reconnect);
             return nonstd::make_unexpected("send: " + write_result.error());
         }
 
-        if (auto read_result = conn.ReadLoop(callback, timeout_ms); !read_result)
+        if (auto read_result = conn->ReadLoop(callback, timeout_ms); !read_result)
         {
             LOG_ERROR("IpcClient::Send read failed: {}", read_result.error());
+            should_reconnect = true;
+            pool->Release(conn, should_reconnect);
             return nonstd::make_unexpected("send: " + read_result.error());
         }
 
+        pool->Release(conn, should_reconnect);
         LOG_DEBUG("IpcClient::Send completed successfully");
         return true;
     }
@@ -94,17 +104,28 @@ namespace tyke
     {
         LOG_DEBUG("IpcClient::SendAsync: server_name={}, request_size={} bytes", server_name, request.size());
 
-        const IpcConnection conn;
-        if (auto connect_result = conn.Connect(server_name, timeout_ms, timeout_ms); !connect_result)
+        auto* pool = ConnectionPoolFactory::GetInstance()->GetPool(std::string(server_name));
+        auto conn_result = pool->Acquire();
+        if (!conn_result)
         {
-            LOG_ERROR("IpcClient::SendAsync connect failed: {}", connect_result.error());
-            return nonstd::make_unexpected("send async: " + connect_result.error());
+            LOG_ERROR("IpcClient::SendAsync acquire connection failed: {}", conn_result.error());
+            return nonstd::make_unexpected("send async: " + conn_result.error());
         }
 
-        if (auto write_result = conn.WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
+        IpcConnection* conn = conn_result.value();
+        bool should_reconnect = false;
+
+        if (auto write_result = conn->WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
         {
             LOG_ERROR("IpcClient::SendAsync write failed: {}", write_result.error());
-            return nonstd::make_unexpected("send async: " + write_result.error());
+            should_reconnect = true;
+        }
+
+        pool->Release(conn, should_reconnect);
+
+        if (should_reconnect)
+        {
+            return nonstd::make_unexpected("send async: write encrypted failed");
         }
 
         LOG_DEBUG("IpcClient::SendAsync completed successfully");

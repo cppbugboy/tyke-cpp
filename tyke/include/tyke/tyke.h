@@ -20,3 +20,4 @@
 #include "common/log_def.h"
 #include "filter/request_filter.h"
 #include "filter/response_filter.h"
+#include "ipc/connection_pool_factory.h"
