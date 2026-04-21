@@ -1,10 +1,3 @@
-/**
- * @file tyke_response.cpp
- * @brief Tyke 响应对象实现。
- * @author Nick
- * @date 2026/04/20
- */
-
 #include "core/tyke_response.h"
 
 #include "common/log_def.h"

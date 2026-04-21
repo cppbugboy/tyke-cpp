@@ -1,10 +1,3 @@
-/**
- * @file tyke_request.cpp
- * @brief Tyke 请求对象实现。
- * @author Nick
- * @date 2026/04/20
- */
-
 #include "core/tyke_request.h"
 
 #include <unordered_map>
