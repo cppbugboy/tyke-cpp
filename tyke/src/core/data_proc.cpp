@@ -194,25 +194,36 @@ std::optional<bool> DataProc::Decode(const std::vector<unsigned char> &data_vec,
 }
 void DataProc::EncodeRequest(TykeRequest &request, std::vector<unsigned char> &data_vec)
 {
-    LOG_INFO("Encoding request, route={}", request.GetRoute());
+    LOG_DEBUG("Encoding request, route={}", request.GetRoute());
     Encode(request, data_vec);
 }
 std::optional<bool> DataProc::DecodeRequest(const std::vector<unsigned char> &data_vec, TykeRequest &request,
                                    uint32_t &data_size)
 {
-    LOG_INFO("Decoding request, size={}", data_vec.size());
+    LOG_DEBUG("Decoding request, size={}", data_vec.size());
     return Decode(data_vec, request, data_size);
 }
 void DataProc::EncodeResponse(TykeResponse &response, std::vector<unsigned char> &data_vec)
 {
-    LOG_INFO("Encoding response, route={}", response.GetRoute());
+    LOG_DEBUG("Encoding response, route={}", response.GetRoute());
     Encode(response, data_vec);
 }
 std::optional<bool> DataProc::DecodeResponse(const std::vector<unsigned char> &data_vec, TykeResponse &response,
                                     uint32_t &data_size)
 {
-    LOG_INFO("Decoding response, size={}", data_vec.size());
+    LOG_DEBUG("Decoding response, size={}", data_vec.size());
     return Decode(data_vec, response, data_size);
+}
+
+bool DataProc::PeekHeader(const unsigned char* data, size_t size, ProtocolHeader& header)
+{
+    constexpr size_t header_size = sizeof(ProtocolHeader);
+    if (size < header_size)
+    {
+        return false;
+    }
+    deserialize_header(data, header);
+    return true;
 }
 }// namespace tyke
 

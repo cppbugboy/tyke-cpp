@@ -19,7 +19,9 @@ namespace tyke
     TykeRequest* TykeRequest::Acquire()
     {
         LOG_DEBUG("Acquiring request object from pool");
-        return pool_.Acquire();
+        auto* req = pool_.Acquire();
+        req->Reset();
+        return req;
     }
     void TykeRequest::Release(TykeRequest* req)
     {

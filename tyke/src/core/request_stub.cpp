@@ -101,4 +101,37 @@ namespace tyke
             LOG_WARN("Expired func cleaned up, uuid={}", uuid);
         }
     }
+
+    bool RequestStub::ExecFuncOrSetFuture(const TykeResponse& response)
+    {
+        const auto& uuid = response.GetMsgUuid();
+
+        {
+            std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
+            if (const auto it = uuid_func_map_.find(uuid); it != uuid_func_map_.end())
+            {
+                auto extracted_func = std::move(it->second.func);
+                uuid_func_map_.erase(it);
+                TimingWheel::GetInstance()->RemoveTask(uuid);
+                LOG_DEBUG("Executing fallback func for response, uuid={}", uuid);
+                extracted_func(response);
+                return true;
+            }
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
+            if (const auto it = uuid_future_map_.find(uuid); it != uuid_future_map_.end())
+            {
+                auto extracted_promise = std::move(it->second.promise);
+                uuid_future_map_.erase(it);
+                TimingWheel::GetInstance()->RemoveTask(uuid);
+                LOG_DEBUG("Setting fallback future for response, uuid={}", uuid);
+                extracted_promise.set_value(response);
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

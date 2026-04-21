@@ -472,7 +472,7 @@ namespace tyke
                     auto client_id = reinterpret_cast<ClientId>(ctx->pipe);
                     auto callback = callback_;
                     
-                    THREAD_POOL_INSTANCE->Enqueue([callback, client_id, data_copy, this]() {
+                    auto enqueue_result = THREAD_POOL_INSTANCE->Enqueue([callback, client_id, data_copy, this]() {
                         auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                         {
                                     const auto result = SendToClient(id, buf);
@@ -486,6 +486,10 @@ namespace tyke
                             }
                         }
                     });
+                    if (!enqueue_result)
+                    {
+                        LOG_WARN("Thread pool stopped, cannot process data for client_id={}", client_id);
+                    }
                 }
             }
             PostRead(ctx);
@@ -497,7 +501,9 @@ namespace tyke
             if (ctx->pending_writes.empty())
                 return true;
             ctx->writing = true;
+            HANDLE hEvent = ctx->write_ov.hEvent;
             memset(&ctx->write_ov, 0, sizeof(ctx->write_ov));
+            ctx->write_ov.hEvent = hEvent;
             DWORD bytes = 0;
             const BOOL ok = WriteFile(ctx->pipe, ctx->pending_writes.data(), static_cast<DWORD>(ctx->pending_writes.size()),
                                 &bytes, &ctx->write_ov);

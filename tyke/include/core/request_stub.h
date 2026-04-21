@@ -51,6 +51,9 @@ namespace tyke
         /// 清理过期的回调函数条目。
         static void CleanupExpiredFunc(const std::string& uuid);
 
+        /// 尝试将响应分发到已注册的Func回调或Future通道（兜底机制）。
+        static bool ExecFuncOrSetFuture(const TykeResponse& response);
+
     private:
         
         struct FutureEntry

@@ -31,6 +31,8 @@ namespace tyke
         static std::optional<bool> DecodeResponse(const std::vector<unsigned char>& data_vec, TykeResponse& response,
                                    uint32_t& data_size);
 
+        static bool PeekHeader(const unsigned char* data, size_t size, ProtocolHeader& header);
+
     private:
         
         template <typename T>

@@ -35,6 +35,7 @@ namespace tyke
     {
         j = nlohmann::json{
             {"module", t.module_},
+            {"async_uuid", t.async_uuid_},
             {"msg_uuid", t.msg_uuid_},
             {"route", t.route_},
             {"content_type", t.content_type_},
@@ -47,6 +48,7 @@ namespace tyke
     void from_json(const nlohmann::json& j, ResponseMetadata& t)
     {
         t.module_ = j.value("module", std::string{});
+        t.async_uuid_ = j.value("async_uuid", std::string{});
         t.msg_uuid_ = j.value("msg_uuid", std::string{});
         t.route_ = j.value("route", std::string{});
         t.content_type_ = j.value("content_type", std::string{});
@@ -58,7 +60,7 @@ namespace tyke
     const std::unordered_set<std::string>& ResponseMetadata::JsonKeySet()
     {
         static const std::unordered_set<std::string> set = {
-            "module", "msg_uuid", "route", "content_type", "timestamp", "status", "reason"
+            "module", "async_uuid", "msg_uuid", "route", "content_type", "timestamp", "status", "reason"
         };
         return set;
     }

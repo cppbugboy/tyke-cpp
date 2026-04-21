@@ -20,7 +20,9 @@ namespace tyke
     TykeResponse* TykeResponse::Acquire()
     {
         LOG_DEBUG("Acquiring response object from pool");
-        return pool_.Acquire();
+        auto* resp = pool_.Acquire();
+        resp->Reset();
+        return resp;
     }
     void TykeResponse::Release(TykeResponse* resp)
     {

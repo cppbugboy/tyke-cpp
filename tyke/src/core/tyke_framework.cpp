@@ -89,7 +89,18 @@ namespace tyke
     }
     TykeFramework::~TykeFramework()
     {
+        Shutdown();
+    }
+
+    void TykeFramework::Shutdown()
+    {
         LOG_INFO("Tyke framework shutting down");
+
+        if (ipc_server_)
+        {
+            ipc_server_->Stop();
+        }
+
         TimingWheel::GetInstance()->Stop();
         THREAD_POOL_INSTANCE->Stop();
         TYKE_LOG_INSTANCE->Stop();

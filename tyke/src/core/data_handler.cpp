@@ -34,13 +34,16 @@ std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector
         }
 
         ProtocolHeader header;
-        constexpr size_t header_size = sizeof(ProtocolHeader);
-        std::memcpy(&header, data_vec.data(), header_size);
+        if (!DataProc::PeekHeader(data_vec.data(), data_vec.size(), header))
+        {
+            LOG_WARN("Failed to peek protocol header, size={}, discarding", data_vec.size());
+            return 0;
+        }
 
         if (std::memcmp(header.magic, kProtocolMagic, sizeof(header.magic)) != 0)
         {
             LOG_WARN("Protocol magic mismatch, expected=TYKE, discarding {} bytes", data_vec.size());
-            return std::nullopt;
+            return 0;
         }
 
         LOG_DEBUG("Received message, type={}, metadata_len={}, content_len={}",

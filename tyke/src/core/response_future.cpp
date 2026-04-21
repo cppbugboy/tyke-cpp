@@ -8,6 +8,7 @@
 #include "core/response_future.h"
 
 #include "common/log_def.h"
+#include "common/tyke_def.h"
 
 namespace tyke
 {
@@ -17,7 +18,7 @@ namespace tyke
     }
     TykeResponse ResponseFuture::GetResponse()
     {
-        return future_.get();
+        return GetResponse(kDefaultStubTimeoutMs);
     }
 
     TykeResponse ResponseFuture::GetResponse(uint32_t timeout_ms)

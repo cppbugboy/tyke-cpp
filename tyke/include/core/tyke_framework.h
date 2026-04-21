@@ -35,6 +35,7 @@ namespace tyke
 
         BoolResult Start(std::string_view listen_uuid) const;
 
+        void Shutdown();
 
         static RequestRouter * GetRequestRouter();
 

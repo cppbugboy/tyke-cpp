@@ -9,9 +9,10 @@
 
 #include <chrono>
 
-#include "core/request_router.h"
-#include "core/response_router.h"
 #include "common/log_def.h"
+#include "core/request_router.h"
+#include "core/request_stub.h"
+#include "core/response_router.h"
 
 namespace tyke::dispatcher
 {
@@ -62,7 +63,12 @@ namespace tyke::dispatcher
         const auto route_entry = RESPONSE_ROUTER_INSTANCE->GetRouteEntry(response.GetRoute());
         if (route_entry == nullptr)
         {
-            LOG_WARN("Response route not found: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
+            LOG_WARN("Response route not found, trying stub handlers: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
+            if (RequestStub::ExecFuncOrSetFuture(response))
+            {
+                return;
+            }
+            LOG_WARN("Response dropped: no route and no stub handler found: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
             return;
         }
 

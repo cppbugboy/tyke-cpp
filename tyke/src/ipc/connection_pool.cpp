@@ -115,7 +115,7 @@ namespace tyke
             delete conn;
 
             size_t total = idle_connections_.size() + active_count_;
-            if (total - 1 < config_.min_idle_connections)
+            if (total == 0 || total - 1 < config_.min_idle_connections)
             {
                 IpcConnection* new_conn = CreateConnection();
                 if (new_conn)

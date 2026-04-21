@@ -98,7 +98,7 @@ else()
     )
     
     target_link_libraries(tyke
-        PUBLIC crypto
+        PUBLIC crypto ssl
     )
     
     if(MSVC)
