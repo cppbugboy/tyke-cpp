@@ -34,12 +34,7 @@ namespace tyke
 
         ~ObjectPool()
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            for (auto* obj : pool_)
-            {
-                delete obj;
-            }
-            pool_.clear();
+            Clear();
         }
 
         ObjectPool(const ObjectPool&) = delete;

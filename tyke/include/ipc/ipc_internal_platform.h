@@ -8,10 +8,11 @@
 
 #pragma once
 
-#include "ipc_types.h"
-#include "common/tyke_result.h"
 #include <memory>
 #include <string_view>
+
+#include "ipc_def.h"
+#include "common/tyke_def.h"
 
 namespace tyke
 {

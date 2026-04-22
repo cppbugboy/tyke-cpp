@@ -11,7 +11,8 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
-#include "common/tyke_result.h"
+
+#include "common/tyke_def.h"
 
 namespace tyke::crypto
 {
@@ -44,13 +45,13 @@ namespace tyke::crypto
             ~EcdhKeyExchange();
 
 
-            BoolResult GenerateKey() const;
+            [[nodiscard]] BoolResult GenerateKey() const;
 
 
-            ByteVecResult GetPublicKeyDer() const;
+            [[nodiscard]] ByteVecResult GetPublicKeyDer() const;
 
 
-            ByteVecResult ComputeSharedSecret(const std::vector<uint8_t>& peer_pub_der) const;
+            [[nodiscard]] ByteVecResult ComputeSharedSecret(const std::vector<uint8_t>& peer_pub_der) const;
 
         private:
             struct Impl;
@@ -68,16 +69,16 @@ namespace tyke::crypto
             ~AesGcmCipher();
 
 
-            BoolResult Init(const std::vector<uint8_t>& shared_secret) const;
+            [[nodiscard]] BoolResult Init(const std::vector<uint8_t>& shared_secret) const;
 
 
-            bool IsInitialized() const;
+            [[nodiscard]] bool IsInitialized() const;
 
 
-            ByteVecResult Encrypt(const std::vector<uint8_t>& plaintext) const;
+            [[nodiscard]] ByteVecResult Encrypt(const std::vector<uint8_t>& plaintext) const;
 
 
-            ByteVecResult Decrypt(const std::vector<uint8_t>& ciphertext) const;
+            [[nodiscard]] ByteVecResult Decrypt(const std::vector<uint8_t>& ciphertext) const;
 
         private:
             struct Impl;

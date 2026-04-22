@@ -19,17 +19,22 @@
 #include <unordered_map>
 
 #include "common/log_def.h"
-#include "component/singleton.h"
 
 namespace tyke
 {
-    template<typename RouterGroupType, typename Derived>
-    class RouterBase : public Singleton<Derived>
+    template<typename RouterGroupType>
+    class RouterBase
     {
-        friend class Singleton<Derived>;
-
     public:
         using RouteEntry = typename RouterGroupType::RouteEntry;
+
+        RouterBase()
+        {
+            root_group_ = std::make_shared<RouterGroupType>("", &route_table_);
+            LOG_DEBUG("RouterBase initialized");
+        }
+
+        ~RouterBase() = default;
 
         std::shared_ptr<RouterGroupType> GetRoot()
         {
@@ -47,14 +52,8 @@ namespace tyke
             return nullptr;
         }
 
-    protected:
-        RouterBase()
-        {
-            root_group_ = std::make_shared<RouterGroupType>("", &route_table_);
-            LOG_DEBUG("RouterBase initialized");
-        }
+    private:
 
-        ~RouterBase() = default;
 
         std::unordered_map<std::string, RouteEntry> route_table_;
         std::shared_ptr<RouterGroupType> root_group_;

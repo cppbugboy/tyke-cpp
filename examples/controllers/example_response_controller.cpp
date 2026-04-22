@@ -18,10 +18,10 @@ void ExampleResponseController::RegisterMethod()
 {
     fmt::print("注册响应路由处理器...\n");
 
-    auto* router = tyke::TykeFramework::GetResponseRouter();
-    auto root = router->GetRoot();
+    const auto router = tyke::TykeFramework::GetResponseRouter();
+    const auto root = router->GetRoot();
 
-    auto async_group = root->Group("/api/async");
+    const auto async_group = root->Group("/api/async");
     async_group->Route("/callback", [this](const tyke::TykeResponse& resp) {
         HandleAsyncCallback(resp);
     });
@@ -37,8 +37,8 @@ void ExampleResponseController::RegisterMethod()
 
 void ExampleResponseController::LogResponse(const tyke::TykeResponse& response, const std::string& handler_name)
 {
-    auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
+    const auto now = std::chrono::system_clock::now();
+    const auto time_t = std::chrono::system_clock::to_time_t(now);
 
     int status = 0;
     std::string reason;

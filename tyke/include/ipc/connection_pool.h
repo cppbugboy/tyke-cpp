@@ -19,38 +19,34 @@
 #include <thread>
 #include <vector>
 
-#include "common/tyke_result.h"
 #include "ipc_client.h"
+#include "common/tyke_def.h"
 
 namespace tyke
 {
-    struct ConnectionPoolConfig
-    {
-        size_t max_connections = kIpcDefaultMaxConnections;
-        size_t min_idle_connections = 1;
-        uint32_t idle_timeout_ms = kIpcDefaultIdleTimeoutMs;
-        uint32_t connect_timeout_ms = kIpcDefaultTimeoutMs;
-        uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs;
-        uint32_t acquire_timeout_ms = 3000;
-    };
+    // struct ConnectionPoolConfig
+    // {
+    //     size_t max_connections = kIpcDefaultMaxConnections;
+    //     size_t min_idle_connections = 1;
+    //     uint32_t idle_timeout_ms = kIpcDefaultIdleTimeoutMs;
+    //     uint32_t connect_timeout_ms = kIpcDefaultTimeoutMs;
+    //     uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs;
+    //     uint32_t acquire_timeout_ms = 3000;
+    // };
 
     class ConnectionPool
     {
     public:
-        ConnectionPool(std::string_view server_uuid, const ConnectionPoolConfig& config = ConnectionPoolConfig{});
+        explicit ConnectionPool(std::string_view server_uuid);
 
         ~ConnectionPool();
 
         ConnectionPool(const ConnectionPool&) = delete;
         ConnectionPool& operator=(const ConnectionPool&) = delete;
 
-        Result<IpcConnection*> Acquire();
+        TResult<IpcConnection*> Acquire();
 
         void Release(IpcConnection* conn, bool should_reconnect = false);
-
-        size_t GetIdleCount() const;
-
-        size_t GetActiveCount() const;
 
         const std::string& GetServerUuid() const;
 
@@ -59,20 +55,11 @@ namespace tyke
     private:
         IpcConnection* CreateConnection();
 
-        void CleanupIdleConnections();
-
-        void CleanupThreadFunc();
-
         std::string server_uuid_;
-        ConnectionPoolConfig config_;
 
-        std::vector<IpcConnection*> idle_connections_;
-        size_t active_count_ = 0;
+        std::vector<IpcConnection*> connections_vec_;
 
         mutable std::mutex mutex_;
         std::condition_variable acquire_cv_;
-
-        std::thread cleanup_thread_;
-        std::atomic<bool> stopped_{false};
     };
 }

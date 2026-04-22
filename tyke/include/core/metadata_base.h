@@ -19,8 +19,8 @@
 
 #include <nlohmann/json.hpp>
 
-#include "common/tyke_result.h"
-#include "common/common_def.h"
+#include "common/json_def.h"
+#include "common/tyke_def.h"
 
 namespace tyke
 {
@@ -28,73 +28,73 @@ namespace tyke
     class MetadataBase
     {
     public:
-        const std::string& GetModule() const
+        [[nodiscard]] const std::string& GetModule() const
         {
             return module_;
         }
 
-        Derived& SetModule(std::string_view module)
+        Derived& SetModule(const std::string_view module)
         {
             module_ = module;
             return static_cast<Derived&>(*this);
         }
 
-        const std::string& GetAsyncUuid() const
+        [[nodiscard]] const std::string& GetAsyncUuid() const
         {
             return async_uuid_;
         }
 
-        Derived& SetAsyncUuid(std::string_view async_uuid)
+        Derived& SetAsyncUuid(const std::string_view async_uuid)
         {
             async_uuid_ = async_uuid;
             return static_cast<Derived&>(*this);
         }
 
-        const std::string& GetMsgUuid() const
+        [[nodiscard]] const std::string& GetMsgUuid() const
         {
             return msg_uuid_;
         }
 
-        Derived& SetMsgUuid(std::string_view msg_uuid)
+        Derived& SetMsgUuid(const std::string_view msg_uuid)
         {
             msg_uuid_ = msg_uuid;
             return static_cast<Derived&>(*this);
         }
 
-        const std::string& GetRoute() const
+        [[nodiscard]] const std::string& GetRoute() const
         {
             return route_;
         }
 
-        Derived& SetRoute(std::string_view route)
+        Derived& SetRoute(const std::string_view route)
         {
             route_ = route;
             return static_cast<Derived&>(*this);
         }
 
-        const std::string& GetContentType() const
+        [[nodiscard]] const std::string& GetContentType() const
         {
             return content_type_;
         }
 
-        Derived& SetContentType(std::string_view content_type)
+        Derived& SetContentType(const std::string_view content_type)
         {
             content_type_ = content_type;
             return static_cast<Derived&>(*this);
         }
 
-        const std::string& GetTimestamp() const
+        [[nodiscard]] const std::string& GetTimestamp() const
         {
             return timestamp_;
         }
 
-        Derived& SetTimestamp(std::string_view timestamp)
+        Derived& SetTimestamp(const std::string_view timestamp)
         {
             timestamp_ = timestamp;
             return static_cast<Derived&>(*this);
         }
 
-        std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value)
+        std::optional<bool> AddMetadata(const std::string_view key, const JsonValue& value)
         {
             if (key.empty())
             {
@@ -111,7 +111,7 @@ namespace tyke
             return true;
         }
 
-        std::optional<JsonValue> GetMetadata(std::string_view key) const
+        [[nodiscard]] std::optional<JsonValue> GetMetadata(const std::string_view key) const
         {
             if (auto it = headers_map_.find(std::string(key)); it != headers_map_.end())
             {
@@ -120,7 +120,7 @@ namespace tyke
             return std::nullopt;
         }
 
-        nonstd::expected<bool, std::string> ToJsonString(std::string& json_string) const
+        BoolResult ToJsonString(std::string& json_string) const
         {
             try
             {
@@ -142,7 +142,7 @@ namespace tyke
             }
         }
 
-        nonstd::expected<bool, std::string> FromJsonString(const std::string& json_string)
+        BoolResult FromJsonString(const std::string& json_string)
         {
             try
             {

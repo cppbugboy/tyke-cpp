@@ -11,12 +11,11 @@
 #include <future>
 #include <string_view>
 
-#include "common/tyke_result.h"
 #include "request_metadata.h"
 #include "tyke_response.h"
 #include "response_future.h"
 #include "common/tyke_def.h"
-#include "ipc/ipc_types.h"
+#include "ipc/ipc_def.h"
 #include "component/object_pool.h"
 
 namespace tyke
@@ -25,7 +24,6 @@ namespace tyke
     class TykeRequest
     {
         friend class DataProc;
-
     public:
         
         static TykeRequest* Acquire();
@@ -37,10 +35,10 @@ namespace tyke
         void Reset();
 
         
-        const char* GetMagic() const;
+        [[nodiscard]] const char* GetMagic() const;
 
         
-        MessageType GetMessageType() const;
+        [[nodiscard]] MessageType GetMessageType() const;
 
         
         TykeRequest& SetContent(const ContentType& content_type, const std::vector<unsigned char>& content);
@@ -52,26 +50,26 @@ namespace tyke
         TykeRequest& SetModule(std::string_view module);
 
 
-        const std::string& GetModule() const;
+        [[nodiscard]] const std::string& GetModule() const;
 
 
         TykeRequest& SetRoute(std::string_view route);
 
 
-        const std::string& GetRoute() const;
+        [[nodiscard]] const std::string& GetRoute() const;
 
         
-        const std::string& GetMsgUuid() const;
+        [[nodiscard]] const std::string& GetMsgUuid() const;
 
         TykeRequest& SetAsyncUuid(std::string_view async_uuid);
         
-        const std::string& GetAsyncUuid() const;
+        [[nodiscard]] const std::string& GetAsyncUuid() const;
 
         
         std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value);
 
 
-        std::optional<JsonValue> GetMetadata(std::string_view key) const;
+        [[nodiscard]] std::optional<JsonValue> GetMetadata(std::string_view key) const;
 
         
         BoolResult Send(const std::string& send_uuid, TykeResponse& response,

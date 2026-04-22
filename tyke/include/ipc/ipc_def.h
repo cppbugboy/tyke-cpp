@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
-#include "common/tyke_result.h"
+#include <optional>
 
 namespace tyke
 {
@@ -25,14 +25,11 @@ namespace tyke
     /// IPC默认最大连接数
     constexpr size_t kIpcDefaultMaxConnections = 4;
 
-    /// IPC默认空闲超时时间（毫秒）
-    constexpr uint32_t kIpcDefaultIdleTimeoutMs = 60000;
-
     /// 客户端接收数据回调函数类型
-    using ClientRecvDataCallback = std::function<bool(const std::vector<uint8_t> &)>;
+    using ClientRecvDataCallback = std::function<bool(const std::vector<unsigned char>&)>;
 
     /// 服务器发送数据回调函数类型
-    using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<uint8_t> &)>;
+    using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<unsigned char>&)>;
 
     /**
      * @brief 服务器接收数据回调函数类型
@@ -42,8 +39,9 @@ namespace tyke
      * @return std::optional<uint32_t> - 有值时表示已消费字节数（0表示数据不合法已丢弃），
      *         无值(std::nullopt)表示数据不完整需等待更多数据
      */
-    using ServerRecvDataCallback = std::function<std::optional<uint32_t>(ClientId, const std::vector<uint8_t> &,
-                                                 const ServerSendDataCallback&
-    )
+    using ServerRecvDataCallback = std::function<std::optional<uint32_t>(
+            ClientId, const std::vector<unsigned char>&,
+            const ServerSendDataCallback&
+        )
     >;
 } // namespace tyke

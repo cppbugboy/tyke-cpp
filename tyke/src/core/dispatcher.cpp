@@ -9,6 +9,7 @@
 
 #include <chrono>
 
+#include "common/get_singleton.h"
 #include "common/log_def.h"
 #include "core/request_router.h"
 #include "core/request_stub.h"
@@ -18,10 +19,9 @@ namespace tyke::dispatcher
 {
     void DispatchRequest(const TykeRequest& request, TykeResponse& response)
     {
-        auto start = std::chrono::steady_clock::now();
         LOG_DEBUG("Dispatching request: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
 
-        const auto route_entry = REQUEST_ROUTER_INSTANCE->GetRouteEntry(request.GetRoute());
+        const auto route_entry = GetRequestRouterSingleton()->GetRouteEntry(request.GetRoute());
         if (route_entry == nullptr)
         {
             LOG_WARN("Request route not found: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
@@ -53,21 +53,15 @@ namespace tyke::dispatcher
         }
 
         auto end = std::chrono::steady_clock::now();
-        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        LOG_INFO("Request dispatched: route={}, msg_uuid={}, elapsed={}ms", request.GetRoute(), request.GetMsgUuid(), elapsed_ms);
+        LOG_INFO("Request dispatched: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
     }
     void DispatchResponse(const TykeResponse& response)
     {
         LOG_DEBUG("Dispatching response: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
 
-        const auto route_entry = RESPONSE_ROUTER_INSTANCE->GetRouteEntry(response.GetRoute());
+        const auto route_entry = GetResponseRouterSingleton()->GetRouteEntry(response.GetRoute());
         if (route_entry == nullptr)
         {
-            LOG_WARN("Response route not found, trying stub handlers: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
-            if (RequestStub::ExecFuncOrSetFuture(response))
-            {
-                return;
-            }
             LOG_WARN("Response dropped: no route and no stub handler found: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
             return;
         }

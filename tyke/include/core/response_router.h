@@ -12,17 +12,13 @@
 
 namespace tyke
 {
-
-#define RESPONSE_ROUTER_INSTANCE ResponseRouter::GetInstance()
-
-    class ResponseRouter : public RouterBase<ResponseRouterGroup, ResponseRouter>
+    class ResponseRouter : public RouterBase<ResponseRouterGroup>
     {
-        friend class Singleton<ResponseRouter>;
-        friend class RouterBase<ResponseRouterGroup, ResponseRouter>;
+        friend class RouterBase<ResponseRouterGroup>;
 
-    private:
-        ResponseRouter() : RouterBase<ResponseRouterGroup, ResponseRouter>() {}
-        ~ResponseRouter() override = default;
+    public:
+        ResponseRouter() : RouterBase<ResponseRouterGroup>() {}
+        ~ResponseRouter() = default;
     };
 }
 

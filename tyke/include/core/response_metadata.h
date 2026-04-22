@@ -20,10 +20,10 @@ namespace tyke
     class ResponseMetadata : public MetadataBase<ResponseMetadata>
     {
     public:
-        int GetStatus() const;
+        [[nodiscard]] int GetStatus() const;
         ResponseMetadata& SetStatus(int status);
 
-        const std::string& GetReason() const;
+        [[nodiscard]] const std::string& GetReason() const;
         ResponseMetadata& SetReason(std::string_view reason);
 
         friend void to_json(nlohmann::json& j, const ResponseMetadata& t);

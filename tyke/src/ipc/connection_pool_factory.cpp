@@ -10,33 +10,32 @@
 
 namespace tyke
 {
+    ConnectionPoolFactory::ConnectionPoolFactory()
+    = default;
+
     ConnectionPoolFactory::~ConnectionPoolFactory()
     {
         Shutdown();
     }
 
-    ConnectionPool* ConnectionPoolFactory::GetPool(const std::string& server_uuid,
-                                                    const ConnectionPoolConfig& config)
+    std::shared_ptr<ConnectionPool> ConnectionPoolFactory::GetPool(const std::string& server_uuid)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto it = pools_.find(server_uuid);
-        if (it != pools_.end())
+        if (const auto it = pools_.find(server_uuid); it != pools_.end())
         {
-            return it->second.get();
+            return it->second;
         }
 
-        auto pool = std::make_unique<ConnectionPool>(server_uuid, config);
-        auto* ptr = pool.get();
-        pools_[server_uuid] = std::move(pool);
+        const auto pool = std::make_shared<ConnectionPool>(server_uuid);
+        pools_[server_uuid] = pool;
         LOG_INFO("Created new connection pool, server={}", server_uuid);
-        return ptr;
+        return pool;
     }
 
     void ConnectionPoolFactory::RemovePool(const std::string& server_uuid)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto it = pools_.find(server_uuid);
-        if (it != pools_.end())
+        if (const auto it = pools_.find(server_uuid); it != pools_.end())
         {
             it->second->Stop();
             pools_.erase(it);

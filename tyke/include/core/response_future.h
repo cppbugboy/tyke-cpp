@@ -21,9 +21,8 @@ namespace tyke
     public:
         
         /// 构造 ResponseFuture，绑定消息 UUID 和响应通道。
-        ResponseFuture(const std::string& msg_uuid, std::future<TykeResponse> future);
+        ResponseFuture(std::string  msg_uuid, std::future<TykeResponse> future);
 
-        
         TykeResponse GetResponse();
 
         TykeResponse GetResponse(uint32_t timeout_ms);

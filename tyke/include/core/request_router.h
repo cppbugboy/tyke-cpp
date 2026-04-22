@@ -12,16 +12,11 @@
 
 namespace tyke
 {
-
-#define REQUEST_ROUTER_INSTANCE RequestRouter::GetInstance()
-
-    class RequestRouter : public RouterBase<RequestRouterGroup, RequestRouter>
+    class RequestRouter : public RouterBase<RequestRouterGroup>
     {
-        friend class Singleton<RequestRouter>;
-        friend class RouterBase<RequestRouterGroup, RequestRouter>;
-
-    private:
-        RequestRouter() : RouterBase<RequestRouterGroup, RequestRouter>() {}
-        ~RequestRouter() override = default;
+        friend class RouterBase<RequestRouterGroup>;
+    public:
+        RequestRouter() : RouterBase<RequestRouterGroup>() {}
+        ~RequestRouter() = default;
     };
 }

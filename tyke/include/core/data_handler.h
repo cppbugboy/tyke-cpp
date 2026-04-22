@@ -8,7 +8,6 @@
 #pragma once
 
 #include "tyke_request.h"
-#include "ipc/ipc_server.h"
 
 namespace tyke::data_handler
 {

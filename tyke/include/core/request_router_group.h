@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "filter/request_filter.h"
+#include "define/request_filter.h"
 #include "router_group.h"
 #include "tyke_request.h"
 

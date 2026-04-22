@@ -8,11 +8,12 @@
 
 #pragma once
 
-#include "ipc_types.h"
-#include "common/tyke_result.h"
+#include "ipc_def.h"
 #include <memory>
 #include <string>
 #include <string_view>
+
+#include "common/tyke_def.h"
 
 namespace tyke
 {
@@ -20,23 +21,17 @@ namespace tyke
     class IpcServer
     {
     public:
-
         IpcServer();
-
 
         ~IpcServer();
 
-        IpcServer(const IpcServer&) = delete;
-        IpcServer& operator=(const IpcServer&) = delete;
-
-
-        BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) const;
+        [[nodiscard]] BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) const;
 
 
         void Stop() const;
 
 
-        BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) const;
+        [[nodiscard]] BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) const;
 
     private:
         std::unique_ptr<class IServerImpl> impl_;

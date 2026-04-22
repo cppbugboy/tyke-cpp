@@ -20,175 +20,178 @@
 
 namespace tyke::data_handler
 {
-std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector<unsigned char>& data_vec,
-                                   const SendDataHandler& send_data_handler)
-{
-    try
+    std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector<unsigned char>& data_vec,
+                                         const SendDataHandler& send_data_handler)
     {
-        LOG_DEBUG("DataCallback invoked, client_id={}, data_size={}", client_id, data_vec.size());
-
-        if (data_vec.size() <= sizeof(ProtocolHeader))
+        try
         {
-            LOG_WARN("Data too short for protocol header, size={}, discarding", data_vec.size());
-            return 0;
-        }
+            LOG_DEBUG("DataCallback invoked, client_id={}, data_size={}", client_id, data_vec.size());
 
-        ProtocolHeader header;
-        if (!DataProc::PeekHeader(data_vec.data(), data_vec.size(), header))
-        {
-            LOG_WARN("Failed to peek protocol header, size={}, discarding", data_vec.size());
-            return 0;
-        }
-
-        if (std::memcmp(header.magic, kProtocolMagic, sizeof(header.magic)) != 0)
-        {
-            LOG_WARN("Protocol magic mismatch, expected=TYKE, discarding {} bytes", data_vec.size());
-            return 0;
-        }
-
-        LOG_DEBUG("Received message, type={}, metadata_len={}, content_len={}",
-                  static_cast<int>(header.msg_type), header.metadata_len, header.content_len);
-
-        uint32_t used = 0;
-        switch (header.msg_type)
-        {
-            case MessageType::kRequest:
+            if (data_vec.size() <= sizeof(ProtocolHeader))
             {
-                if (const auto tyke_request_ptr = MakeRequestPtr();
-                    DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
-                {
-                    LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
-                    RequestHandler(client_id, *tyke_request_ptr, send_data_handler);
-                }
-                break;
+                LOG_WARN("Data too short for protocol header, size={}, discarding", data_vec.size());
+                return 0;
             }
+
+            ProtocolHeader header;
+            if (!DataProc::PeekHeader(data_vec.data(), data_vec.size(), header))
+            {
+                LOG_WARN("Failed to peek protocol header, size={}, discarding", data_vec.size());
+                return 0;
+            }
+
+            if (std::memcmp(header.magic, kProtocolMagic, sizeof(header.magic)) != 0)
+            {
+                LOG_WARN("Protocol magic mismatch, expected=TYKE, discarding {} bytes", data_vec.size());
+                return std::nullopt;
+            }
+
+            LOG_DEBUG("Received message, type={}, metadata_len={}, content_len={}",
+                      static_cast<int>(header.msg_type), header.metadata_len, header.content_len);
+
+            uint32_t used = 0;
+            switch (header.msg_type)
+            {
+            case MessageType::kRequest:
+                {
+                    if (const auto tyke_request_ptr = MakeRequestPtr();
+                        DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
+                    {
+                        LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
+                        RequestHandler(client_id, *tyke_request_ptr, send_data_handler);
+                    }
+                    break;
+                }
             case MessageType::kRequestAsync:
             case MessageType::kRequestAsyncFunc:
             case MessageType::kRequestAsyncFuture:
-            {
-                if (const auto tyke_request_ptr = MakeRequestPtr();
-                    DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
                 {
-                    LOG_DEBUG("Processing async request, route={}, msg_type={}",
-                              tyke_request_ptr->GetRoute(), static_cast<int>(header.msg_type));
-                    RequestHandlerAsync(*tyke_request_ptr);
+                    if (const auto tyke_request_ptr = MakeRequestPtr();
+                        DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
+                    {
+                        LOG_DEBUG("Processing async request, route={}, msg_type={}",
+                                  tyke_request_ptr->GetRoute(), static_cast<int>(header.msg_type));
+                        RequestHandlerAsync(*tyke_request_ptr);
+                    }
+                    break;
                 }
-                break;
-            }
             case MessageType::kResponseAsync:
             case MessageType::kResponseAsyncFunc:
             case MessageType::kResponseAsyncFuture:
-            {
-                if (const auto tyke_response_ptr = MakeResponsePtr();
-                    DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used))
                 {
-                    LOG_DEBUG("Processing async response, route={}, msg_uuid={}",
-                              tyke_response_ptr->GetRoute(), tyke_response_ptr->GetMsgUuid());
-                    ResponseHandler(*tyke_response_ptr);
+                    if (const auto tyke_response_ptr = MakeResponsePtr();
+                        DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used))
+                    {
+                        LOG_DEBUG("Processing async response, route={}, msg_uuid={}",
+                                  tyke_response_ptr->GetRoute(), tyke_response_ptr->GetMsgUuid());
+                        ResponseHandler(*tyke_response_ptr);
+                    }
+                    break;
                 }
-                break;
-            }
             default:
                 LOG_WARN("Unknown message type: {}", static_cast<int>(header.msg_type));
                 break;
+            }
+            return used;
         }
-        return used;
+        catch (const nlohmann::json::exception& e)
+        {
+            LOG_ERROR("DataCallback JSON error: id={}, message={}", e.id, e.what());
+            return std::nullopt;
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("DataCallback exception: {}", e.what());
+            return std::nullopt;
+        }
+        catch (...)
+        {
+            LOG_ERROR("DataCallback unknown exception");
+            return std::nullopt;
+        }
     }
-    catch (const nlohmann::json::exception& e)
+
+    void RequestHandler(const ClientId client_id, const TykeRequest& request,
+                        const SendDataHandler& send_data_handler)
     {
-        LOG_ERROR("DataCallback JSON error: id={}, message={}", e.id, e.what());
-        return std::nullopt;
+        LOG_DEBUG("RequestHandler: client_id={}, route={}, msg_uuid={}",
+                  client_id, request.GetRoute(), request.GetMsgUuid());
+
+        const auto response_ptr = MakeResponsePtr();
+        response_ptr->SetClientId(client_id)
+                    .SetMessageType(MessageType::kResponse)
+                    .SetModule(request.GetModule())
+                    .SetMsgUuid(request.GetMsgUuid())
+                    .SetRoute(request.GetRoute())
+                    .SetAsyncUuid(request.GetAsyncUuid())
+                    .SetSendDataHandler(send_data_handler);
+
+        // 分发请求到处理器
+        dispatcher::DispatchRequest(request, *response_ptr);
+
+        // 发送响应
+        if (auto send_result = response_ptr->Send(); !send_result)
+        {
+            LOG_ERROR("Send response failed: {}", send_result.error());
+        }
     }
-    catch (const std::exception& e)
+
+    void RequestHandlerAsync(const TykeRequest& request)
     {
-        LOG_ERROR("DataCallback exception: {}", e.what());
-        return std::nullopt;
-    }
-    catch (...)
-    {
-        LOG_ERROR("DataCallback unknown exception");
-        return std::nullopt;
-    }
-}
+        LOG_DEBUG("RequestHandlerAsync: route={}, msg_uuid={}",
+                  request.GetRoute(), request.GetMsgUuid());
 
-void RequestHandler(const ClientId client_id, const TykeRequest& request,
-                                 const SendDataHandler& send_data_handler)
-{
-    LOG_DEBUG("RequestHandler: client_id={}, route={}, msg_uuid={}",
-              client_id, request.GetRoute(), request.GetMsgUuid());
+        const auto response_ptr = MakeResponsePtr();
+        response_ptr->SetAsyncUuid(request.GetAsyncUuid())
+                    .SetMessageType(MessageType::kResponseAsync)
+                    .SetModule(request.GetModule())
+                    .SetMsgUuid(request.GetMsgUuid())
+                    .SetRoute(request.GetRoute());
 
-    const auto response_ptr = MakeResponsePtr();
-    response_ptr->SetClientId(client_id)
-            .SetMessageType(MessageType::kResponse)
-            .SetModule(request.GetModule())
-            .SetMsgUuid(request.GetMsgUuid())
-            .SetRoute(request.GetRoute())
-            .SetAsyncUuid(request.GetAsyncUuid())
-            .SetSendDataHandler(send_data_handler);
-
-    // 分发请求到处理器
-    dispatcher::DispatchRequest(request, *response_ptr);
-
-    // 发送响应
-    if (auto send_result = response_ptr->Send(); !send_result)
-    {
-        LOG_ERROR("Send response failed: {}", send_result.error());
-    }
-}
-
-void RequestHandlerAsync(const TykeRequest& request)
-{
-    LOG_DEBUG("RequestHandlerAsync: route={}, msg_uuid={}",
-              request.GetRoute(), request.GetMsgUuid());
-
-    const auto response_ptr = MakeResponsePtr();
-    response_ptr->SetAsyncUuid(request.GetAsyncUuid())
-            .SetMessageType(MessageType::kResponseAsync)
-            .SetModule(request.GetModule())
-            .SetMsgUuid(request.GetMsgUuid())
-            .SetRoute(request.GetRoute());
-
-    // 根据请求类型设置响应类型
-    switch (request.GetMessageType())
-    {
-        case MessageType::kRequestAsync: response_ptr->SetMessageType(MessageType::kResponseAsync); break;
-        case MessageType::kRequestAsyncFunc: response_ptr->SetMessageType(MessageType::kResponseAsyncFunc); break;
-        case MessageType::kRequestAsyncFuture: response_ptr->SetMessageType(MessageType::kResponseAsyncFuture); break;
+        // 根据请求类型设置响应类型
+        switch (request.GetMessageType())
+        {
+        case MessageType::kRequestAsync: response_ptr->SetMessageType(MessageType::kResponseAsync);
+            break;
+        case MessageType::kRequestAsyncFunc: response_ptr->SetMessageType(MessageType::kResponseAsyncFunc);
+            break;
+        case MessageType::kRequestAsyncFuture: response_ptr->SetMessageType(MessageType::kResponseAsyncFuture);
+            break;
         default: break;
+        }
+
+        // 分发请求到处理器
+        dispatcher::DispatchRequest(request, *response_ptr);
+
+        // 异步发送响应
+        if (auto send_result = response_ptr->SendAsync(); !send_result)
+        {
+            LOG_ERROR("Send async response failed: {}", send_result.error());
+        }
     }
 
-    // 分发请求到处理器
-    dispatcher::DispatchRequest(request, *response_ptr);
-
-    // 异步发送响应
-    if (auto send_result = response_ptr->SendAsync(); !send_result)
+    void ResponseHandler(const TykeResponse& response)
     {
-        LOG_ERROR("Send async response failed: {}", send_result.error());
-    }
-}
+        LOG_DEBUG("ResponseHandler: route={}, msg_uuid={}, msg_type={}",
+                  response.GetRoute(), response.GetMsgUuid(), static_cast<int>(response.GetMessageType()));
 
-void ResponseHandler(const TykeResponse& response)
-{
-    LOG_DEBUG("ResponseHandler: route={}, msg_uuid={}, msg_type={}",
-              response.GetRoute(), response.GetMsgUuid(), static_cast<int>(response.GetMessageType()));
-
-    switch (response.GetMessageType())
-    {
+        switch (response.GetMessageType())
+        {
         case MessageType::kResponseAsync:
             // 分发到响应处理器
             dispatcher::DispatchResponse(response);
             break;
         case MessageType::kResponseAsyncFunc:
             // 执行回调函数
-            RequestStub::ExecFunc(response);
+            stub::ExecFunc(response);
             break;
         case MessageType::kResponseAsyncFuture:
             // 设置Future结果
-            RequestStub::SetFuture(response);
+            stub::SetFuture(response);
             break;
         default:
             LOG_WARN("Unknown response type: {}", static_cast<int>(response.GetMessageType()));
             break;
+        }
     }
-}
 }

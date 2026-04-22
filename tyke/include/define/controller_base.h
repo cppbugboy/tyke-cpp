@@ -10,8 +10,19 @@
 #define TYKE_CONTROLLER_REGISTER(ClassName) \
 static tyke::ControllerAutoRegister<ClassName> _auto_register_##ClassName;
 
+
 namespace tyke
 {
+    template <typename T>
+    class ControllerAutoRegister
+    {
+    public:
+        ControllerAutoRegister()
+        {
+            T::GetInstance().RegisterMethod();
+        }
+    };
+
 
     class ControllerBase
     {

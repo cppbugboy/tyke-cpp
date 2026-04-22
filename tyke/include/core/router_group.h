@@ -16,7 +16,6 @@
 
 namespace tyke
 {
-
     template<typename FilterType, typename HandlerFunc>
     class RouterGroup : public std::enable_shared_from_this<RouterGroup<FilterType, HandlerFunc>>
     {
@@ -46,7 +45,12 @@ namespace tyke
 
         std::shared_ptr<RouterGroup> Group(const std::string& sub_prefix)
         {
-            return std::make_shared<RouterGroup>(prefix_ + sub_prefix, global_registry_, this->shared_from_this());
+            if (sub_groups_.find(sub_prefix) == sub_groups_.end())
+            {
+                auto group_shared = std::make_shared<RouterGroup>(prefix_ + sub_prefix, global_registry_, this->shared_from_this());
+                sub_groups_[sub_prefix] = group_shared;
+            }
+            return sub_groups_.at(sub_prefix);
         }
 
 
@@ -78,5 +82,6 @@ namespace tyke
         std::vector<std::shared_ptr<FilterType>> filter_chain_;
         std::weak_ptr<RouterGroup> parent_;
         std::unordered_map<std::string, RouteEntry>* global_registry_;
+        std::unordered_map<std::string, std::shared_ptr<RouterGroup>> sub_groups_;
     };
 }

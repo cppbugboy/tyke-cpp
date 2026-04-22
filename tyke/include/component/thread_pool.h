@@ -41,20 +41,32 @@
 
 namespace tyke
 {
-/// 线程池单例访问宏
-#define THREAD_POOL_INSTANCE ThreadPool::GetInstance()
-
     /**
      * @brief 线程池类
      *
      * 线程安全的线程池，支持任务队列和异步任务执行。
      * 支持优雅退出和强制退出两种模式。
      */
-    class ThreadPool : public Singleton<ThreadPool>
+    class ThreadPool
     {
-        friend class Singleton<ThreadPool>;
-
     public:
+        /**
+         * @brief 构造函数
+         */
+        explicit ThreadPool() : stop_(false)
+        {
+        }
+
+        /**
+         * @brief 析构函数
+         *
+         * 析构时默认采取优雅退出策略，保障数据不丢失。
+         */
+        ~ThreadPool()
+        {
+            Stop(true);
+        }
+
         /**
          * @brief 初始化线程池
          * @param threads 线程数量
@@ -66,6 +78,9 @@ namespace tyke
             std::unique_lock<std::mutex> lock(queue_mutex_);
             // 避免重复初始化导致线程泄漏
             if (!workers_.empty())
+                return;
+
+            if (threads == 0)
                 return;
 
             stop_.store(false, std::memory_order_release);
@@ -154,12 +169,16 @@ namespace tyke
         auto Enqueue(F&& f, Args&&... args)
             -> std::optional<std::future<std::invoke_result_t<F, Args...>>>
         {
+            if (workers_.empty())
+                return std::nullopt;
+
             using return_type = std::invoke_result_t<F, Args...>;
 
             if (stop_.load(std::memory_order_acquire))
             {
                 return std::nullopt;
             }
+
 
             auto task = std::make_shared<std::packaged_task<return_type()>>(
                 [f = std::forward<F>(f), tup = std::make_tuple(std::forward<Args>(args)...)]() mutable
@@ -168,14 +187,12 @@ namespace tyke
 
             std::future<return_type> res = task->get_future();
             {
-                std::unique_lock<std::mutex> lock(queue_mutex_);
-
-                if (stop_.load(std::memory_order_acquire))
+                if (stop_.load(std::memory_order_acquire)) return std::nullopt;   // 第一次检查
                 {
-                    return std::nullopt;
+                    std::unique_lock<std::mutex> lock(queue_mutex_);
+                    if (stop_.load(std::memory_order_relaxed )) return std::nullopt; // 第二次检查
+                    tasks_.emplace([task]() { (*task)(); });
                 }
-
-                tasks_.emplace([task]() { (*task)(); });
             }
 
             condition_.notify_one();
@@ -183,23 +200,6 @@ namespace tyke
         }
 
     private:
-        /**
-         * @brief 构造函数
-         */
-        ThreadPool() : stop_(false)
-        {
-        }
-
-        /**
-         * @brief 析构函数
-         *
-         * 析构时默认采取优雅退出策略，保障数据不丢失。
-         */
-        ~ThreadPool() override
-        {
-            Stop(true);
-        }
-
         std::vector<std::thread> workers_;              ///< 工作线程集合
         std::queue<std::function<void()>> tasks_;       ///< 任务队列
         std::mutex queue_mutex_;                        ///< 队列互斥锁

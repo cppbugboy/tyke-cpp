@@ -6,6 +6,8 @@
  */
 
 #include "ipc/ipc_client.h"
+
+#include "common/get_singleton.h"
 #include "ipc/ipc_internal_platform.h"
 #include "ipc/connection_pool_factory.h"
 #include "common/log_def.h"
@@ -14,7 +16,6 @@ namespace tyke
 {
     IpcConnection::IpcConnection() : impl_(CreateClientConnectionImpl())
     {
-        UpdateLastUsedTime();
         LOG_DEBUG("IpcConnection constructed");
     }
     IpcConnection::~IpcConnection()
@@ -68,7 +69,7 @@ namespace tyke
     {
         LOG_DEBUG("IpcClient::Send: server_name={}, request_size={} bytes", server_name, request.size());
 
-        auto* pool = ConnectionPoolFactory::GetInstance()->GetPool(std::string(server_name));
+        const auto pool = GetConnectionPoolFactorySingleton()->GetPool(std::string(server_name));
         auto conn_result = pool->Acquire();
         if (!conn_result)
         {
@@ -104,7 +105,7 @@ namespace tyke
     {
         LOG_DEBUG("IpcClient::SendAsync: server_name={}, request_size={} bytes", server_name, request.size());
 
-        auto* pool = ConnectionPoolFactory::GetInstance()->GetPool(std::string(server_name));
+        const auto pool = GetConnectionPoolFactorySingleton()->GetPool(std::string(server_name));
         auto conn_result = pool->Acquire();
         if (!conn_result)
         {

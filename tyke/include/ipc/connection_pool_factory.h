@@ -20,23 +20,20 @@
 
 namespace tyke
 {
-    class ConnectionPoolFactory : public Singleton<ConnectionPoolFactory>
+    class ConnectionPoolFactory
     {
-        friend class Singleton<ConnectionPoolFactory>;
-
     public:
-        ConnectionPool* GetPool(const std::string& server_uuid,
-                                const ConnectionPoolConfig& config = ConnectionPoolConfig{});
+        ConnectionPoolFactory();
+        ~ConnectionPoolFactory();
+
+        std::shared_ptr<ConnectionPool> GetPool(const std::string& server_uuid);
 
         void RemovePool(const std::string& server_uuid);
 
         void Shutdown();
 
     private:
-        ConnectionPoolFactory() = default;
-        ~ConnectionPoolFactory() override;
-
         std::mutex mutex_;
-        std::unordered_map<std::string, std::unique_ptr<ConnectionPool>> pools_;
+        std::unordered_map<std::string, std::shared_ptr<ConnectionPool>> pools_;
     };
 }

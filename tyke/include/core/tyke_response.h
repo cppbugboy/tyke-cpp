@@ -11,8 +11,7 @@
 
 #include "response_metadata.h"
 #include "common/tyke_def.h"
-#include "common/tyke_result.h"
-#include "ipc/ipc_types.h"
+#include "ipc/ipc_def.h"
 #include "component/object_pool.h"
 #include <string_view>
 
@@ -40,31 +39,31 @@ namespace tyke
         TykeResponse();
 
         
-        const char* GetMagic() const;
+        [[nodiscard]] const char* GetMagic() const;
 
         
         TykeResponse& SetMessageType(MessageType msg_type);
 
 
-        MessageType GetMessageType() const;
+        [[nodiscard]] MessageType GetMessageType() const;
 
 
         TykeResponse& SetModule(std::string_view module);
 
 
-        const std::string& GetModule() const;
+        [[nodiscard]] const std::string& GetModule() const;
 
 
         TykeResponse& SetMsgUuid(std::string_view msg_uuid);
 
 
-        const std::string& GetMsgUuid() const;
+        [[nodiscard]] const std::string& GetMsgUuid() const;
 
 
         TykeResponse& SetRoute(std::string_view route);
 
 
-        const std::string& GetRoute() const;
+        [[nodiscard]] const std::string& GetRoute() const;
 
         
         void GetContent(std::string& content_type, std::vector<unsigned char>& content) const;
@@ -77,7 +76,7 @@ namespace tyke
         std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value);
 
 
-        std::optional<JsonValue> GetMetadata(std::string_view key) const;
+        [[nodiscard]] std::optional<JsonValue> GetMetadata(std::string_view key) const;
 
 
         TykeResponse& SetResult(int status, std::string_view reason);
@@ -89,7 +88,7 @@ namespace tyke
         TykeResponse& SetAsyncUuid(std::string_view target_uuid);
 
         
-        const std::string& GetAsyncUuid() const;
+        [[nodiscard]] const std::string& GetAsyncUuid() const;
 
         
         TykeResponse& SetSendDataHandler(const SendDataHandler& send_data_handler);

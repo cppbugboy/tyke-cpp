@@ -135,7 +135,7 @@ namespace tyke
         return true;
 }
     BoolResult TykeRequest::SendAsync(const std::string& send_uuid,
-                                       uint32_t timeout_ms)
+                                       const uint32_t timeout_ms)
     {
         return EncodeAndSend(send_uuid, MessageType::kRequestAsync, timeout_ms);
     }
@@ -145,11 +145,12 @@ namespace tyke
         LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
 
         auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFunc, timeout_ms);
-        if (result)
+        if (!result)
         {
-            RequestStub::AddFunc(metadata_.GetMsgUuid(), func, timeout_ms);
-            LOG_DEBUG("Async callback registered, msg_uuid={}", GetMsgUuid());
+            LOG_ERROR("Send request failed: {}", result.error());
+            return nonstd::make_unexpected("encode request failed");
         }
+        stub::AddFunc(metadata_.GetMsgUuid(), func);
         return result;
     }
     nonstd::expected<ResponseFuture, std::string> TykeRequest::SendAsyncWithFuture(const std::string& send_uuid,
@@ -157,16 +158,18 @@ namespace tyke
     {
         LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
 
-        auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFuture, timeout_ms);
-        if (!result)
+
+
+        if (auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFuture, timeout_ms); !result)
         {
             return nonstd::make_unexpected(result.error());
         }
 
         std::promise<TykeResponse> promise;
         auto future = promise.get_future();
-        RequestStub::AddFuture(metadata_.GetMsgUuid(), promise, timeout_ms);
+        stub::AddFuture(metadata_.GetMsgUuid(), promise);
         ResponseFuture response_future(metadata_.GetMsgUuid(), std::move(future));
+
         LOG_DEBUG("Future registered, msg_uuid={}", GetMsgUuid());
         return response_future;
     }

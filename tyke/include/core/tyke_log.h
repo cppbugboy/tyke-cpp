@@ -14,25 +14,21 @@
 #include <string>
 #include <spdlog/logger.h>
 
-#include "common/tyke_result.h"
+#include "common/tyke_def.h"
 #include "component/singleton.h"
 
 namespace tyke
 {
-
-#define TYKE_LOG_INSTANCE TykeLog::GetInstance()
-
-    
-    class TykeLog : public Singleton<TykeLog>
+    class TykeLog
     {
-        friend class Singleton<TykeLog>;
-
     public:
-        
+        TykeLog() = default;
+        ~TykeLog() = default;
+
         BoolResult Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
                   uint32_t file_count);
 
-        bool IsInitialized() const;
+        [[nodiscard]] bool IsInitialized() const;
 
         
         void SetLogLevel(const std::string& log_level) const;
@@ -41,9 +37,6 @@ namespace tyke
         void Stop() const;
 
     private:
-        TykeLog() = default;
-        ~TykeLog() override = default;
-
         std::shared_ptr<spdlog::logger> tyke_logger_;
     };
 }

@@ -5,6 +5,8 @@
  * @date 2026/04/19
  */
 
+#include <utility>
+
 #include "core/response_future.h"
 
 #include "common/log_def.h"
@@ -12,8 +14,8 @@
 
 namespace tyke
 {
-    ResponseFuture::ResponseFuture(const std::string& msg_uuid, std::future<TykeResponse> future)
-        : msg_uuid_(msg_uuid), future_(std::move(future))
+    ResponseFuture::ResponseFuture(std::string  msg_uuid, std::future<TykeResponse> future)
+        : msg_uuid_(std::move(msg_uuid)), future_(std::move(future))
     {
     }
     TykeResponse ResponseFuture::GetResponse()
@@ -23,8 +25,7 @@ namespace tyke
 
     TykeResponse ResponseFuture::GetResponse(uint32_t timeout_ms)
     {
-        auto status = future_.wait_for(std::chrono::milliseconds(timeout_ms));
-        if (status == std::future_status::ready)
+        if (const auto status = future_.wait_for(std::chrono::milliseconds(timeout_ms)); status == std::future_status::ready)
         {
             return future_.get();
         }

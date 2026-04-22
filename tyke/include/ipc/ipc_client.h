@@ -9,11 +9,12 @@
 
 #pragma once
 
-#include "ipc_types.h"
-#include "common/tyke_result.h"
+#include "ipc_def.h"
 #include <memory>
 #include <chrono>
 #include <string_view>
+
+#include "common/tyke_def.h"
 
 namespace tyke
 {
@@ -28,30 +29,23 @@ namespace tyke
         ~IpcConnection();
 
 
-        BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
+        [[nodiscard]] BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
                      uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
-        BoolResult WriteEncrypted(const void* data, size_t size, uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
+        [[nodiscard]] BoolResult WriteEncrypted(const void* data, size_t size, uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
-        BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
+        [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
         void Close() const;
 
 
-        bool IsValid() const;
-
-
-        void UpdateLastUsedTime() { last_used_ = std::chrono::steady_clock::now(); }
-
-
-        std::chrono::steady_clock::time_point GetLastUsedTime() const { return last_used_; }
+        [[nodiscard]] bool IsValid() const;
 
     private:
         std::unique_ptr<class IClientConnectionImpl> impl_;
-        std::chrono::steady_clock::time_point last_used_;
     };
 
 

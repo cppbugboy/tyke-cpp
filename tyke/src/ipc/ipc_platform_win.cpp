@@ -1,4 +1,5 @@
 #ifdef _WIN32
+#include "common/get_singleton.h"
 #include "ipc/ipc_internal_platform.h"
 #include "ipc/ipc_crypto.h"
 #include "common/log_def.h"
@@ -24,7 +25,7 @@ namespace tyke
 
         ~ClientConnectionImplWin() override
         {
-            Close();
+            ClientConnectionImplWin::Close();
         }
 
         BoolResult Connect(std::string_view server_name, const uint32_t timeout_ms, uint32_t) override
@@ -291,10 +292,10 @@ namespace tyke
                 worker_.join();
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                for (const auto & kv : clients_)
+                for (const auto & [fst, snd] : clients_)
                 {
-                    DisconnectNamedPipe(kv.second->pipe);
-                    CloseHandle(kv.second->pipe);
+                    DisconnectNamedPipe(snd->pipe);
+                    CloseHandle(snd->pipe);
                 }
                 clients_.clear();
             }
@@ -472,7 +473,7 @@ namespace tyke
                     auto client_id = reinterpret_cast<ClientId>(ctx->pipe);
                     auto callback = callback_;
                     
-                    auto enqueue_result = THREAD_POOL_INSTANCE->Enqueue([callback, client_id, data_copy, this]() {
+                    auto enqueue_result = GetThreadPoolSingleton()->Enqueue([callback, client_id, data_copy, this]() {
                         auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                         {
                                     const auto result = SendToClient(id, buf);
@@ -501,7 +502,7 @@ namespace tyke
             if (ctx->pending_writes.empty())
                 return true;
             ctx->writing = true;
-            HANDLE hEvent = ctx->write_ov.hEvent;
+            const HANDLE hEvent = ctx->write_ov.hEvent;
             memset(&ctx->write_ov, 0, sizeof(ctx->write_ov));
             ctx->write_ov.hEvent = hEvent;
             DWORD bytes = 0;
@@ -531,7 +532,7 @@ namespace tyke
             std::shared_ptr<ClientContext> ctx;
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                auto it = clients_.find(client_id);
+                const auto it = clients_.find(client_id);
                 if (it == clients_.end())
                     return;
                 ctx = it->second;
