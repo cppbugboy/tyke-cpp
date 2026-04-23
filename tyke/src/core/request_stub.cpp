@@ -52,12 +52,13 @@ namespace tyke::stub
         }
     }
 
-    void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func)
+    void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse&)>& func)
     {
         std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
         uuid_func_map_.emplace(msg_uuid, func);
         LOG_DEBUG("Callback entry added, uuid={}", msg_uuid);
     }
+
     void ExecFunc(const TykeResponse& response)
     {
         std::function<void(const TykeResponse&)> extracted_func;
@@ -80,5 +81,12 @@ namespace tyke::stub
             LOG_DEBUG("Executing callback for response, uuid={}", response.GetMsgUuid());
             extracted_func(response);
         }
+    }
+
+    void DeleteFunc(const std::string& msg_uuid)
+    {
+        std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
+        uuid_func_map_.erase(msg_uuid);
+        LOG_DEBUG("Callback entry added, uuid={}", msg_uuid);
     }
 }

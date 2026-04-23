@@ -67,5 +67,4 @@ namespace tyke
         static auto instance = std::make_shared<IpcServer>();
         return instance;
     }
-
 }

@@ -17,7 +17,6 @@
 
 namespace tyke
 {
-
     class IpcServer
     {
     public:

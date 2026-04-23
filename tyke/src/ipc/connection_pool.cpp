@@ -75,7 +75,7 @@ namespace tyke
     void ConnectionPool::Stop()
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        for (const auto & conn : connections_vec_)
+        for (const auto& conn : connections_vec_)
         {
             conn->Close();
         }

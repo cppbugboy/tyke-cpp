@@ -16,7 +16,6 @@
 
 namespace tyke
 {
-
     class IClientConnectionImpl
     {
     public:

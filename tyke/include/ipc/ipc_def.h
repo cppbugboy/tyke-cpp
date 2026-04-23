@@ -26,10 +26,10 @@ namespace tyke
     constexpr size_t kIpcDefaultMaxConnections = 4;
 
     /// 客户端接收数据回调函数类型
-    using ClientRecvDataCallback = std::function<bool(const std::vector<unsigned char>&)>;
+    using ClientRecvDataCallback = std::function<bool(const std::vector<uint8_t> &)>;
 
     /// 服务器发送数据回调函数类型
-    using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<unsigned char>&)>;
+    using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<uint8_t> &)>;
 
     /**
      * @brief 服务器接收数据回调函数类型
@@ -40,8 +40,8 @@ namespace tyke
      *         无值(std::nullopt)表示数据不完整需等待更多数据
      */
     using ServerRecvDataCallback = std::function<std::optional<uint32_t>(
-            ClientId, const std::vector<unsigned char>&,
-            const ServerSendDataCallback&
-        )
+                                                     ClientId, const std::vector<uint8_t> &,
+                                                 const ServerSendDataCallback&
+    )
     >;
 } // namespace tyke

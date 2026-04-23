@@ -33,6 +33,7 @@ namespace tyke::stub
     /// 执行匹配的回调函数处理响应。
     void ExecFunc(const TykeResponse& response);
 
+    void DeleteFunc(const std::string& msg_uuid);
 
     inline std::unordered_map<std::string, std::promise<TykeResponse>> uuid_future_map_;
     inline std::mutex uuid_future_map_mutex_;

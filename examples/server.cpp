@@ -4,6 +4,10 @@
  * @author Nick
  * @date 2026/04/19
  */
+#include "mimalloc.h"
+#ifdef _WIN32
+#include <mimalloc-new-delete.h>
+#endif
 
 #include <csignal>
 #include <thread>
@@ -27,6 +31,8 @@ void SignalHandler(int signal)
 
 int main()
 {
+    printf("Using mimalloc version: %d\n", mi_version());
+
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);
 

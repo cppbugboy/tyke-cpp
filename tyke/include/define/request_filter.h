@@ -12,7 +12,6 @@
 
 namespace tyke
 {
-
     class RequestFilter
     {
     public:
@@ -26,4 +25,3 @@ namespace tyke
         virtual bool After(const TykeRequest& request, TykeResponse& response) = 0;
     };
 }
-

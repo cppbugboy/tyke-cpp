@@ -6,7 +6,6 @@
  */
 
 
-
 #pragma once
 
 #include "ipc_def.h"
@@ -18,11 +17,9 @@
 
 namespace tyke
 {
-
     class IpcConnection
     {
     public:
-
         IpcConnection();
 
 
@@ -30,13 +27,15 @@ namespace tyke
 
 
         [[nodiscard]] BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
-                     uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs) const;
+                                         uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
-        [[nodiscard]] BoolResult WriteEncrypted(const void* data, size_t size, uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
+        [[nodiscard]] BoolResult WriteEncrypted(const void* data, size_t size,
+                                                uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
-        [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
+        [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback& callback,
+                                          uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
         void Close() const;
@@ -56,10 +55,10 @@ namespace tyke
 
 
         static BoolResult Send(std::string_view server_name, const std::vector<uint8_t>& request,
-                         const ClientRecvDataCallback& callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+                               const ClientRecvDataCallback& callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
 
         static BoolResult SendAsync(std::string_view server_name, const std::vector<uint8_t>& request,
-                              uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+                                    uint32_t timeout_ms = kIpcDefaultTimeoutMs);
     };
 }

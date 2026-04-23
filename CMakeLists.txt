@@ -14,6 +14,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+
 set(THIRD_PARTY_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/include")
 set(THIRD_PARTY_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lib/${CMAKE_SYSTEM_NAME}")
 

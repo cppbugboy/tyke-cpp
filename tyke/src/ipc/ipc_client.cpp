@@ -18,11 +18,13 @@ namespace tyke
     {
         LOG_DEBUG("IpcConnection constructed");
     }
+
     IpcConnection::~IpcConnection()
     {
         Close();
         LOG_DEBUG("IpcConnection destructed");
     }
+
     BoolResult IpcConnection::Connect(std::string_view server_name, uint32_t timeout_ms,
                                       const uint32_t rw_timeout_ms) const
     {
@@ -35,6 +37,7 @@ namespace tyke
         LOG_DEBUG("Connected to server: {}", server_name);
         return true;
     }
+
     BoolResult IpcConnection::WriteEncrypted(const void* data, size_t size, uint32_t timeout_ms) const
     {
         LOG_DEBUG("WriteEncrypted: size={}, timeout={}ms", size, timeout_ms);
@@ -45,6 +48,7 @@ namespace tyke
         }
         return true;
     }
+
     BoolResult IpcConnection::ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms) const
     {
         LOG_DEBUG("ReadLoop: timeout={}ms", timeout_ms);
@@ -55,15 +59,18 @@ namespace tyke
         }
         return true;
     }
+
     void IpcConnection::Close() const
     {
         LOG_DEBUG("Closing connection");
         impl_->Close();
     }
+
     bool IpcConnection::IsValid() const
     {
         return impl_->IsValid();
     }
+
     BoolResult IpcClient::Send(std::string_view server_name, const std::vector<uint8_t>& request,
                                const ClientRecvDataCallback& callback, const uint32_t timeout_ms)
     {
@@ -77,7 +84,7 @@ namespace tyke
             return nonstd::make_unexpected("send: " + conn_result.error());
         }
 
-        IpcConnection* conn = conn_result.value();
+        IpcConnection * conn = conn_result.value();
         bool should_reconnect = false;
 
         if (auto write_result = conn->WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
@@ -100,6 +107,7 @@ namespace tyke
         LOG_DEBUG("IpcClient::Send completed successfully");
         return true;
     }
+
     BoolResult IpcClient::SendAsync(std::string_view server_name, const std::vector<uint8_t>& request,
                                     const uint32_t timeout_ms)
     {
@@ -113,7 +121,7 @@ namespace tyke
             return nonstd::make_unexpected("send async: " + conn_result.error());
         }
 
-        IpcConnection* conn = conn_result.value();
+        IpcConnection * conn = conn_result.value();
         bool should_reconnect = false;
 
         if (auto write_result = conn->WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)

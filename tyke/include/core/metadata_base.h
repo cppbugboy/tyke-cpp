@@ -24,7 +24,7 @@
 
 namespace tyke
 {
-    template<typename Derived>
+    template <typename Derived>
     class MetadataBase
     {
     public:

@@ -23,6 +23,7 @@ namespace tyke
         thread_pool_count_ = thread_pool_count;
         return *this;
     }
+
     TykeFramework& TykeFramework::SetLogConfig(const std::string& log_path, const std::string& log_level,
                                                const uint32_t file_size_mb, const uint32_t file_count)
     {
@@ -36,6 +37,7 @@ namespace tyke
         }
         return *this;
     }
+
     BoolResult TykeFramework::Start(std::string_view listen_uuid) const
     {
         if (!GetTykeLogSingleton()->IsInitialized())
@@ -66,14 +68,17 @@ namespace tyke
         LOG_INFO("Tyke framework started successfully");
         return true;
     }
+
     std::shared_ptr<RequestRouter> TykeFramework::GetRequestRouter()
     {
         return GetRequestRouterSingleton();
     }
+
     std::shared_ptr<ResponseRouter> TykeFramework::GetResponseRouter()
     {
         return GetResponseRouterSingleton();
     }
+
     TykeFramework::TykeFramework()
     {
     }

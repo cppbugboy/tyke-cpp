@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <atomic>
 
+#include "common/get_singleton.h"
 #include "component/thread_pool.h"
 
 namespace tyke
@@ -103,7 +104,11 @@ namespace tyke
         void Close() override
         {
             LOG_INFO("ipc client closing connection");
-            if (fd_ >= 0) { close(fd_); fd_ = -1; }
+            if (fd_ >= 0)
+            {
+                close(fd_);
+                fd_ = -1;
+            }
         }
 
         bool IsValid() const override { return fd_ >= 0 && cipher_.IsInitialized(); }
@@ -156,7 +161,8 @@ namespace tyke
                     {
                         auto secret_result = ecdh.ComputeSharedSecret(payload);
                         if (!secret_result)
-                            return nonstd::make_unexpected("handshake: compute shared secret failed: " + secret_result.error());
+                            return nonstd::make_unexpected(
+                                "handshake: compute shared secret failed: " + secret_result.error());
                         if (auto init_result = cipher_.Init(secret_result.value()); !init_result)
                             return nonstd::make_unexpected("handshake: cipher init failed: " + init_result.error());
                         return true;
@@ -187,11 +193,15 @@ namespace tyke
             bool writing;
             std::mutex write_mutex;
 
-            explicit ClientContext(int f) : fd(f), state(STATE_WAIT_HELLO), writing(false) {}
+            explicit ClientContext(int f) : fd(f), state(STATE_WAIT_HELLO), writing(false)
+            {
+            }
         };
 
     public:
-        ServerImplLinux() : running_(false), listen_fd_(-1), epoll_fd_(-1), wakeup_fd_(-1) {}
+        ServerImplLinux() : running_(false), listen_fd_(-1), epoll_fd_(-1), wakeup_fd_(-1)
+        {
+        }
 
         BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) override
         {
@@ -249,7 +259,7 @@ namespace tyke
                 worker_.join();
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                for (const auto &[fst, snd] : clients_)
+                for (const auto& [fst, snd] : clients_)
                     close(fst);
                 clients_.clear();
             }
@@ -271,7 +281,8 @@ namespace tyke
             }
             auto encrypt_result = ctx->cipher.Encrypt(data);
             if (!encrypt_result)
-                return nonstd::make_unexpected("encrypt failed for client " + std::to_string(id) + ": " + encrypt_result.error());
+                return nonstd::make_unexpected(
+                    "encrypt failed for client " + std::to_string(id) + ": " + encrypt_result.error());
             auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
 
             std::lock_guard<std::mutex> lock(ctx->write_mutex);
@@ -313,7 +324,7 @@ namespace tyke
                             if (client < 0)
                                 break;
                             {
-                                const auto                        ctx = std::make_shared<ClientContext>(client);
+                                const auto ctx = std::make_shared<ClientContext>(client);
                                 std::lock_guard<std::mutex> lock(mutex_);
                                 clients_[client] = ctx;
                             }
@@ -412,15 +423,16 @@ namespace tyke
                     auto decrypt_result = ctx->cipher.Decrypt(payload);
                     if (!decrypt_result)
                         return false;
-                    
+
                     auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(decrypt_result.value()));
                     auto client_id = static_cast<ClientId>(ctx->fd);
                     auto callback = callback_;
-                    
-                    THREAD_POOL_INSTANCE->Enqueue([callback, client_id, data_copy, this]() {
+
+                    GetThreadPoolSingleton()->Enqueue([callback, client_id, data_copy, this]()
+                    {
                         auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                         {
-                                    const auto result = SendToClient(id, buf);
+                            const auto result = SendToClient(id, buf);
                             return result.has_value();
                         };
                         if (callback)

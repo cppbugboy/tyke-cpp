@@ -6,7 +6,6 @@
  */
 
 
-
 #pragma once
 
 #include "response_metadata.h"
@@ -17,31 +16,29 @@
 
 namespace tyke
 {
+    using SendDataHandler = std::function<bool(ClientId, const std::vector<uint8_t>&)>;
 
-    using SendDataHandler = std::function<bool(ClientId, const std::vector<unsigned char> &)>;
 
-    
     class TykeResponse
     {
         friend class DataProc;
         friend class RequestStub;
 
     public:
-        
         static TykeResponse* Acquire();
 
-        
+
         static void Release(TykeResponse* resp);
 
-        
+
         void Reset();
 
         TykeResponse();
 
-        
+
         [[nodiscard]] const char* GetMagic() const;
 
-        
+
         TykeResponse& SetMessageType(MessageType msg_type);
 
 
@@ -65,14 +62,14 @@ namespace tyke
 
         [[nodiscard]] const std::string& GetRoute() const;
 
-        
-        void GetContent(std::string& content_type, std::vector<unsigned char>& content) const;
 
-        
+        void GetContent(std::string& content_type, std::vector<uint8_t>& content) const;
+
+
         TykeResponse& SetContent(const ContentType& content_type,
-                                 const std::vector<unsigned char>& response_content);
+                                 const std::vector<uint8_t>& response_content);
 
-        
+
         std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value);
 
 
@@ -81,31 +78,31 @@ namespace tyke
 
         TykeResponse& SetResult(int status, std::string_view reason);
 
-        
+
         void GetResult(int& status, std::string& reason) const;
 
-        
+
         TykeResponse& SetAsyncUuid(std::string_view target_uuid);
 
-        
+
         [[nodiscard]] const std::string& GetAsyncUuid() const;
 
-        
+
         TykeResponse& SetSendDataHandler(const SendDataHandler& send_data_handler);
 
-        
+
         TykeResponse& SetClientId(ClientId client_id);
 
-        
+
         BoolResult Send();
 
-        
+
         BoolResult SendAsync();
 
     private:
         ProtocolHeader protocol_header_;
         ResponseMetadata metadata_;
-        std::vector<unsigned char> content_;
+        std::vector<uint8_t> content_;
         bool is_send_ = false;
         ClientId client_id_{};
         SendDataHandler send_data_handler_;
@@ -113,7 +110,7 @@ namespace tyke
         inline static ObjectPool<TykeResponse> pool_;
     };
 
-    
+
     struct TykeResponseDeleter
     {
         void operator()(TykeResponse* p) const
@@ -124,7 +121,7 @@ namespace tyke
 
     using TykeResponsePtr = std::unique_ptr<TykeResponse, TykeResponseDeleter>;
 
-    
+
     inline TykeResponsePtr MakeResponsePtr()
     {
         return TykeResponsePtr(TykeResponse::Acquire());

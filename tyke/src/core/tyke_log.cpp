@@ -31,7 +31,6 @@ namespace tyke
 
         try
         {
-
             auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
             console_sink->set_level(spdlog::level::trace);
 
@@ -56,6 +55,7 @@ namespace tyke
             return nonstd::make_unexpected(std::string("Failed to initialize log system: ") + e.what());
         }
     }
+
     void TykeLog::SetLogLevel(const std::string& log_level) const
     {
         if (!tyke_logger_)
@@ -84,6 +84,7 @@ namespace tyke
         tyke_logger_->set_level(level);
         LOG_DEBUG("Log level set to: {}", log_level);
     }
+
     void TykeLog::Stop() const
     {
         if (tyke_logger_)

@@ -14,10 +14,11 @@
 
 namespace tyke
 {
-    ResponseFuture::ResponseFuture(std::string  msg_uuid, std::future<TykeResponse> future)
+    ResponseFuture::ResponseFuture(std::string msg_uuid, std::future<TykeResponse> future)
         : msg_uuid_(std::move(msg_uuid)), future_(std::move(future))
     {
     }
+
     TykeResponse ResponseFuture::GetResponse()
     {
         return GetResponse(kDefaultStubTimeoutMs);
@@ -25,7 +26,8 @@ namespace tyke
 
     TykeResponse ResponseFuture::GetResponse(uint32_t timeout_ms)
     {
-        if (const auto status = future_.wait_for(std::chrono::milliseconds(timeout_ms)); status == std::future_status::ready)
+        if (const auto status = future_.wait_for(std::chrono::milliseconds(timeout_ms)); status ==
+            std::future_status::ready)
         {
             return future_.get();
         }

@@ -11,16 +11,16 @@
 
 namespace tyke::data_handler
 {
-    std::optional<uint32_t> DataCallback(ClientId client_id, const std::vector<unsigned char>& data_vec,
-                                 const SendDataHandler& send_data_handler);
+    std::optional<uint32_t> DataCallback(ClientId client_id, const std::vector<uint8_t>& data_vec,
+                                         const SendDataHandler& send_data_handler);
 
-    
+
     void RequestHandler(ClientId client_id, const TykeRequest& request,
-                               const SendDataHandler& send_data_handler);
+                        const SendDataHandler& send_data_handler);
 
-    
+
     void RequestHandlerAsync(const TykeRequest& request);
 
-    
+
     void ResponseHandler(const TykeResponse& response);
 }

@@ -16,11 +16,10 @@
 
 namespace tyke
 {
-    template<typename FilterType, typename HandlerFunc>
+    template <typename FilterType, typename HandlerFunc>
     class RouterGroup : public std::enable_shared_from_this<RouterGroup<FilterType, HandlerFunc>>
     {
     public:
-
         struct RouteEntry
         {
             HandlerFunc handler;
@@ -47,7 +46,8 @@ namespace tyke
         {
             if (sub_groups_.find(sub_prefix) == sub_groups_.end())
             {
-                auto group_shared = std::make_shared<RouterGroup>(prefix_ + sub_prefix, global_registry_, this->shared_from_this());
+                auto group_shared = std::make_shared<RouterGroup>(prefix_ + sub_prefix, global_registry_,
+                                                                  this->shared_from_this());
                 sub_groups_[sub_prefix] = group_shared;
             }
             return sub_groups_.at(sub_prefix);

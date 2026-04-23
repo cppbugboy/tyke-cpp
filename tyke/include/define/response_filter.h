@@ -12,7 +12,6 @@
 
 namespace tyke
 {
-
     class ResponseFilter
     {
     public:

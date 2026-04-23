@@ -12,7 +12,7 @@
 
 namespace tyke::dispatcher
 {
-void DispatchRequest(const TykeRequest& request, TykeResponse& response);
+    void DispatchRequest(const TykeRequest& request, TykeResponse& response);
 
-void DispatchResponse(const TykeResponse& response);
+    void DispatchResponse(const TykeResponse& response);
 }

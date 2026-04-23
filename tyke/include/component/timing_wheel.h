@@ -33,8 +33,8 @@ namespace tyke
 
     struct WheelLevel
     {
-        uint64_t tick_interval_ms{};  // 当前层级一个 tick 的跨度
-        uint32_t slot_count{};        // 当前层级的槽位数
+        uint64_t tick_interval_ms{}; // 当前层级一个 tick 的跨度
+        uint32_t slot_count{}; // 当前层级的槽位数
         uint32_t current_index = 0; // 当前拨盘指针
         std::vector<std::list<std::shared_ptr<TimerTask>>> slots;
     };
@@ -216,7 +216,8 @@ namespace tyke
                 // 优化：如果没有任务，进入休眠直到有新任务加入，节省 CPU
                 if (task_map_.empty() && expired_tasks_.empty())
                 {
-                    cv_.wait(lock, [this]() {
+                    cv_.wait(lock, [this]()
+                    {
                         return stop_ || !task_map_.empty() || !expired_tasks_.empty();
                     });
                     if (stop_) break;

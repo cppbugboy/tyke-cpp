@@ -27,7 +27,8 @@ using JsonValue = std::variant<std::monostate, bool, int, long long, double, std
  */
 inline nlohmann::json VariantToJson(const JsonValue& v)
 {
-    return std::visit([](auto&& arg) -> nlohmann::json {
+    return std::visit([](auto&& arg) -> nlohmann::json
+    {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, std::monostate>) return nullptr;
         else if constexpr (std::is_same_v<T, bool>) return arg;
@@ -57,4 +58,3 @@ inline JsonValue JsonToVariant(const nlohmann::json& j)
         return j.get<std::string>();
     return j.dump();
 }
-

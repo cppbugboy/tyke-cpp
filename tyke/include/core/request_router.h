@@ -15,8 +15,12 @@ namespace tyke
     class RequestRouter : public RouterBase<RequestRouterGroup>
     {
         friend class RouterBase<RequestRouterGroup>;
+
     public:
-        RequestRouter() : RouterBase<RequestRouterGroup>() {}
+        RequestRouter() : RouterBase<RequestRouterGroup>()
+        {
+        }
+
         ~RequestRouter() = default;
     };
 }

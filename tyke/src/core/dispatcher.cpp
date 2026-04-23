@@ -34,7 +34,8 @@ namespace tyke::dispatcher
             LOG_DEBUG("Executing request filter Before: {}, msg_uuid={}", typeid(*filter).name(), request.GetMsgUuid());
             if (!filter->Before(request, response))
             {
-                LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(), request.GetMsgUuid());
+                LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(),
+                          request.GetMsgUuid());
                 return;
             }
         }
@@ -47,14 +48,15 @@ namespace tyke::dispatcher
             LOG_DEBUG("Executing request filter After: {}, msg_uuid={}", typeid(**it).name(), request.GetMsgUuid());
             if (!(*it)->After(request, response))
             {
-                LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(), request.GetMsgUuid());
+                LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(),
+                          request.GetMsgUuid());
                 return;
             }
         }
 
-        auto end = std::chrono::steady_clock::now();
         LOG_INFO("Request dispatched: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
     }
+
     void DispatchResponse(const TykeResponse& response)
     {
         LOG_DEBUG("Dispatching response: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
@@ -62,16 +64,19 @@ namespace tyke::dispatcher
         const auto route_entry = GetResponseRouterSingleton()->GetRouteEntry(response.GetRoute());
         if (route_entry == nullptr)
         {
-            LOG_WARN("Response dropped: no route and no stub handler found: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
+            LOG_WARN("Response dropped: no route and no stub handler found: route={}, msg_uuid={}", response.GetRoute(),
+                     response.GetMsgUuid());
             return;
         }
 
         for (const auto& filter : route_entry->filter_chain)
         {
-            LOG_DEBUG("Executing response filter Before: {}, msg_uuid={}", typeid(*filter).name(), response.GetMsgUuid());
+            LOG_DEBUG("Executing response filter Before: {}, msg_uuid={}", typeid(*filter).name(),
+                      response.GetMsgUuid());
             if (!filter->Before(response))
             {
-                LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(), response.GetMsgUuid());
+                LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(),
+                          response.GetMsgUuid());
                 return;
             }
         }
@@ -84,11 +89,13 @@ namespace tyke::dispatcher
             LOG_DEBUG("Executing response filter After: {}, msg_uuid={}", typeid(**it).name(), response.GetMsgUuid());
             if (!(*it)->After(response))
             {
-                LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(), response.GetMsgUuid());
+                LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(),
+                          response.GetMsgUuid());
                 return;
             }
         }
 
-        LOG_DEBUG("Response dispatched successfully: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
+        LOG_DEBUG("Response dispatched successfully: route={}, msg_uuid={}", response.GetRoute(),
+                  response.GetMsgUuid());
     }
 }

@@ -30,7 +30,9 @@ namespace tyke
     public:
         ObjectPool() = default;
 
-        explicit ObjectPool(const size_t max_capacity) : max_capacity_(max_capacity) {}
+        explicit ObjectPool(const size_t max_capacity) : max_capacity_(max_capacity)
+        {
+        }
 
         ~ObjectPool()
         {

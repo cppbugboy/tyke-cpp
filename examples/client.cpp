@@ -4,9 +4,14 @@
  * @author Nick
  * @date 2026/04/19
  */
+#ifdef _WIN32
+#include <mimalloc-new-delete.h>
+#endif
+#include "mimalloc.h"
 
 #include <chrono>
 #include <csignal>
+#include <iostream>
 #include <thread>
 
 #include <nlohmann/json.hpp>
@@ -45,7 +50,7 @@ void PrintRequestHeader(const std::string& title, const std::string& target_uuid
     }
 
     std::string content_type;
-    std::vector<unsigned char> content;
+    std::vector<uint8_t> content;
     request.GetContent(content_type, content);
     if (content_type == "json" && !content.empty())
     {
@@ -78,7 +83,7 @@ void PrintSyncResponse(const tyke::TykeResponse& response)
     fmt::print("原因: {}\n", reason);
 
     std::string content_type;
-    std::vector<unsigned char> content;
+    std::vector<uint8_t> content;
     response.GetContent(content_type, content);
     if (content_type == "json" && !content.empty())
     {
@@ -115,7 +120,7 @@ void PrintAsyncResponse(const tyke::TykeResponse& response, const std::string& m
     fmt::print("路由: {}\n", response.GetRoute());
 
     std::string content_type;
-    std::vector<unsigned char> content;
+    std::vector<uint8_t> content;
     response.GetContent(content_type, content);
     if (content_type == "json" && !content.empty())
     {
@@ -146,7 +151,7 @@ void DemoSyncRequest()
         {"password", "test_password"}
     };
     std::string json_str = login_data.dump();
-    std::vector<unsigned char> content(json_str.begin(), json_str.end());
+    std::vector<uint8_t> content(json_str.begin(), json_str.end());
     request->SetContent(tyke::ContentType::kJson, content);
 
     request->AddMetadata("source", std::string("cpp_client"));
@@ -182,7 +187,7 @@ void DemoSendAsync()
         {"priority", 1}
     };
     std::string json_str = process_data.dump();
-    std::vector<unsigned char> content(json_str.begin(), json_str.end());
+    std::vector<uint8_t> content(json_str.begin(), json_str.end());
     request->SetContent(tyke::ContentType::kJson, content);
 
     PrintRequestHeader("发送异步请求 (SendAsync)", kServerUuid, *request);
@@ -214,12 +219,13 @@ void DemoSendAsyncWithFunc()
         {"priority", 2}
     };
     std::string json_str = process_data.dump();
-    std::vector<unsigned char> content(json_str.begin(), json_str.end());
+    std::vector<uint8_t> content(json_str.begin(), json_str.end());
     request->SetContent(tyke::ContentType::kJson, content);
 
     PrintRequestHeader("发送异步请求 (SendAsyncWithFunc)", kServerUuid, *request);
 
-    auto result = request->SendAsyncWithFunc(kServerUuid, [](const tyke::TykeResponse& response) {
+    auto result = request->SendAsyncWithFunc(kServerUuid, [](const tyke::TykeResponse& response)
+    {
         PrintAsyncResponse(response, "SendAsyncWithFunc 回调");
     });
 
@@ -249,7 +255,7 @@ void DemoSendAsyncWithFuture()
         {"priority", 3}
     };
     std::string json_str = process_data.dump();
-    std::vector<unsigned char> content(json_str.begin(), json_str.end());
+    std::vector<uint8_t> content(json_str.begin(), json_str.end());
     request->SetContent(tyke::ContentType::kJson, content);
 
     PrintRequestHeader("发送异步请求 (SendAsyncWithFuture)", kServerUuid, *request);
@@ -271,6 +277,13 @@ void DemoSendAsyncWithFuture()
 
 int main()
 {
+    // 验证是否正在使用 mimalloc
+    // 如果输出非 0 版本号，说明链接成功
+    std::cout << "Using mimalloc version: " << mi_version() << std::endl;
+
+    std::vector<int> v(1000); // 这里的内存分配将由 mimalloc 接管
+    return 0;
+
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);
 

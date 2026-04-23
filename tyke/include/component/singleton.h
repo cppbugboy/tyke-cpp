@@ -27,13 +27,15 @@ namespace tyke
      * @tparam T 派生类类型
      */
     template <typename T>
-    class Singleton {
+    class Singleton
+    {
     public:
         /**
          * @brief 获取单例实例的唯一入口
          * @return T& 返回子类实例的引用
          */
-        static T& GetInstance() {
+        static T& GetInstance()
+        {
             // C++11 标准确保了静态局部变量在多线程环境下的初始化是线程安全的
             static T instance;
             return instance;

@@ -22,7 +22,7 @@
 
 namespace tyke
 {
-    template<typename RouterGroupType>
+    template <typename RouterGroupType>
     class RouterBase
     {
     public:
@@ -53,8 +53,6 @@ namespace tyke
         }
 
     private:
-
-
         std::unordered_map<std::string, RouteEntry> route_table_;
         std::shared_ptr<RouterGroupType> root_group_;
     };

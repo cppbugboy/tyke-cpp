@@ -22,13 +22,16 @@ void ExampleResponseController::RegisterMethod()
     const auto root = router->GetRoot();
 
     const auto async_group = root->Group("/api/async");
-    async_group->Route("/callback", [this](const tyke::TykeResponse& resp) {
+    async_group->Route("/callback", [this](const tyke::TykeResponse& resp)
+    {
         HandleAsyncCallback(resp);
     });
-    async_group->Route("/process", [this](const tyke::TykeResponse& resp) {
+    async_group->Route("/process", [this](const tyke::TykeResponse& resp)
+    {
         HandleAsyncCallback(resp);
     });
-    async_group->Route("/notification", [this](const tyke::TykeResponse& resp) {
+    async_group->Route("/notification", [this](const tyke::TykeResponse& resp)
+    {
         HandleAsyncNotification(resp);
     });
 
@@ -54,7 +57,7 @@ void ExampleResponseController::LogResponse(const tyke::TykeResponse& response, 
     fmt::print("路由: {}\n", response.GetRoute());
 
     std::string content_type;
-    std::vector<unsigned char> content;
+    std::vector<uint8_t> content;
     response.GetContent(content_type, content);
 
     if (content_type == "json" && !content.empty())

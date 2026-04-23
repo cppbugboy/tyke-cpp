@@ -16,72 +16,68 @@
 
 namespace tyke::crypto
 {
+    constexpr uint8_t kMsgHandshakeInit = 0x01;
 
-        constexpr uint8_t kMsgHandshakeInit = 0x01;
+    constexpr uint8_t kMsgHandshakeResp = 0x02;
 
-        constexpr uint8_t kMsgHandshakeResp = 0x02;
-
-        constexpr uint8_t kMsgData = 0x03;
-
-
-        class FrameParser
-        {
-        public:
-
-            static std::vector<uint8_t> BuildFrame(uint8_t type, const std::vector<uint8_t>& payload);
+    constexpr uint8_t kMsgData = 0x03;
 
 
-            static BoolResult ExtractFrame(std::vector<uint8_t>& buffer, uint8_t& type, std::vector<uint8_t>& payload);
-        };
+    class FrameParser
+    {
+    public:
+        static std::vector<uint8_t> BuildFrame(uint8_t type, const std::vector<uint8_t>& payload);
 
 
-        class EcdhKeyExchange
-        {
-        public:
-
-            EcdhKeyExchange();
+        static BoolResult ExtractFrame(std::vector<uint8_t>& buffer, uint8_t& type, std::vector<uint8_t>& payload);
+    };
 
 
-            ~EcdhKeyExchange();
+    class EcdhKeyExchange
+    {
+    public:
+        EcdhKeyExchange();
 
 
-            [[nodiscard]] BoolResult GenerateKey() const;
+        ~EcdhKeyExchange();
 
 
-            [[nodiscard]] ByteVecResult GetPublicKeyDer() const;
+        [[nodiscard]] BoolResult GenerateKey() const;
 
 
-            [[nodiscard]] ByteVecResult ComputeSharedSecret(const std::vector<uint8_t>& peer_pub_der) const;
-
-        private:
-            struct Impl;
-            std::unique_ptr<Impl> impl_;
-        };
+        [[nodiscard]] ByteVecResult GetPublicKeyDer() const;
 
 
-        class AesGcmCipher
-        {
-        public:
+        [[nodiscard]] ByteVecResult ComputeSharedSecret(const std::vector<uint8_t>& peer_pub_der) const;
 
-            AesGcmCipher();
-
-
-            ~AesGcmCipher();
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> impl_;
+    };
 
 
-            [[nodiscard]] BoolResult Init(const std::vector<uint8_t>& shared_secret) const;
+    class AesGcmCipher
+    {
+    public:
+        AesGcmCipher();
 
 
-            [[nodiscard]] bool IsInitialized() const;
+        ~AesGcmCipher();
 
 
-            [[nodiscard]] ByteVecResult Encrypt(const std::vector<uint8_t>& plaintext) const;
+        [[nodiscard]] BoolResult Init(const std::vector<uint8_t>& shared_secret) const;
 
 
-            [[nodiscard]] ByteVecResult Decrypt(const std::vector<uint8_t>& ciphertext) const;
+        [[nodiscard]] bool IsInitialized() const;
 
-        private:
-            struct Impl;
-            std::unique_ptr<Impl> impl_;
-        };
+
+        [[nodiscard]] ByteVecResult Encrypt(const std::vector<uint8_t>& plaintext) const;
+
+
+        [[nodiscard]] ByteVecResult Decrypt(const std::vector<uint8_t>& ciphertext) const;
+
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> impl_;
+    };
 }

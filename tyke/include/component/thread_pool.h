@@ -165,7 +165,7 @@ namespace tyke
          * @param args 任务参数
          * @return 成功返回future对象，失败返回nullopt
          */
-        template<class F, class... Args>
+        template <class F, class... Args>
         auto Enqueue(F&& f, Args&&... args)
             -> std::optional<std::future<std::invoke_result_t<F, Args...>>>
         {
@@ -182,15 +182,18 @@ namespace tyke
 
             auto task = std::make_shared<std::packaged_task<return_type()>>(
                 [f = std::forward<F>(f), tup = std::make_tuple(std::forward<Args>(args)...)]() mutable
-                -> return_type { return std::apply(f, std::move(tup)); }
+                -> return_type
+                {
+                    return std::apply(f, std::move(tup));
+                }
             );
 
             std::future<return_type> res = task->get_future();
             {
-                if (stop_.load(std::memory_order_acquire)) return std::nullopt;   // 第一次检查
+                if (stop_.load(std::memory_order_acquire)) return std::nullopt; // 第一次检查
                 {
                     std::unique_lock<std::mutex> lock(queue_mutex_);
-                    if (stop_.load(std::memory_order_relaxed )) return std::nullopt; // 第二次检查
+                    if (stop_.load(std::memory_order_relaxed)) return std::nullopt; // 第二次检查
                     tasks_.emplace([task]() { (*task)(); });
                 }
             }
@@ -200,10 +203,10 @@ namespace tyke
         }
 
     private:
-        std::vector<std::thread> workers_;              ///< 工作线程集合
-        std::queue<std::function<void()>> tasks_;       ///< 任务队列
-        std::mutex queue_mutex_;                        ///< 队列互斥锁
-        std::condition_variable condition_;             ///< 条件变量
-        std::atomic<bool> stop_;                        ///< 停止标志
+        std::vector<std::thread> workers_; ///< 工作线程集合
+        std::queue<std::function<void()>> tasks_; ///< 任务队列
+        std::mutex queue_mutex_; ///< 队列互斥锁
+        std::condition_variable condition_; ///< 条件变量
+        std::atomic<bool> stop_; ///< 停止标志
     };
 }

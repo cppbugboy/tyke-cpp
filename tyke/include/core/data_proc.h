@@ -21,23 +21,23 @@ namespace tyke
     public:
         DataProc() = delete;
         ~DataProc() = delete;
-        static void EncodeRequest(TykeRequest& request, std::vector<unsigned char>& data_vec);
+        static void EncodeRequest(TykeRequest& request, std::vector<uint8_t>& data_vec);
 
 
-        static std::optional<bool> DecodeRequest(const std::vector<unsigned char>& data_vec, TykeRequest& request,
-                                          uint32_t& data_size);
+        static std::optional<bool> DecodeRequest(const std::vector<uint8_t>& data_vec, TykeRequest& request,
+                                                 uint32_t& data_size);
 
 
-        static void EncodeResponse(TykeResponse& response, std::vector<unsigned char>& data_vec);
+        static void EncodeResponse(TykeResponse& response, std::vector<uint8_t>& data_vec);
 
 
-        static std::optional<bool> DecodeResponse(const std::vector<unsigned char>& data_vec, TykeResponse& response,
-                                           uint32_t& data_size);
+        static std::optional<bool> DecodeResponse(const std::vector<uint8_t>& data_vec, TykeResponse& response,
+                                                  uint32_t& data_size);
 
         static bool PeekHeader(const unsigned char* data, size_t size, ProtocolHeader& header);
 
-        template<typename T>
-        static void Encode(T &msg, std::vector<unsigned char> &data_vec)
+        template <typename T>
+        static void Encode(T& msg, std::vector<uint8_t>& data_vec)
         {
             try
             {
@@ -49,18 +49,18 @@ namespace tyke
                     throw std::runtime_error("Failed to serialize metadata: " + result.error());
                 }
 
-                constexpr size_t header_size  = sizeof(ProtocolHeader);
-                const size_t meta_size    = metadata_string.size();
+                constexpr size_t header_size = sizeof(ProtocolHeader);
+                const size_t meta_size = metadata_string.size();
                 const size_t content_size = msg.content_.size();
-                const size_t total_size   = header_size + meta_size + content_size;
+                const size_t total_size = header_size + meta_size + content_size;
 
                 data_vec.clear();
                 data_vec.resize(total_size);
 
                 msg.protocol_header_.metadata_len = static_cast<uint32_t>(meta_size);
-                msg.protocol_header_.content_len  = static_cast<uint32_t>(content_size);
+                msg.protocol_header_.content_len = static_cast<uint32_t>(content_size);
 
-                unsigned char *ptr = data_vec.data();
+                unsigned char* ptr = data_vec.data();
 
                 serialize_header(msg.protocol_header_, ptr);
                 ptr += header_size;
@@ -76,7 +76,8 @@ namespace tyke
                     std::memcpy(ptr, msg.content_.data(), content_size);
                 }
 
-                LOG_DEBUG("Encode completed: header={} bytes, metadata={} bytes, content={} bytes, total={} bytes", header_size,
+                LOG_DEBUG("Encode completed: header={} bytes, metadata={} bytes, content={} bytes, total={} bytes",
+                          header_size,
                           meta_size, content_size, total_size);
             }
             catch (const nlohmann::json::exception& e)
@@ -92,7 +93,7 @@ namespace tyke
         }
 
         template <typename T>
-        static std::optional<bool> Decode(const std::vector<unsigned char>& data_vec, T& msg, uint32_t& data_size)
+        static std::optional<bool> Decode(const std::vector<uint8_t>& data_vec, T& msg, uint32_t& data_size)
         {
             try
             {

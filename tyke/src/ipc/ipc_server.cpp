@@ -15,11 +15,13 @@ namespace tyke
     {
         LOG_DEBUG("IpcServer constructed");
     }
+
     IpcServer::~IpcServer()
     {
         Stop();
         LOG_DEBUG("IpcServer destructed");
     }
+
     BoolResult IpcServer::Start(std::string_view server_name, ServerRecvDataCallback callback) const
     {
         LOG_INFO("IpcServer starting, server_name={}", server_name);
@@ -31,12 +33,14 @@ namespace tyke
         LOG_INFO("IpcServer started successfully");
         return true;
     }
+
     void IpcServer::Stop() const
     {
         LOG_INFO("IpcServer stopping");
         impl_->Stop();
         LOG_INFO("IpcServer stopped");
     }
+
     BoolResult IpcServer::SendToClient(ClientId id, const std::vector<uint8_t>& data) const
     {
         LOG_DEBUG("SendToClient: client_id={}, data_size={}", id, data.size());

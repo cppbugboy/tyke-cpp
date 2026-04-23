@@ -6,7 +6,6 @@
  */
 
 
-
 #pragma once
 
 #include <string>
@@ -18,11 +17,9 @@
 
 namespace tyke
 {
-
     class TykeFramework
     {
     public:
-
         TykeFramework();
 
         ~TykeFramework();

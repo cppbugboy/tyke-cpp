@@ -81,7 +81,8 @@ namespace tyke
                     }
                     else
                     {
-                        return nonstd::make_unexpected("read loop: ReadFile failed with error " + std::to_string(error));
+                        return nonstd::make_unexpected(
+                            "read loop: ReadFile failed with error " + std::to_string(error));
                     }
                 }
                 if (bytes_read == 0)
@@ -152,7 +153,8 @@ namespace tyke
                     }
                     else
                     {
-                        return nonstd::make_unexpected("write exact: WriteFile failed with error " + std::to_string(GetLastError()));
+                        return nonstd::make_unexpected(
+                            "write exact: WriteFile failed with error " + std::to_string(GetLastError()));
                     }
                 }
                 if (written == 0)
@@ -199,7 +201,8 @@ namespace tyke
                     }
                     else
                     {
-                        return nonstd::make_unexpected("handshake: ReadFile failed with error " + std::to_string(GetLastError()));
+                        return nonstd::make_unexpected(
+                            "handshake: ReadFile failed with error " + std::to_string(GetLastError()));
                     }
                 }
                 if (bytes == 0)
@@ -211,7 +214,8 @@ namespace tyke
                     {
                         auto secret_result = ecdh.ComputeSharedSecret(payload);
                         if (!secret_result)
-                            return nonstd::make_unexpected("handshake: compute shared secret failed: " + secret_result.error());
+                            return nonstd::make_unexpected(
+                                "handshake: compute shared secret failed: " + secret_result.error());
                         if (auto init_result = cipher_.Init(secret_result.value()); !init_result)
                             return nonstd::make_unexpected("handshake: cipher init failed: " + init_result.error());
                         return true;
@@ -292,7 +296,7 @@ namespace tyke
                 worker_.join();
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                for (const auto & [fst, snd] : clients_)
+                for (const auto& [fst, snd] : clients_)
                 {
                     DisconnectNamedPipe(snd->pipe);
                     CloseHandle(snd->pipe);
@@ -314,7 +318,8 @@ namespace tyke
             }
             auto encrypt_result = ctx->cipher.Encrypt(data);
             if (!encrypt_result)
-                return nonstd::make_unexpected("encrypt failed for client " + std::to_string(id) + ": " + encrypt_result.error());
+                return nonstd::make_unexpected(
+                    "encrypt failed for client " + std::to_string(id) + ": " + encrypt_result.error());
             auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
 
             std::lock_guard<std::mutex> lock(ctx->write_mutex);
@@ -428,7 +433,7 @@ namespace tyke
         {
             DWORD bytes = 0;
             if (const BOOL ok =
-                        ReadFile(ctx->pipe, ctx->raw_read_buf, sizeof(ctx->raw_read_buf), &bytes, &ctx->read_ov);
+                    ReadFile(ctx->pipe, ctx->raw_read_buf, sizeof(ctx->raw_read_buf), &bytes, &ctx->read_ov);
                 !ok && GetLastError() != ERROR_IO_PENDING && GetLastError() != ERROR_MORE_DATA)
                 CloseClient(ctx);
         }
@@ -468,15 +473,16 @@ namespace tyke
                     auto decrypt_result = ctx->cipher.Decrypt(payload);
                     if (!decrypt_result)
                         return false;
-                    
+
                     auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(decrypt_result.value()));
                     auto client_id = reinterpret_cast<ClientId>(ctx->pipe);
                     auto callback = callback_;
-                    
-                    auto enqueue_result = GetThreadPoolSingleton()->Enqueue([callback, client_id, data_copy, this]() {
+
+                    auto enqueue_result = GetThreadPoolSingleton()->Enqueue([callback, client_id, data_copy, this]()
+                    {
                         auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                         {
-                                    const auto result = SendToClient(id, buf);
+                            const auto result = SendToClient(id, buf);
                             return result.has_value();
                         };
                         if (callback)
@@ -506,8 +512,9 @@ namespace tyke
             memset(&ctx->write_ov, 0, sizeof(ctx->write_ov));
             ctx->write_ov.hEvent = hEvent;
             DWORD bytes = 0;
-            const BOOL ok = WriteFile(ctx->pipe, ctx->pending_writes.data(), static_cast<DWORD>(ctx->pending_writes.size()),
-                                &bytes, &ctx->write_ov);
+            const BOOL ok = WriteFile(ctx->pipe, ctx->pending_writes.data(),
+                                      static_cast<DWORD>(ctx->pending_writes.size()),
+                                      &bytes, &ctx->write_ov);
             if (!ok && GetLastError() != ERROR_IO_PENDING)
             {
                 ctx->writing = false;

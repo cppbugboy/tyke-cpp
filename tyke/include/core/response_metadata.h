@@ -16,7 +16,6 @@
 
 namespace tyke
 {
-
     class ResponseMetadata : public MetadataBase<ResponseMetadata>
     {
     public:

@@ -62,7 +62,7 @@ namespace tyke
 
     using BoolResult = nonstd::expected<bool, std::string>;
 
-    using ByteVecResult = nonstd::expected<std::vector<unsigned char>, std::string>;
+    using ByteVecResult = nonstd::expected<std::vector<uint8_t>, std::string>;
 
     /**
      * @brief 消息类型枚举，区分同步/异步请求与响应

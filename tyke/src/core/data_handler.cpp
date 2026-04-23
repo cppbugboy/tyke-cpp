@@ -20,7 +20,7 @@
 
 namespace tyke::data_handler
 {
-    std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector<unsigned char>& data_vec,
+    std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector<uint8_t>& data_vec,
                                          const SendDataHandler& send_data_handler)
     {
         try

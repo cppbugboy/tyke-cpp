@@ -24,23 +24,28 @@ void ExampleRequestController::RegisterMethod()
     auto root = router->GetRoot();
 
     auto user_group = root->Group("/api/user");
-    user_group->Route("/login", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp) {
+    user_group->Route("/login", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp)
+    {
         HandleUserLogin(req, resp);
     });
-    user_group->Route("/logout", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp) {
+    user_group->Route("/logout", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp)
+    {
         HandleUserLogout(req, resp);
     });
 
     auto data_group = root->Group("/api/data");
-    data_group->Route("/query", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp) {
+    data_group->Route("/query", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp)
+    {
         HandleDataQuery(req, resp);
     });
-    data_group->Route("/update", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp) {
+    data_group->Route("/update", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp)
+    {
         HandleDataUpdate(req, resp);
     });
 
     auto async_group = root->Group("/api/async");
-    async_group->Route("/process", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp) {
+    async_group->Route("/process", [this](const tyke::TykeRequest& req, tyke::TykeResponse& resp)
+    {
         HandleAsyncProcess(req, resp);
     });
 
@@ -60,7 +65,7 @@ void ExampleRequestController::LogRequest(const tyke::TykeRequest& request, cons
     fmt::print("路由: {}\n", request.GetRoute());
 
     std::string content_type;
-    std::vector<unsigned char> content;
+    std::vector<uint8_t> content;
     request.GetContent(content_type, content);
 
     if (content_type == "json" && !content.empty())
@@ -97,7 +102,7 @@ void ExampleRequestController::HandleUserLogin(const tyke::TykeRequest& request,
     LogRequest(request, "HandleUserLogin");
 
     std::string content_type;
-    std::vector<unsigned char> content;
+    std::vector<uint8_t> content;
     request.GetContent(content_type, content);
 
     if (content_type != "json")
@@ -128,7 +133,7 @@ void ExampleRequestController::HandleUserLogin(const tyke::TykeRequest& request,
                 {"token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"},
                 {"expires_in", 3600}
             };
-            std::vector<unsigned char> response_bytes = nlohmann::json::to_msgpack(response_data);
+            std::vector<uint8_t> response_bytes = nlohmann::json::to_msgpack(response_data);
             std::string json_str = response_data.dump();
             response_bytes.assign(json_str.begin(), json_str.end());
             response.SetContent(tyke::ContentType::kJson, response_bytes);
@@ -160,7 +165,7 @@ void ExampleRequestController::HandleUserLogout(const tyke::TykeRequest& request
         {"message", "User logged out successfully"}
     };
     std::string json_str = response_data.dump();
-    std::vector<unsigned char> response_bytes(json_str.begin(), json_str.end());
+    std::vector<uint8_t> response_bytes(json_str.begin(), json_str.end());
     response.SetContent(tyke::ContentType::kJson, response_bytes);
     response.SetResult(200, "OK");
     response.SetModule(request.GetModule());
@@ -177,14 +182,16 @@ void ExampleRequestController::HandleDataQuery(const tyke::TykeRequest& request,
     nlohmann::json response_data = {
         {"success", true},
         {"total", 100},
-        {"data", nlohmann::json::array({
-            {{"id", 1}, {"name", "Item 1"}, {"status", "active"}},
-            {{"id", 2}, {"name", "Item 2"}, {"status", "inactive"}},
-            {{"id", 3}, {"name", "Item 3"}, {"status", "active"}}
-        })}
+        {
+            "data", nlohmann::json::array({
+                {{"id", 1}, {"name", "Item 1"}, {"status", "active"}},
+                {{"id", 2}, {"name", "Item 2"}, {"status", "inactive"}},
+                {{"id", 3}, {"name", "Item 3"}, {"status", "active"}}
+            })
+        }
     };
     std::string json_str = response_data.dump();
-    std::vector<unsigned char> response_bytes(json_str.begin(), json_str.end());
+    std::vector<uint8_t> response_bytes(json_str.begin(), json_str.end());
     response.SetContent(tyke::ContentType::kJson, response_bytes);
     response.SetResult(200, "OK");
     response.SetModule(request.GetModule());
@@ -199,7 +206,7 @@ void ExampleRequestController::HandleDataUpdate(const tyke::TykeRequest& request
     LogRequest(request, "HandleDataUpdate");
 
     std::string content_type;
-    std::vector<unsigned char> content;
+    std::vector<uint8_t> content;
     request.GetContent(content_type, content);
 
     if (content_type != "json")
@@ -235,7 +242,7 @@ void ExampleRequestController::HandleDataUpdate(const tyke::TykeRequest& request
         {"updated_at", ms}
     };
     std::string json_str = response_data.dump();
-    std::vector<unsigned char> response_bytes(json_str.begin(), json_str.end());
+    std::vector<uint8_t> response_bytes(json_str.begin(), json_str.end());
     response.SetContent(tyke::ContentType::kJson, response_bytes);
     response.SetResult(200, "OK");
     response.SetModule(request.GetModule());
@@ -259,7 +266,7 @@ void ExampleRequestController::HandleAsyncProcess(const tyke::TykeRequest& reque
         {"async_uuid", request.GetAsyncUuid()}
     };
     std::string json_str = response_data.dump();
-    std::vector<unsigned char> response_bytes(json_str.begin(), json_str.end());
+    std::vector<uint8_t> response_bytes(json_str.begin(), json_str.end());
     response.SetContent(tyke::ContentType::kJson, response_bytes);
     response.SetResult(202, "Accepted");
     response.SetModule(request.GetModule());

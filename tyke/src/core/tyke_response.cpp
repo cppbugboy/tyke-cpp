@@ -8,6 +8,7 @@
 namespace tyke
 {
     TykeResponse::TykeResponse() = default;
+
     void TykeResponse::Reset()
     {
         protocol_header_ = ProtocolHeader{};
@@ -17,6 +18,7 @@ namespace tyke
         client_id_ = ClientId{};
         send_data_handler_ = nullptr;
     }
+
     TykeResponse* TykeResponse::Acquire()
     {
         LOG_DEBUG("Acquiring response object from pool");
@@ -24,6 +26,7 @@ namespace tyke
         resp->Reset();
         return resp;
     }
+
     void TykeResponse::Release(TykeResponse* resp)
     {
         if (resp)
@@ -33,117 +36,135 @@ namespace tyke
             pool_.Release(resp);
         }
     }
+
     const char* TykeResponse::GetMagic() const
     {
         return protocol_header_.magic;
     }
+
     const std::string& TykeResponse::GetMsgUuid() const
     {
         return metadata_.GetMsgUuid();
     }
+
     TykeResponse& TykeResponse::SetRoute(std::string_view route)
     {
         metadata_.SetRoute(route);
         return *this;
     }
+
     const std::string& TykeResponse::GetRoute() const
     {
         return metadata_.GetRoute();
     }
+
     TykeResponse& TykeResponse::SetContent(const ContentType& content_type,
-                                           const std::vector<unsigned char>& response_content)
+                                           const std::vector<uint8_t>& response_content)
     {
         metadata_.SetContentType(ContentTypeMap().at(content_type));
         content_ = response_content;
         return *this;
     }
+
     TykeResponse& TykeResponse::SetMessageType(const MessageType msg_type)
     {
         protocol_header_.msg_type = msg_type;
         return *this;
     }
+
     MessageType TykeResponse::GetMessageType() const
     {
         return static_cast<MessageType>(protocol_header_.msg_type);
     }
+
     TykeResponse& TykeResponse::SetModule(const std::string_view module)
     {
         metadata_.SetModule(module);
         return *this;
     }
+
     const std::string& TykeResponse::GetModule() const
     {
         return metadata_.GetModule();
     }
+
     TykeResponse& TykeResponse::SetMsgUuid(const std::string_view msg_uuid)
     {
         metadata_.SetMsgUuid(msg_uuid);
         return *this;
     }
-    void TykeResponse::GetContent(std::string& content_type, std::vector<unsigned char>& content) const
+
+    void TykeResponse::GetContent(std::string& content_type, std::vector<uint8_t>& content) const
     {
         content_type = metadata_.GetContentType();
         content = content_;
     }
+
     std::optional<bool> TykeResponse::AddMetadata(const std::string_view key, const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);
     }
+
     std::optional<JsonValue> TykeResponse::GetMetadata(const std::string_view key) const
     {
         return metadata_.GetMetadata(key);
     }
+
     TykeResponse& TykeResponse::SetResult(const int status, const std::string_view reason)
     {
         metadata_.SetStatus(status).SetReason(reason);
         return *this;
     }
+
     void TykeResponse::GetResult(int& status, std::string& reason) const
     {
         status = metadata_.GetStatus();
         reason = metadata_.GetReason();
     }
+
     BoolResult TykeResponse::Send()
-{
+    {
         LOG_DEBUG("Send: route={}, msg_uuid={}", GetRoute(), GetMsgUuid());
 
-    if (is_send_)
-    {
+        if (is_send_)
+        {
             LOG_WARN("Response already sent, msg_uuid={}", GetMsgUuid());
-        return nonstd::make_unexpected("response already sent");
-    }
+            return nonstd::make_unexpected("response already sent");
+        }
 
-    if (!send_data_handler_)
-    {
+        if (!send_data_handler_)
+        {
             LOG_ERROR("Send data handler is not set, msg_uuid={}", GetMsgUuid());
-        return nonstd::make_unexpected("send data handler is not set");
-    }
+            return nonstd::make_unexpected("send data handler is not set");
+        }
 
-    metadata_.SetTimestamp(utils::GenerateTimestamp());
-    std::vector<unsigned char> data_vec;
-    try
-    {
-        DataProc::EncodeResponse(*this, data_vec);
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Encode response failed: {}", e.what());
-        return nonstd::make_unexpected("encode response failed");
-    }
+        metadata_.SetTimestamp(utils::GenerateTimestamp());
+        std::vector<uint8_t> data_vec;
+        try
+        {
+            DataProc::EncodeResponse(*this, data_vec);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("Encode response failed: {}", e.what());
+            return nonstd::make_unexpected("encode response failed");
+        }
 
-    if (!send_data_handler_(client_id_, data_vec))
-    {
+        if (!send_data_handler_(client_id_, data_vec))
+        {
             LOG_ERROR("Send data handler failed, msg_uuid={}", GetMsgUuid());
-        return nonstd::make_unexpected("send data handler failed");
+            return nonstd::make_unexpected("send data handler failed");
+        }
+
+        is_send_ = true;
+        LOG_DEBUG("Response sent successfully, msg_uuid={}", GetMsgUuid());
+        return true;
     }
 
-    is_send_ = true;
-        LOG_DEBUG("Response sent successfully, msg_uuid={}", GetMsgUuid());
-    return true;
-}
     BoolResult TykeResponse::SendAsync()
     {
-        LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}", GetRoute(), GetMsgUuid(), metadata_.GetAsyncUuid());
+        LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}", GetRoute(), GetMsgUuid(),
+                  metadata_.GetAsyncUuid());
 
         if (is_send_)
         {
@@ -152,7 +173,7 @@ namespace tyke
         }
 
         metadata_.SetTimestamp(utils::GenerateTimestamp());
-        std::vector<unsigned char> data_vec;
+        std::vector<uint8_t> data_vec;
         try
         {
             DataProc::EncodeResponse(*this, data_vec);
@@ -173,20 +194,24 @@ namespace tyke
         LOG_DEBUG("Async response sent successfully, msg_uuid={}", GetMsgUuid());
         return true;
     }
+
     TykeResponse& TykeResponse::SetAsyncUuid(const std::string_view async_uuid)
     {
         metadata_.SetAsyncUuid(async_uuid);
         return *this;
     }
+
     const std::string& TykeResponse::GetAsyncUuid() const
     {
         return metadata_.GetAsyncUuid();
     }
+
     TykeResponse& TykeResponse::SetSendDataHandler(const SendDataHandler& send_data_handler)
     {
         send_data_handler_ = send_data_handler;
         return *this;
     }
+
     TykeResponse& TykeResponse::SetClientId(const ClientId client_id)
     {
         client_id_ = client_id;

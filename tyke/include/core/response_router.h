@@ -17,7 +17,10 @@ namespace tyke
         friend class RouterBase<ResponseRouterGroup>;
 
     public:
-        ResponseRouter() : RouterBase<ResponseRouterGroup>() {}
+        ResponseRouter() : RouterBase<ResponseRouterGroup>()
+        {
+        }
+
         ~ResponseRouter() = default;
     };
 }

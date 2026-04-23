@@ -17,15 +17,14 @@
 
 namespace tyke::utils
 {
-
-        std::string GenerateUUID();
-
-
-        std::string GenerateTimestamp();
+    std::string GenerateUUID();
 
 
-        bool IsValidUUID(std::string_view uuid);
+    std::string GenerateTimestamp();
 
 
-        std::string GetTempDir();
+    bool IsValidUUID(std::string_view uuid);
+
+
+    std::string GetTempDir();
 }
