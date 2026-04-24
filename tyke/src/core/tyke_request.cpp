@@ -117,6 +117,7 @@ namespace tyke
     {
         LOG_DEBUG("Send: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
 
+        metadata_.SetTimeout(timeout_ms);
         protocol_header_.msg_type = MessageType::kRequest;
         metadata_.SetMsgUuid(utils::GenerateUUID()).SetTimestamp(utils::GenerateTimestamp());
 
