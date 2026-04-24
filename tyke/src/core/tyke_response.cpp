@@ -47,7 +47,7 @@ namespace tyke
         return metadata_.GetMsgUuid();
     }
 
-    TykeResponse& TykeResponse::SetRoute(std::string_view route)
+    TykeResponse& TykeResponse::SetRoute(const std::string_view route)
     {
         metadata_.SetRoute(route);
         return *this;
@@ -195,9 +195,9 @@ namespace tyke
         return true;
     }
 
-    TykeResponse& TykeResponse::SetAsyncUuid(const std::string_view async_uuid)
+    TykeResponse& TykeResponse::SetAsyncUuid(const std::string_view target_uuid)
     {
-        metadata_.SetAsyncUuid(async_uuid);
+        metadata_.SetAsyncUuid(target_uuid);
         return *this;
     }
 

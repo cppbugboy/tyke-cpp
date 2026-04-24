@@ -27,7 +27,7 @@ namespace tyke
         };
 
 
-        RouterGroup(std::string_view prefix,
+        RouterGroup(const std::string_view prefix,
                     std::unordered_map<std::string, RouteEntry>* global_registry,
                     const std::shared_ptr<RouterGroup>& parent = nullptr)
             : prefix_(prefix), parent_(parent), global_registry_(global_registry)

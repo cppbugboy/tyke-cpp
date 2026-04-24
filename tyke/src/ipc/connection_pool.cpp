@@ -61,7 +61,7 @@ namespace tyke
         else
         {
             connections_vec_.push_back(conn);
-            LOG_DEBUG("Released connection to pool, server={}, idle={}, active={}", server_uuid_);
+            LOG_DEBUG("Released connection to pool, server={}", server_uuid_);
         }
 
         acquire_cv_.notify_one();

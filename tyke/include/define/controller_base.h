@@ -7,19 +7,24 @@
 
 #pragma once
 
-#define TYKE_CONTROLLER_REGISTER(ClassName) \
-static tyke::ControllerAutoRegister<ClassName> _auto_register_##ClassName;
+#define REQUEST_CONTROLLER_REGISTER(ControllerFlag, RegisterMethod) \
+static tyke::ControllerAutoRegister _auto_register_request_##ControllerFlag(RegisterMethod);
 
+#define RESPONSE_CONTROLLER_REGISTER(ControllerFlag, RegisterMethod) \
+static tyke::ControllerAutoRegister _auto_register_response_##ControllerFlag(RegisterMethod);
 
 namespace tyke
 {
-    template <typename T>
     class ControllerAutoRegister
     {
     public:
-        ControllerAutoRegister()
+        ControllerAutoRegister() = default;
+        explicit ControllerAutoRegister(void (*RegisterMethod)())
         {
-            T::GetInstance().RegisterMethod();
+            if (RegisterMethod)
+            {
+                RegisterMethod();
+            }
         }
     };
 

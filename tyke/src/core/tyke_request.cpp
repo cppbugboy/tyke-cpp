@@ -68,13 +68,13 @@ namespace tyke
         return *this;
     }
 
-    TykeRequest& TykeRequest::SetModule(std::string_view module)
+    TykeRequest& TykeRequest::SetModule(const std::string_view module)
     {
         metadata_.SetModule(module);
         return *this;
     }
 
-    TykeRequest& TykeRequest::SetRoute(std::string_view route)
+    TykeRequest& TykeRequest::SetRoute(const std::string_view route)
     {
         metadata_.SetRoute(route);
         return *this;
@@ -86,6 +86,7 @@ namespace tyke
         LOG_DEBUG("EncodeAndSend: send_uuid={}, route={}, msg_type={}, timeout={}ms",
                   send_uuid, GetRoute(), static_cast<int>(msg_type), timeout_ms);
 
+        metadata_.SetTimeout(timeout_ms);
         protocol_header_.msg_type = msg_type;
         metadata_.SetMsgUuid(utils::GenerateUUID()).SetTimestamp(utils::GenerateTimestamp());
 
@@ -205,7 +206,7 @@ namespace tyke
         return metadata_.GetMsgUuid();
     }
 
-    TykeRequest& TykeRequest::SetAsyncUuid(std::string_view async_uuid)
+    TykeRequest& TykeRequest::SetAsyncUuid(const std::string_view async_uuid)
     {
         metadata_.SetAsyncUuid(async_uuid);
         return *this;
@@ -214,5 +215,16 @@ namespace tyke
     const std::string& TykeRequest::GetAsyncUuid() const
     {
         return metadata_.GetAsyncUuid();
+    }
+
+    TykeRequest& TykeRequest::SetTimeout(const uint64_t timeout)
+    {
+        metadata_.SetTimeout(timeout);
+        return *this;
+    }
+
+    uint64_t TykeRequest::GetTimeout() const
+    {
+        return metadata_.GetTimeout();
     }
 } // tyke

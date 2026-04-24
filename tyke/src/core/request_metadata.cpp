@@ -17,7 +17,8 @@ namespace tyke
             {"msg_uuid", t.msg_uuid_},
             {"route", t.route_},
             {"content_type", t.content_type_},
-            {"timestamp", t.timestamp_}
+            {"timestamp", t.timestamp_},
+            {"timeout", t.timeout_}
         };
     }
 
@@ -29,12 +30,13 @@ namespace tyke
         t.route_ = j.value("route", std::string{});
         t.content_type_ = j.value("content_type", std::string{});
         t.timestamp_ = j.value("timestamp", std::string{});
+        t.timeout_ = j.value("timeout", uint64_t{});
     }
 
     const std::unordered_set<std::string>& RequestMetadata::JsonKeySet()
     {
         static const std::unordered_set<std::string> set = {
-            "module", "async_uuid", "msg_uuid", "route", "content_type", "timestamp"
+            "module", "async_uuid", "msg_uuid", "route", "content_type", "timeout", "timestamp"
         };
         return set;
     }

@@ -94,6 +94,17 @@ namespace tyke
             return static_cast<Derived&>(*this);
         }
 
+        [[nodiscard]] uint64_t GetTimeout() const
+        {
+            return timeout_;
+        }
+
+        Derived& SetTimeout(const uint64_t timeout)
+        {
+            timeout_ = timeout;
+            return static_cast<Derived&>(*this);
+        }
+
         std::optional<bool> AddMetadata(const std::string_view key, const JsonValue& value)
         {
             if (key.empty())
@@ -174,6 +185,7 @@ namespace tyke
         std::string route_;
         std::string content_type_;
         std::string timestamp_;
+        uint64_t timeout_ = 0;
         std::unordered_map<std::string, JsonValue> headers_map_;
     };
 }

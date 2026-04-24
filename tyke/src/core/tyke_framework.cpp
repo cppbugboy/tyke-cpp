@@ -54,9 +54,20 @@ namespace tyke
         LOG_INFO("Tyke framework starting, listen_uuid={}", listen_uuid);
 
         // 初始化线程池
-        GetThreadPoolSingleton()->Init(thread_pool_count_);
+        unsigned int thread_pool_count = thread_pool_count_;
+        if (thread_pool_count == 0)
+        {
+            thread_pool_count = std::thread::hardware_concurrency();
+        }
+        if (thread_pool_count == 0)
+        {
+            thread_pool_count = 4;
+        }
+        GetThreadPoolSingleton()->Init(thread_pool_count);
         LOG_DEBUG("Thread pool initialized with {} threads", thread_pool_count_);
 
+        // 初始化时间轮
+        GetTimingWheelSingleton()->Init();
 
         // 启动IPC服务器
         if (auto start_result = GetIpcServerSingleton()->Start(listen_uuid, data_handler::DataCallback); !start_result)

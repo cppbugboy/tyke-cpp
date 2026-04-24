@@ -8,11 +8,12 @@
 
 #pragma once
 
+#include "component/context.h"
 #include "core/tyke_request.h"
 
 namespace tyke::dispatcher
 {
-    void DispatchRequest(const TykeRequest& request, TykeResponse& response);
+    void DispatchRequest(const TykeRequest& request, TykeResponse& response, const ContextPtr& context_ptr);
 
     void DispatchResponse(const TykeResponse& response);
 }

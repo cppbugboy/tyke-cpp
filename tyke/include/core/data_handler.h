@@ -15,8 +15,7 @@ namespace tyke::data_handler
                                          const SendDataHandler& send_data_handler);
 
 
-    void RequestHandler(ClientId client_id, const TykeRequest& request,
-                        const SendDataHandler& send_data_handler);
+    void RequestHandler(const TykeRequest& request, ClientId client_id, const SendDataHandler& send_data_handler);
 
 
     void RequestHandlerAsync(const TykeRequest& request);

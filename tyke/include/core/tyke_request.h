@@ -64,6 +64,10 @@ namespace tyke
 
         [[nodiscard]] const std::string& GetAsyncUuid() const;
 
+        TykeRequest& SetTimeout(uint64_t timeout);
+
+        [[nodiscard]] uint64_t GetTimeout() const;
+
 
         std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value);
 

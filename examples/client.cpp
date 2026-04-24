@@ -21,8 +21,6 @@
 #include "tyke/tyke.h"
 #include "controllers/example_response_controller.h"
 
-TYKE_CONTROLLER_REGISTER(ExampleResponseController)
-
 static const std::string kServerUuid = "tyke_server_example";
 static const std::string kClientListenerUuid = "tyke_client_listener_cpp";
 
@@ -282,7 +280,6 @@ int main()
     std::cout << "Using mimalloc version: " << mi_version() << std::endl;
 
     std::vector<int> v(1000); // 这里的内存分配将由 mimalloc 接管
-    return 0;
 
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);

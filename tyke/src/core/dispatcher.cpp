@@ -17,7 +17,7 @@
 
 namespace tyke::dispatcher
 {
-    void DispatchRequest(const TykeRequest& request, TykeResponse& response)
+    void DispatchRequest(const TykeRequest& request, TykeResponse& response, const ContextPtr& context_ptr)
     {
         LOG_DEBUG("Dispatching request: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
 
@@ -32,7 +32,7 @@ namespace tyke::dispatcher
         for (const auto& filter : route_entry->filter_chain)
         {
             LOG_DEBUG("Executing request filter Before: {}, msg_uuid={}", typeid(*filter).name(), request.GetMsgUuid());
-            if (!filter->Before(request, response))
+            if (!filter->Before(request, response, context_ptr))
             {
                 LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(),
                           request.GetMsgUuid());
@@ -41,12 +41,12 @@ namespace tyke::dispatcher
         }
 
         LOG_DEBUG("Executing request handler for route: {}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
-        route_entry->handler(request, response);
+        route_entry->handler(request, response, context_ptr);
 
         for (auto it = route_entry->filter_chain.rbegin(); it != route_entry->filter_chain.rend(); ++it)
         {
             LOG_DEBUG("Executing request filter After: {}, msg_uuid={}", typeid(**it).name(), request.GetMsgUuid());
-            if (!(*it)->After(request, response))
+            if (!(*it)->After(request, response, context_ptr))
             {
                 LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(),
                           request.GetMsgUuid());

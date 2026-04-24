@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "component/context.h"
 #include "core/tyke_request.h"
 
 namespace tyke
@@ -19,9 +20,9 @@ namespace tyke
         virtual ~RequestFilter() = default;
 
 
-        virtual bool Before(const TykeRequest& request, TykeResponse& response) = 0;
+        virtual bool Before(const TykeRequest& request, TykeResponse& response, std::shared_ptr<Context> context) = 0;
 
 
-        virtual bool After(const TykeRequest& request, TykeResponse& response) = 0;
+        virtual bool After(const TykeRequest& request, TykeResponse& response, std::shared_ptr<Context> context) = 0;
     };
 }

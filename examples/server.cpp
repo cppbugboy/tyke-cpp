@@ -18,9 +18,6 @@
 #include "controllers/example_request_controller.h"
 #include "controllers/example_response_controller.h"
 
-TYKE_CONTROLLER_REGISTER(ExampleRequestController)
-TYKE_CONTROLLER_REGISTER(ExampleResponseController)
-
 static volatile bool g_running = true;
 
 void SignalHandler(int signal)

@@ -11,19 +11,9 @@
 
 #include "tyke/tyke.h"
 
-class ExampleResponseController : public tyke::ResponseController, public tyke::Singleton<ExampleResponseController>
+namespace controller::response::examples
 {
-    friend class tyke::Singleton<ExampleResponseController>;
-
-public:
-    void RegisterMethod() override;
-
-private:
-    ExampleResponseController() = default;
-    ~ExampleResponseController() override = default;
-
+    void RegisterMethod();
     void HandleAsyncCallback(const tyke::TykeResponse& response);
     void HandleAsyncNotification(const tyke::TykeResponse& response);
-
-    void LogResponse(const tyke::TykeResponse& response, const std::string& handler_name);
-};
+}

@@ -43,7 +43,7 @@ namespace tyke
         static std::shared_ptr<ResponseRouter> GetResponseRouter();
 
     private:
-        uint32_t thread_pool_count_ = 4;
+        uint32_t thread_pool_count_ = 0;
         std::string log_path_;
         std::string log_level_ = "info";
         uint32_t file_size_mb_ = 1024;

@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 
 #include "common/log_def.h"
+#include "core/context_factory.h"
 #include "core/data_proc.h"
 #include "core/dispatcher.h"
 #include "core/request_stub.h"
@@ -58,7 +59,7 @@ namespace tyke::data_handler
                         DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
                     {
                         LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
-                        RequestHandler(client_id, *tyke_request_ptr, send_data_handler);
+                        RequestHandler(*tyke_request_ptr, client_id, send_data_handler);
                     }
                     break;
                 }
@@ -111,8 +112,7 @@ namespace tyke::data_handler
         }
     }
 
-    void RequestHandler(const ClientId client_id, const TykeRequest& request,
-                        const SendDataHandler& send_data_handler)
+    void RequestHandler(const TykeRequest& request, const ClientId client_id, const SendDataHandler& send_data_handler)
     {
         LOG_DEBUG("RequestHandler: client_id={}, route={}, msg_uuid={}",
                   client_id, request.GetRoute(), request.GetMsgUuid());
@@ -126,8 +126,9 @@ namespace tyke::data_handler
                     .SetAsyncUuid(request.GetAsyncUuid())
                     .SetSendDataHandler(send_data_handler);
 
+        const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(), std::chrono::milliseconds(request.GetTimeout()));
         // 分发请求到处理器
-        dispatcher::DispatchRequest(request, *response_ptr);
+        dispatcher::DispatchRequest(request, *response_ptr, fst);
 
         // 发送响应
         if (auto send_result = response_ptr->Send(); !send_result)
@@ -160,8 +161,9 @@ namespace tyke::data_handler
         default: break;
         }
 
+        const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(), std::chrono::milliseconds(request.GetTimeout()));
         // 分发请求到处理器
-        dispatcher::DispatchRequest(request, *response_ptr);
+        dispatcher::DispatchRequest(request, *response_ptr, fst);
 
         // 异步发送响应
         if (auto send_result = response_ptr->SendAsync(); !send_result)
