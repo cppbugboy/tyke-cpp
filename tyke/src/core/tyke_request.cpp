@@ -17,24 +17,6 @@ namespace tyke
         content_.clear();
     }
 
-    TykeRequest* TykeRequest::Acquire()
-    {
-        LOG_DEBUG("Acquiring request object from pool");
-        auto* req = pool_.Acquire();
-        req->Reset();
-        return req;
-    }
-
-    void TykeRequest::Release(TykeRequest* req)
-    {
-        if (req)
-        {
-            LOG_DEBUG("Releasing request object to pool, msg_uuid={}", req->GetMsgUuid());
-            req->Reset();
-            pool_.Release(req);
-        }
-    }
-
     const char* TykeRequest::GetMagic() const
     {
         return protocol_header_.magic;
@@ -45,23 +27,15 @@ namespace tyke
         return static_cast<MessageType>(protocol_header_.msg_type);
     }
 
-    void TykeRequest::GetContent(std::string& content_type, std::vector<uint8_t>& content) const
+    void TykeRequest::GetContent(std::string& content_type,
+                                 std::vector<uint8_t>& content) const
     {
         content_type = metadata_.GetContentType();
         content = content_;
     }
 
-    const std::string& TykeRequest::GetModule() const
-    {
-        return metadata_.GetModule();
-    }
-
-    const std::string& TykeRequest::GetRoute() const
-    {
-        return metadata_.GetRoute();
-    }
-
-    TykeRequest& TykeRequest::SetContent(const ContentType& content_type, const std::vector<uint8_t>& content)
+    TykeRequest& TykeRequest::SetContent(const ContentType& content_type,
+                                         const std::vector<uint8_t>& content)
     {
         metadata_.SetContentType(ContentTypeMap().at(content_type));
         content_ = content;
@@ -74,13 +48,24 @@ namespace tyke
         return *this;
     }
 
+    const std::string& TykeRequest::GetModule() const
+    {
+        return metadata_.GetModule();
+    }
+
     TykeRequest& TykeRequest::SetRoute(const std::string_view route)
     {
         metadata_.SetRoute(route);
         return *this;
     }
 
-    BoolResult TykeRequest::EncodeAndSend(const std::string& send_uuid, MessageType msg_type,
+    const std::string& TykeRequest::GetRoute() const
+    {
+        return metadata_.GetRoute();
+    }
+
+    BoolResult TykeRequest::EncodeAndSend(const std::string& send_uuid,
+                                          MessageType msg_type,
                                           uint32_t timeout_ms)
     {
         LOG_DEBUG("EncodeAndSend: send_uuid={}, route={}, msg_type={}, timeout={}ms",
@@ -139,7 +124,8 @@ namespace tyke
                                                const auto decode_result = DataProc::DecodeResponse(
                                                    recv_data, response, data_size);
                                                return decode_result.has_value();
-                                           }, timeout_ms);
+                                           },
+                                           timeout_ms);
         if (!send_result)
         {
             LOG_ERROR("Send request failed: {}", send_result.error());
@@ -156,11 +142,13 @@ namespace tyke
         return EncodeAndSend(send_uuid, MessageType::kRequestAsync, timeout_ms);
     }
 
-    BoolResult TykeRequest::SendAsyncWithFunc(const std::string& send_uuid,
-                                              const std::function<void(const TykeResponse&)>& func,
-                                              uint32_t timeout_ms)
+    BoolResult TykeRequest::SendAsyncWithFunc(
+        const std::string& send_uuid,
+        const std::function<void(const TykeResponse &)>& func,
+        uint32_t timeout_ms)
     {
-        LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
+        LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}, timeout={}ms",
+                  send_uuid, GetRoute(), timeout_ms);
 
         auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFunc, timeout_ms);
         if (!result)
@@ -172,13 +160,14 @@ namespace tyke
         return result;
     }
 
-    nonstd::expected<ResponseFuture, std::string> TykeRequest::SendAsyncWithFuture(const std::string& send_uuid,
-        uint32_t timeout_ms)
+    nonstd::expected<ResponseFuture, std::string> TykeRequest::SendAsyncWithFuture(
+        const std::string& send_uuid, uint32_t timeout_ms)
     {
-        LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
+        LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}, timeout={}ms",
+                  send_uuid, GetRoute(), timeout_ms);
 
-
-        if (auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFuture, timeout_ms); !result)
+        if (auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFuture, timeout_ms);
+            !result)
         {
             return nonstd::make_unexpected(result.error());
         }
@@ -192,7 +181,8 @@ namespace tyke
         return response_future;
     }
 
-    std::optional<bool> TykeRequest::AddMetadata(const std::string_view key, const JsonValue& value)
+    std::optional<bool> TykeRequest::AddMetadata(const std::string_view key,
+                                                 const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);
     }
@@ -228,4 +218,4 @@ namespace tyke
     {
         return metadata_.GetTimeout();
     }
-} // tyke
+} // namespace tyke

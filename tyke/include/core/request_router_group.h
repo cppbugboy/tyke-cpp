@@ -17,7 +17,7 @@
 
 namespace tyke
 {
-    using RequestHandlerFunc = std::function<void(const TykeRequest &, TykeResponse &, const ContextPtr&)>;
+    using RequestHandlerFunc = std::function<void(const TykeRequest &, TykeResponse &, const ContextPtr &)>;
 
     using RequestRouteEntry = RouterGroup<RequestFilter, RequestHandlerFunc>::RouteEntry;
 

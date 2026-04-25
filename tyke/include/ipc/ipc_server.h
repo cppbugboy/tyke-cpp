@@ -35,4 +35,10 @@ namespace tyke
     private:
         std::unique_ptr<class IServerImpl> impl_;
     };
+
+    inline IpcServer& GetGlobalIpcServer()
+    {
+        static IpcServer instance;
+        return instance;
+    }
 }

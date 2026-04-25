@@ -16,12 +16,13 @@
 namespace controller::response::examples
 {
     RESPONSE_CONTROLLER_REGISTER(examples, RegisterMethod)
+
     void RegisterMethod()
     {
         fmt::print("注册响应路由处理器...\n");
 
-        const auto router = tyke::TykeFramework::GetResponseRouter();
-        const auto root = router->GetRoot();
+        auto router = tyke::TykeFramework::GetResponseRouter();
+        const auto root = router.GetRoot();
 
         const auto async_group = root->Group("/api/async");
         async_group->Route("/callback", [](const tyke::TykeResponse& resp)
@@ -45,14 +46,14 @@ namespace controller::response::examples
         const auto now = std::chrono::system_clock::now();
         const auto time_t = std::chrono::system_clock::to_time_t(now);
 
-        int status = 0;
+        auto status = tyke::StatusCode::kNone;
         std::string reason;
         response.GetResult(status, reason);
 
         fmt::print("\n========================================\n");
         fmt::print("========================================\n");
         fmt::print("消息UUID: {}\n", response.GetMsgUuid());
-        fmt::print("状态码: {}\n", status);
+        fmt::print("状态码: {}\n", (int)status);
         fmt::print("原因: {}\n", reason);
         fmt::print("模块: {}\n", response.GetModule());
         fmt::print("路由: {}\n", response.GetRoute());

@@ -28,7 +28,7 @@ namespace tyke::stub
 
 
     /// 注册回调函数，等待指定 UUID 的响应。
-    void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse&)>& func);
+    void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func);
 
     /// 执行匹配的回调函数处理响应。
     void ExecFunc(const TykeResponse& response);
@@ -38,6 +38,6 @@ namespace tyke::stub
     inline std::unordered_map<std::string, std::promise<TykeResponse>> uuid_future_map_;
     inline std::mutex uuid_future_map_mutex_;
 
-    inline std::unordered_map<std::string, const std::function<void(const TykeResponse&)>&> uuid_func_map_;
+    inline std::unordered_map<std::string, const std::function<void(const TykeResponse &)>&> uuid_func_map_;
     inline std::mutex uuid_func_map_mutex_;
 }

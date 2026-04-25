@@ -34,7 +34,7 @@ namespace tyke
         LOG_WARN("GetResponse timeout, msg_uuid={}, timeout={}ms", msg_uuid_, timeout_ms);
         TykeResponse timeout_response;
         timeout_response.SetMsgUuid(msg_uuid_);
-        timeout_response.SetResult(-1, "timeout");
+        timeout_response.SetResult(StatusCode::kNone, "timeout");
         return timeout_response;
     }
 }

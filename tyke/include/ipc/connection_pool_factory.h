@@ -36,4 +36,6 @@ namespace tyke
         std::mutex mutex_;
         std::unordered_map<std::string, std::shared_ptr<ConnectionPool>> pools_;
     };
+
+    ConnectionPoolFactory& GetGlobalConnectionPoolFactory();
 }

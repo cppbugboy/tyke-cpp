@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 
 #include "common/log_def.h"
+#include "component/timing_wheel.h"
 #include "core/context_factory.h"
 #include "core/data_proc.h"
 #include "core/dispatcher.h"
@@ -55,7 +56,7 @@ namespace tyke::data_handler
             {
             case MessageType::kRequest:
                 {
-                    if (const auto tyke_request_ptr = MakeRequestPtr();
+                    if (const auto tyke_request_ptr = TykeRequest::Acquire();
                         DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
                     {
                         LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
@@ -67,7 +68,7 @@ namespace tyke::data_handler
             case MessageType::kRequestAsyncFunc:
             case MessageType::kRequestAsyncFuture:
                 {
-                    if (const auto tyke_request_ptr = MakeRequestPtr();
+                    if (const auto tyke_request_ptr = TykeRequest::Acquire();
                         DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
                     {
                         LOG_DEBUG("Processing async request, route={}, msg_type={}",
@@ -80,7 +81,7 @@ namespace tyke::data_handler
             case MessageType::kResponseAsyncFunc:
             case MessageType::kResponseAsyncFuture:
                 {
-                    if (const auto tyke_response_ptr = MakeResponsePtr();
+                    if (const auto tyke_response_ptr = TykeResponse::Acquire();
                         DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used))
                     {
                         LOG_DEBUG("Processing async response, route={}, msg_uuid={}",
@@ -117,7 +118,7 @@ namespace tyke::data_handler
         LOG_DEBUG("RequestHandler: client_id={}, route={}, msg_uuid={}",
                   client_id, request.GetRoute(), request.GetMsgUuid());
 
-        const auto response_ptr = MakeResponsePtr();
+        const auto response_ptr = TykeResponse::Acquire();
         response_ptr->SetClientId(client_id)
                     .SetMessageType(MessageType::kResponse)
                     .SetModule(request.GetModule())
@@ -126,7 +127,20 @@ namespace tyke::data_handler
                     .SetAsyncUuid(request.GetAsyncUuid())
                     .SetSendDataHandler(send_data_handler);
 
-        const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(), std::chrono::milliseconds(request.GetTimeout()));
+        const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
+                                                                     std::chrono::milliseconds(request.GetTimeout()));
+        const auto timer_ctx = std::static_pointer_cast<tyke::TimerContext>(fst);
+        [[maybe_unused]] auto token = timer_ctx->RegisterCallback([response_ptr]()
+        {
+            response_ptr->SetResult(StatusCode::kTimeout, "timeout");
+            // 发送响应
+            if (auto send_result = response_ptr->Send(); !send_result)
+            {
+                LOG_ERROR("Send response failed: {}", send_result.error());
+            }
+        });
+        timer_ctx->ActivateTimer();
+
         // 分发请求到处理器
         dispatcher::DispatchRequest(request, *response_ptr, fst);
 
@@ -142,7 +156,7 @@ namespace tyke::data_handler
         LOG_DEBUG("RequestHandlerAsync: route={}, msg_uuid={}",
                   request.GetRoute(), request.GetMsgUuid());
 
-        const auto response_ptr = MakeResponsePtr();
+        const auto response_ptr = TykeResponse::Acquire();
         response_ptr->SetAsyncUuid(request.GetAsyncUuid())
                     .SetMessageType(MessageType::kResponseAsync)
                     .SetModule(request.GetModule())
@@ -161,7 +175,21 @@ namespace tyke::data_handler
         default: break;
         }
 
-        const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(), std::chrono::milliseconds(request.GetTimeout()));
+        const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
+                                                                     std::chrono::milliseconds(request.GetTimeout()));
+        const auto timer_ctx = std::static_pointer_cast<tyke::TimerContext>(fst);
+        [[maybe_unused]] auto token = timer_ctx->RegisterCallback([response_ptr]()
+        {
+            response_ptr->SetResult(StatusCode::kTimeout, "timeout");
+            // 异步发送响应
+            if (auto send_result = response_ptr->SendAsync(); !send_result)
+            {
+                LOG_ERROR("Send async response failed: {}", send_result.error());
+            }
+        });
+        timer_ctx->ActivateTimer();
+
+        std::this_thread::sleep_for(std::chrono::seconds(10));
         // 分发请求到处理器
         dispatcher::DispatchRequest(request, *response_ptr, fst);
 

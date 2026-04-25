@@ -19,8 +19,8 @@ namespace tyke
     class ResponseMetadata : public MetadataBase<ResponseMetadata>
     {
     public:
-        [[nodiscard]] int GetStatus() const;
-        ResponseMetadata& SetStatus(int status);
+        [[nodiscard]] StatusCode GetStatus() const;
+        ResponseMetadata& SetStatus(StatusCode status);
 
         [[nodiscard]] const std::string& GetReason() const;
         ResponseMetadata& SetReason(std::string_view reason);
@@ -31,7 +31,7 @@ namespace tyke
         static const std::unordered_set<std::string>& JsonKeySet();
 
     private:
-        int status_ = 0;
+        StatusCode status_ = StatusCode::kNone;
         std::string reason_;
     };
 }

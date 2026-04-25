@@ -53,4 +53,10 @@ namespace tyke
         }
         pools_.clear();
     }
+
+    ConnectionPoolFactory& GetGlobalConnectionPoolFactory()
+    {
+        static ConnectionPoolFactory instance;
+        return instance;
+    }
 }

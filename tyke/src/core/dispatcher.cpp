@@ -9,7 +9,6 @@
 
 #include <chrono>
 
-#include "common/get_singleton.h"
 #include "common/log_def.h"
 #include "core/request_router.h"
 #include "core/request_stub.h"
@@ -21,11 +20,11 @@ namespace tyke::dispatcher
     {
         LOG_DEBUG("Dispatching request: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
 
-        const auto route_entry = GetRequestRouterSingleton()->GetRouteEntry(request.GetRoute());
+        const auto route_entry = GetGlobalRequestRouter().GetRouteEntry(request.GetRoute());
         if (route_entry == nullptr)
         {
             LOG_WARN("Request route not found: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
-            response.SetResult(kHttpStatusNotFound, "Not Found");
+            response.SetResult(StatusCode::kRouteError, "Not Found");
             return;
         }
 
@@ -61,7 +60,7 @@ namespace tyke::dispatcher
     {
         LOG_DEBUG("Dispatching response: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
 
-        const auto route_entry = GetResponseRouterSingleton()->GetRouteEntry(response.GetRoute());
+        const auto route_entry = GetGlobalResponseRouter().GetRouteEntry(response.GetRoute());
         if (route_entry == nullptr)
         {
             LOG_WARN("Response dropped: no route and no stub handler found: route={}, msg_uuid={}", response.GetRoute(),

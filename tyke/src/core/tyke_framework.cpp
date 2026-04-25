@@ -7,14 +7,12 @@
 
 #include "core/tyke_framework.h"
 
-#include "common/get_singleton.h"
 #include "common/tyke_utils.h"
 #include "common/log_def.h"
 #include "component/thread_pool.h"
 #include "component/timing_wheel.h"
 #include "core/data_handler.h"
 #include "core/tyke_log.h"
-#include "ipc/ipc_server.h"
 
 namespace tyke
 {
@@ -31,7 +29,7 @@ namespace tyke
         log_level_ = log_level;
         file_size_mb_ = file_size_mb;
         file_count_ = file_count;
-        if (!GetTykeLogSingleton()->Init(log_path_, log_level_, file_size_mb_, file_count_))
+        if (!GetGlobalTykeLog().Init(log_path_, log_level_, file_size_mb_, file_count_))
         {
             fmt::print("Tyke framework initialization failed: {}", log_path_);
         }
@@ -40,9 +38,9 @@ namespace tyke
 
     BoolResult TykeFramework::Start(std::string_view listen_uuid) const
     {
-        if (!GetTykeLogSingleton()->IsInitialized())
+        if (!GetGlobalTykeLog().IsInitialized())
         {
-            if (!GetTykeLogSingleton()->Init(
+            if (!GetGlobalTykeLog().Init(
                 log_path_.empty() ? utils::GetTempDir() + "/tyke.log" : log_path_,
                 log_level_, file_size_mb_, file_count_))
             {
@@ -63,14 +61,14 @@ namespace tyke
         {
             thread_pool_count = 4;
         }
-        GetThreadPoolSingleton()->Init(thread_pool_count);
+        GetGlobalThreadPool().Init(thread_pool_count);
         LOG_DEBUG("Thread pool initialized with {} threads", thread_pool_count_);
 
         // 初始化时间轮
-        GetTimingWheelSingleton()->Init();
+        GetGlobalTimingWheel().Init();
 
         // 启动IPC服务器
-        if (auto start_result = GetIpcServerSingleton()->Start(listen_uuid, data_handler::DataCallback); !start_result)
+        if (auto start_result = GetGlobalIpcServer().Start(listen_uuid, data_handler::DataCallback); !start_result)
         {
             LOG_ERROR("IPC server start failed: {}", start_result.error());
             return nonstd::make_unexpected("ipc server start failed: " + start_result.error());
@@ -80,14 +78,14 @@ namespace tyke
         return true;
     }
 
-    std::shared_ptr<RequestRouter> TykeFramework::GetRequestRouter()
+    RequestRouter& TykeFramework::GetRequestRouter()
     {
-        return GetRequestRouterSingleton();
+        return GetGlobalRequestRouter();
     }
 
-    std::shared_ptr<ResponseRouter> TykeFramework::GetResponseRouter()
+    ResponseRouter& TykeFramework::GetResponseRouter()
     {
-        return GetResponseRouterSingleton();
+        return GetGlobalResponseRouter();
     }
 
     TykeFramework::TykeFramework()
@@ -103,9 +101,10 @@ namespace tyke
     {
         LOG_INFO("Tyke framework shutting down");
 
-        GetIpcServerSingleton()->Stop();
-        GetThreadPoolSingleton()->Stop();
-        GetTykeLogSingleton()->Stop();
+        GetGlobalIpcServer().Stop();
+        GetGlobalTimingWheel().Stop();
+        GetGlobalThreadPool().Stop();
+        GetGlobalTykeLog().Stop();
     }
 
     TykeFramework* App()

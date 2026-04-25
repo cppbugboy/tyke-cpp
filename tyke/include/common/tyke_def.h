@@ -26,8 +26,21 @@ namespace tyke
     constexpr uint32_t kAesGcmTagLen = 16;
     constexpr uint32_t kAes256KeyLen = 32;
     constexpr uint32_t kDefaultStubTimeoutMs = 30000;
-    constexpr int kHttpStatusNotFound = 404;
-    constexpr int kHttpStatusTimeout = 408;
+
+    enum class StatusCode
+    {
+        kNone = 0,
+        kSuccess, // 成功
+        kFailure, // 失败
+        kTimeout, // 超时
+        kMetadataError, // 元数据错误
+        kContentError, // 内容错误
+        kRouteError, // 路由错误
+        kModuleError, // 模块不支持
+        kInternalError, // 内部错误
+        kUnavailable, // 服务不可用
+        kUnknownError, // 未知错误
+    };
 
     /**
      * @brief 协议魔数，用于标识合法的Tyke协议数据包

@@ -37,10 +37,10 @@ namespace tyke
         void Shutdown();
 
 
-        static std::shared_ptr<RequestRouter> GetRequestRouter();
+        static RequestRouter& GetRequestRouter();
 
 
-        static std::shared_ptr<ResponseRouter> GetResponseRouter();
+        static ResponseRouter& GetResponseRouter();
 
     private:
         uint32_t thread_pool_count_ = 0;

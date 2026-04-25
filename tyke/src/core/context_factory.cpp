@@ -49,15 +49,17 @@ namespace tyke::context
         CancelContext* raw = cancel_pool_.Acquire();
 
         // 使用自定义删除器：归还对象池
-        auto ctx = std::shared_ptr<CancelContext>(raw, [](CancelContext* p) {
+        auto ctx = std::shared_ptr<CancelContext>(raw, [](CancelContext* p)
+        {
             ContextFactory::ReleaseCancel(p);
         });
 
         ctx->Init(parent);
 
         std::weak_ptr<CancelContext> weak_ctx = ctx;
-        auto cancel_func = [weak_ctx]() {
-            if (auto s = weak_ctx.lock())
+        auto cancel_func = [weak_ctx]()
+        {
+            if (const auto s = weak_ctx.lock())
             {
                 s->Cancel(ContextError::kCanceled);
             }
@@ -71,15 +73,17 @@ namespace tyke::context
     {
         TimerContext* raw = timer_pool_.Acquire();
 
-        auto ctx = std::shared_ptr<TimerContext>(raw, [](TimerContext* p) {
+        auto ctx = std::shared_ptr<TimerContext>(raw, [](TimerContext* p)
+        {
             ContextFactory::ReleaseTimer(p);
         });
 
         ctx->Init(parent, deadline);
 
         std::weak_ptr<TimerContext> weak_ctx = ctx;
-        auto cancel_func = [weak_ctx]() {
-            if (auto s = weak_ctx.lock())
+        auto cancel_func = [weak_ctx]()
+        {
+            if (const auto s = weak_ctx.lock())
             {
                 s->Cancel(ContextError::kCanceled);
             }
@@ -92,12 +96,12 @@ namespace tyke::context
     {
         ValueContext* raw = value_pool_.Acquire();
 
-        auto ctx = std::shared_ptr<ValueContext>(raw, [](ValueContext* p) {
+        auto ctx = std::shared_ptr<ValueContext>(raw, [](ValueContext* p)
+        {
             ContextFactory::ReleaseValue(p);
         });
 
         ctx->Set(parent, key, std::move(value));
         return ctx;
     }
-
 }

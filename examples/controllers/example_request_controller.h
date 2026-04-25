@@ -14,11 +14,16 @@
 namespace controller::request::examples
 {
     void RegisterMethod();
-    void HandleUserLogin(const tyke::TykeRequest& request, tyke::TykeResponse& response, const tyke::ContextPtr& context_ptr);
-    void HandleUserLogout(const tyke::TykeRequest& request, tyke::TykeResponse& response, const tyke::ContextPtr& context_ptr);
-    void HandleDataQuery(const tyke::TykeRequest& request, tyke::TykeResponse& response, const tyke::ContextPtr& context_ptr);
-    void HandleDataUpdate(const tyke::TykeRequest& request, tyke::TykeResponse& response, const tyke::ContextPtr& context_ptr);
-    void HandleAsyncProcess(const tyke::TykeRequest& request, tyke::TykeResponse& response, const tyke::ContextPtr& context_ptr);
+    void HandleUserLogin(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+                         const tyke::ContextPtr& context_ptr);
+    void HandleUserLogout(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+                          const tyke::ContextPtr& context_ptr);
+    void HandleDataQuery(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+                         const tyke::ContextPtr& context_ptr);
+    void HandleDataUpdate(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+                          const tyke::ContextPtr& context_ptr);
+    void HandleAsyncProcess(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+                            const tyke::ContextPtr& context_ptr);
 }
 
 // class ExampleRequestController : public tyke::RequestController, public tyke::Singleton<ExampleRequestController>

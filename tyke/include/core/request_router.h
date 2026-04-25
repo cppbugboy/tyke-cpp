@@ -23,4 +23,10 @@ namespace tyke
 
         ~RequestRouter() = default;
     };
+
+    inline RequestRouter& GetGlobalRequestRouter()
+    {
+        static RequestRouter instance;
+        return instance;
+    }
 }

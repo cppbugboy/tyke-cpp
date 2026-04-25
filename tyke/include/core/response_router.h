@@ -23,5 +23,11 @@ namespace tyke
 
         ~ResponseRouter() = default;
     };
+
+    inline ResponseRouter& GetGlobalResponseRouter()
+    {
+        static ResponseRouter instance;
+        return instance;
+    }
 }
 

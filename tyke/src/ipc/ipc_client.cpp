@@ -7,7 +7,6 @@
 
 #include "ipc/ipc_client.h"
 
-#include "common/get_singleton.h"
 #include "ipc/ipc_internal_platform.h"
 #include "ipc/connection_pool_factory.h"
 #include "common/log_def.h"
@@ -76,7 +75,7 @@ namespace tyke
     {
         LOG_DEBUG("IpcClient::Send: server_name={}, request_size={} bytes", server_name, request.size());
 
-        const auto pool = GetConnectionPoolFactorySingleton()->GetPool(std::string(server_name));
+        const auto pool = GetGlobalConnectionPoolFactory().GetPool(std::string(server_name));
         auto conn_result = pool->Acquire();
         if (!conn_result)
         {
@@ -84,7 +83,7 @@ namespace tyke
             return nonstd::make_unexpected("send: " + conn_result.error());
         }
 
-        IpcConnection * conn = conn_result.value();
+        IpcConnection* conn = conn_result.value();
         bool should_reconnect = false;
 
         if (auto write_result = conn->WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
@@ -113,7 +112,7 @@ namespace tyke
     {
         LOG_DEBUG("IpcClient::SendAsync: server_name={}, request_size={} bytes", server_name, request.size());
 
-        const auto pool = GetConnectionPoolFactorySingleton()->GetPool(std::string(server_name));
+        const auto pool = GetGlobalConnectionPoolFactory().GetPool(std::string(server_name));
         auto conn_result = pool->Acquire();
         if (!conn_result)
         {
@@ -121,7 +120,7 @@ namespace tyke
             return nonstd::make_unexpected("send async: " + conn_result.error());
         }
 
-        IpcConnection * conn = conn_result.value();
+        IpcConnection* conn = conn_result.value();
         bool should_reconnect = false;
 
         if (auto write_result = conn->WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)

@@ -38,4 +38,10 @@ namespace tyke
     private:
         std::shared_ptr<spdlog::logger> tyke_logger_;
     };
+
+    inline TykeLog& GetGlobalTykeLog()
+    {
+        static TykeLog instance;
+        return instance;
+    }
 }

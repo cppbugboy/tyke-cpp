@@ -1,5 +1,4 @@
 #ifdef _WIN32
-#include "common/get_singleton.h"
 #include "ipc/ipc_internal_platform.h"
 #include "ipc/ipc_crypto.h"
 #include "common/log_def.h"
@@ -478,7 +477,7 @@ namespace tyke
                     auto client_id = reinterpret_cast<ClientId>(ctx->pipe);
                     auto callback = callback_;
 
-                    auto enqueue_result = GetThreadPoolSingleton()->Enqueue([callback, client_id, data_copy, this]()
+                    auto enqueue_result = GetGlobalThreadPool().Enqueue([callback, client_id, data_copy, this]()
                     {
                         auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                         {

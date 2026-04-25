@@ -52,7 +52,7 @@ namespace tyke::stub
         }
     }
 
-    void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse&)>& func)
+    void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func)
     {
         std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
         uuid_func_map_.emplace(msg_uuid, func);
@@ -61,7 +61,7 @@ namespace tyke::stub
 
     void ExecFunc(const TykeResponse& response)
     {
-        std::function<void(const TykeResponse&)> extracted_func;
+        std::function < void(const TykeResponse &) > extracted_func;
         bool found = false;
         {
             std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);

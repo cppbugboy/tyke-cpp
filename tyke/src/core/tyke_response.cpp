@@ -15,26 +15,8 @@ namespace tyke
         metadata_ = ResponseMetadata{};
         content_.clear();
         is_send_ = false;
-        client_id_ = ClientId{};
+        client_id_ = {};
         send_data_handler_ = nullptr;
-    }
-
-    TykeResponse* TykeResponse::Acquire()
-    {
-        LOG_DEBUG("Acquiring response object from pool");
-        auto* resp = pool_.Acquire();
-        resp->Reset();
-        return resp;
-    }
-
-    void TykeResponse::Release(TykeResponse* resp)
-    {
-        if (resp)
-        {
-            LOG_DEBUG("Releasing response object to pool, msg_uuid={}", resp->GetMsgUuid());
-            resp->Reset();
-            pool_.Release(resp);
-        }
     }
 
     const char* TykeResponse::GetMagic() const
@@ -94,13 +76,15 @@ namespace tyke
         return *this;
     }
 
-    void TykeResponse::GetContent(std::string& content_type, std::vector<uint8_t>& content) const
+    void TykeResponse::GetContent(std::string& content_type,
+                                  std::vector<uint8_t>& content) const
     {
         content_type = metadata_.GetContentType();
         content = content_;
     }
 
-    std::optional<bool> TykeResponse::AddMetadata(const std::string_view key, const JsonValue& value)
+    std::optional<bool> TykeResponse::AddMetadata(const std::string_view key,
+                                                  const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);
     }
@@ -110,13 +94,14 @@ namespace tyke
         return metadata_.GetMetadata(key);
     }
 
-    TykeResponse& TykeResponse::SetResult(const int status, const std::string_view reason)
+    TykeResponse& TykeResponse::SetResult(const StatusCode status,
+                                          const std::string_view reason)
     {
         metadata_.SetStatus(status).SetReason(reason);
         return *this;
     }
 
-    void TykeResponse::GetResult(int& status, std::string& reason) const
+    void TykeResponse::GetResult(StatusCode& status, std::string& reason) const
     {
         status = metadata_.GetStatus();
         reason = metadata_.GetReason();
@@ -163,8 +148,8 @@ namespace tyke
 
     BoolResult TykeResponse::SendAsync()
     {
-        LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}", GetRoute(), GetMsgUuid(),
-                  metadata_.GetAsyncUuid());
+        LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}",
+                  GetRoute(), GetMsgUuid(), metadata_.GetAsyncUuid());
 
         if (is_send_)
         {
@@ -184,7 +169,8 @@ namespace tyke
             return nonstd::make_unexpected("encode response failed");
         }
 
-        if (auto send_result = IpcClient::SendAsync(metadata_.GetAsyncUuid(), data_vec); !send_result)
+        if (auto send_result = IpcClient::SendAsync(metadata_.GetAsyncUuid(), data_vec);
+            !send_result)
         {
             LOG_ERROR("Send async failed: {}", send_result.error());
             return nonstd::make_unexpected("send async failed: " + send_result.error());
@@ -217,4 +203,4 @@ namespace tyke
         client_id_ = client_id;
         return *this;
     }
-} // tyke
+} // namespace tyke

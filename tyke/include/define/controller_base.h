@@ -19,6 +19,7 @@ namespace tyke
     {
     public:
         ControllerAutoRegister() = default;
+
         explicit ControllerAutoRegister(void (*RegisterMethod)())
         {
             if (RegisterMethod)

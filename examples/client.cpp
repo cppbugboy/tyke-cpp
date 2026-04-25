@@ -70,14 +70,14 @@ void PrintSyncResponse(const tyke::TykeResponse& response)
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
 
-    int status = 0;
+    auto status = tyke::StatusCode::kNone;
     std::string reason;
     response.GetResult(status, reason);
 
     fmt::print("----------------------------------------\n");
     fmt::print("[{:%Y-%m-%d %H:%M:%S}] 收到同步响应\n", *std::localtime(&time_t));
     fmt::print("----------------------------------------\n");
-    fmt::print("状态码: {}\n", status);
+    fmt::print("状态码: {}\n", (int)status);
     fmt::print("原因: {}\n", reason);
 
     std::string content_type;
@@ -104,7 +104,7 @@ void PrintAsyncResponse(const tyke::TykeResponse& response, const std::string& m
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
 
-    int status = 0;
+    auto status = tyke::StatusCode::kNone;
     std::string reason;
     response.GetResult(status, reason);
 
@@ -112,7 +112,7 @@ void PrintAsyncResponse(const tyke::TykeResponse& response, const std::string& m
     fmt::print("[{:%Y-%m-%d %H:%M:%S}] 收到异步响应 ({})\n", *std::localtime(&time_t), method_name);
     fmt::print("----------------------------------------\n");
     fmt::print("消息UUID: {}\n", response.GetMsgUuid());
-    fmt::print("状态码: {}\n", status);
+    fmt::print("状态码: {}\n", (int)status);
     fmt::print("原因: {}\n", reason);
     fmt::print("模块: {}\n", response.GetModule());
     fmt::print("路由: {}\n", response.GetRoute());
@@ -140,7 +140,7 @@ void DemoSyncRequest()
 {
     fmt::print("\n>>> 1. 同步请求示例 (Send)\n");
 
-    auto* request = tyke::TykeRequest::Acquire();
+    auto request = tyke::TykeRequest::Acquire();
     request->SetModule("user_service");
     request->SetRoute("/api/user/login");
 
@@ -167,15 +167,13 @@ void DemoSyncRequest()
     {
         fmt::print("同步请求失败: {}\n", result.error());
     }
-
-    tyke::TykeRequest::Release(request);
 }
 
 void DemoSendAsync()
 {
     fmt::print("\n>>> 2. 异步请求示例 - SendAsync (即发即弃)\n");
 
-    auto* request = tyke::TykeRequest::Acquire();
+    auto request = tyke::TykeRequest::Acquire();
     request->SetModule("data_service");
     request->SetRoute("/api/async/process");
     request->SetAsyncUuid(kClientListenerUuid);
@@ -199,15 +197,13 @@ void DemoSendAsync()
     {
         fmt::print("异步请求失败: {}\n", result.error());
     }
-
-    tyke::TykeRequest::Release(request);
 }
 
 void DemoSendAsyncWithFunc()
 {
     fmt::print("\n>>> 3. 异步请求示例 - SendAsyncWithFunc (回调函数)\n");
 
-    auto* request = tyke::TykeRequest::Acquire();
+    auto request = tyke::TykeRequest::Acquire();
     request->SetModule("data_service");
     request->SetRoute("/api/async/process");
     request->SetAsyncUuid(kClientListenerUuid);
@@ -235,15 +231,13 @@ void DemoSendAsyncWithFunc()
     {
         fmt::print("异步请求失败: {}\n", result.error());
     }
-
-    tyke::TykeRequest::Release(request);
 }
 
 void DemoSendAsyncWithFuture()
 {
     fmt::print("\n>>> 4. 异步请求示例 - SendAsyncWithFuture (Future/Promise)\n");
 
-    auto* request = tyke::TykeRequest::Acquire();
+    auto request = tyke::TykeRequest::Acquire();
     request->SetModule("data_service");
     request->SetRoute("/api/async/process");
     request->SetAsyncUuid(kClientListenerUuid);
@@ -269,8 +263,6 @@ void DemoSendAsyncWithFuture()
     {
         fmt::print("异步请求失败: {}\n", future_result.error());
     }
-
-    tyke::TykeRequest::Release(request);
 }
 
 int main()

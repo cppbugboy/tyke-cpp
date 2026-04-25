@@ -42,4 +42,23 @@ if (MSVC)
     # 即使使用预编译库，在 Windows 上也建议开启强制覆盖
     target_link_options(tyke_server_example PRIVATE "/FORCE:MULTIPLE" "/INCLUDE:mi_version")
     target_link_options(tyke_client_example PRIVATE "/FORCE:MULTIPLE" "/INCLUDE:mi_version")
+
+    # ---------- 需要复制的 DLL 文件列表 ----------
+    set(WIN_DLL_FILES
+            mimalloc-secure.dll
+            mimalloc-redirect.dll
+            libcrypto-3-x64.dll
+    )
+
+    # ---------- 为每个可执行目标复制所有 DLL ----------
+    foreach(exe IN ITEMS tyke_server_example tyke_client_example)
+        foreach(dll IN LISTS WIN_DLL_FILES)
+            add_custom_command(TARGET ${exe} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${THIRD_PARTY_LIB_DIR}/${dll}"
+                    $<TARGET_FILE_DIR:${exe}>
+                    COMMENT "Copying ${dll} to ${exe} output dir"
+            )
+        endforeach()
+    endforeach()
 endif ()

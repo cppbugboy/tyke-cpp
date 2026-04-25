@@ -9,12 +9,12 @@
 
 namespace tyke
 {
-    int ResponseMetadata::GetStatus() const
+    StatusCode ResponseMetadata::GetStatus() const
     {
         return status_;
     }
 
-    ResponseMetadata& ResponseMetadata::SetStatus(int status)
+    ResponseMetadata& ResponseMetadata::SetStatus(StatusCode status)
     {
         status_ = status;
         return *this;
@@ -54,7 +54,7 @@ namespace tyke
         t.route_ = j.value("route", std::string{});
         t.content_type_ = j.value("content_type", std::string{});
         t.timestamp_ = j.value("timestamp", std::string{});
-        t.status_ = j.value("status", 0);
+        t.status_ = j.value("status", StatusCode::kNone);
         t.reason_ = j.value("reason", std::string{});
         t.timeout_ = j.value("timeout", uint64_t{});
     }
