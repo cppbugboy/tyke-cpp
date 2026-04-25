@@ -108,7 +108,7 @@ void CancelContext::Cancel(const ContextError err) const
 CancelToken CancelContext::RegisterCallback(std::function<void()> cb) const
 {
     std::lock_guard<std::mutex> lock(state_->mu);
-    CancelToken                 token = state_->next_token++;
+    CancelToken                 token = state_->next_token.fetch_add(1, std::memory_order_relaxed);
     state_->callbacks.emplace(token, std::move(cb));
     return token;
 }
@@ -138,17 +138,16 @@ void TimerContext::Init(ContextPtr parent, const std::chrono::system_clock::time
         }
     }
     deadline_        = effective_deadline;
-    timer_activated_ = false;
-    timer_id_        = 0;
+    timer_activated_.store(false, std::memory_order_relaxed);
+    timer_id_.store(0, std::memory_order_relaxed);
 }
 
 void TimerContext::ActivateTimer()
 {
     // 防止重复激活
-    if (timer_activated_)
+    if (timer_activated_.load(std::memory_order_acquire))
         return;
 
-    // 若上下文已经结束（父上下文取消或自己取消了），不再注册
     if (IsDone())
         return;
 
@@ -158,7 +157,7 @@ void TimerContext::ActivateTimer()
     const auto steady_deadline = steady_now + (deadline_ - sys_now);
 
     // 向全局时间轮注册到期回调
-    timer_id_ = GetGlobalTimingWheel().AddTaskAt(
+    timer_id_.store(GetGlobalTimingWheel().AddTaskAt(
             steady_deadline,
             [weak = std::weak_ptr<TimerContext>(std::static_pointer_cast<TimerContext>(shared_from_this()))]()
             {
@@ -166,20 +165,19 @@ void TimerContext::ActivateTimer()
                 {
                     ctx->Cancel(ContextError::kDeadlineExceeded);
                 }
-            });
+            }), std::memory_order_release);
 
-    timer_activated_ = true;
+    timer_activated_.store(true, std::memory_order_release);
 }
 
 void TimerContext::Reset()
 {
-    // 取消已注册的时间轮任务
-    if (timer_id_ != 0)
+    if (const auto id = timer_id_.load(std::memory_order_acquire); id != 0)
     {
-        GetGlobalTimingWheel().CancelTask(timer_id_);
-        timer_id_ = 0;
+        GetGlobalTimingWheel().CancelTask(id);
+        timer_id_.store(0, std::memory_order_release);
     }
-    timer_activated_ = false;
+    timer_activated_.store(false, std::memory_order_release);
     deadline_        = {};
     CancelContext::Reset();
 }

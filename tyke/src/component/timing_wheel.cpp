@@ -7,7 +7,7 @@ namespace tyke
 bool TimingWheel::Init(uint32_t base_tick_ms, const std::vector<uint32_t> &slots_per_level)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (initialized_)
+    if (initialized_.load(std::memory_order_acquire))
         return false;
     if (base_tick_ms == 0 || slots_per_level.empty())
         return false;
@@ -30,7 +30,7 @@ bool TimingWheel::Init(uint32_t base_tick_ms, const std::vector<uint32_t> &slots
 
     last_tick_time_ = std::chrono::steady_clock::now();
     stop_.store(false, std::memory_order_release);
-    initialized_   = true;
+    initialized_.store(true, std::memory_order_release);
     worker_thread_ = std::thread(&TimingWheel::WorkerLoop, this);
     return true;
 }
@@ -40,7 +40,7 @@ TimerId TimingWheel::AddTask(uint32_t delay_ms, std::function<void()> cb)
     if (!cb)
         return kInvalidTimerId;
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!initialized_ || stop_.load(std::memory_order_acquire))
+    if (!initialized_.load(std::memory_order_acquire) || stop_.load(std::memory_order_acquire))
         return kInvalidTimerId;
     auto expire = std::chrono::steady_clock::now() + std::chrono::milliseconds(delay_ms);
     return InsertNewTask(expire, 0, false, std::move(cb));
@@ -51,7 +51,7 @@ TimerId TimingWheel::AddTaskAt(TimePoint deadline, std::function<void()> cb)
     if (!cb)
         return kInvalidTimerId;
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!initialized_ || stop_.load(std::memory_order_acquire))
+    if (!initialized_.load(std::memory_order_acquire) || stop_.load(std::memory_order_acquire))
         return kInvalidTimerId;
     return InsertNewTask(deadline, 0, false, std::move(cb));
 }
@@ -61,7 +61,7 @@ TimerId TimingWheel::AddRepeatedTask(uint32_t initial_delay_ms, uint32_t interva
     if (!cb || interval_ms == 0)
         return kInvalidTimerId;
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!initialized_ || stop_.load(std::memory_order_acquire))
+    if (!initialized_.load(std::memory_order_acquire) || stop_.load(std::memory_order_acquire))
         return kInvalidTimerId;
     auto expire = std::chrono::steady_clock::now() + std::chrono::milliseconds(initial_delay_ms);
     return InsertNewTask(expire, interval_ms, true, std::move(cb));
@@ -110,7 +110,7 @@ void TimingWheel::Stop()
         if (stop_.load(std::memory_order_acquire))
             return;
         stop_.store(true, std::memory_order_release);
-        initialized_ = false;
+        initialized_.store(false, std::memory_order_release);
         cv_.notify_all();
     }
     if (worker_thread_.joinable())
@@ -122,7 +122,7 @@ void TimingWheel::Stop()
 }
 
 bool TimingWheel::IsRunning() const
-{ return initialized_ && !stop_.load(std::memory_order_acquire); }
+{ return initialized_.load(std::memory_order_acquire) && !stop_.load(std::memory_order_acquire); }
 
 uint64_t TimingWheel::GetMaxCapacityMs() const
 {
@@ -255,23 +255,17 @@ void TimingWheel::WorkerLoop()
             {
                 if (!task->cancelled && task->callback)
                 {
-                    /**
-                         * TODO: 将到期回调提交至全局线程池执行，避免阻塞时间轮驱动线程。
-                         * 示例：
-                         *   auto& pool = GetGlobalThreadPool();
-                         *   pool.Enqueue([cb = task->callback]() { cb(); });
-                         *
-                         * 注意：如果回调执行过程中可能修改时间轮状态，需要确保线程安全，
-                         * 回调内部适当加锁或通过消息队列异步解耦。
-                         */
-                    try
+                    auto cb = task->callback;
+                    GetGlobalThreadPool().Enqueue([cb = std::move(cb)]()
                     {
-                        task->callback();
-                    }
-                    catch (...)
-                    {
-                        // 记录异常，避免影响时间轮
-                    }
+                        try
+                        {
+                            cb();
+                        }
+                        catch (...)
+                        {
+                        }
+                    });
                 }
                 if (task->is_repeating && !task->cancelled)
                 {

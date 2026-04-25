@@ -1,5 +1,6 @@
 #ifdef _WIN32
 #include "common/log_def.h"
+#include "common/tyke_utils.h"
 #include "component/thread_pool.h"
 #include "ipc/ipc_crypto.h"
 #include "ipc/ipc_internal_platform.h"
@@ -26,6 +27,8 @@ public:
     BoolResult Connect(std::string_view server_name, const uint32_t timeout_ms, uint32_t) override
     {
         LOG_INFO("ipc client connecting to: {}", server_name);
+        if (!utils::IsValidServerName(server_name))
+            return nonstd::make_unexpected("invalid server name");
         if (!event_)
             return nonstd::make_unexpected("event handle is null");
         const std::string name = std::string(R"(\\.\pipe\)") + std::string(server_name);
@@ -240,7 +243,7 @@ class ServerImplWin : public IServerImpl
         std::vector<uint8_t>    raw_recv_buf;
         std::vector<uint8_t>    pending_writes;
         bool                    connected;
-        bool                    writing;
+        std::atomic<bool>         writing{false};
         std::mutex              write_mutex;
         uint8_t                 raw_read_buf[4096];
 
@@ -270,6 +273,8 @@ public:
     BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) override
     {
         LOG_INFO("ipc server starting on: {}", server_name);
+        if (!utils::IsValidServerName(server_name))
+            return nonstd::make_unexpected("invalid server name");
         if (running_.load())
             return nonstd::make_unexpected("server already running");
         callback_    = std::move(callback);
@@ -519,13 +524,15 @@ private:
 
     void CloseClient(const std::shared_ptr<ClientContext> &ctx)
     {
-        HANDLE pipe = ctx->pipe;
-        CancelIoEx(pipe, &ctx->read_ov);
-        CancelIoEx(pipe, &ctx->write_ov);
-        DisconnectNamedPipe(pipe);
-        CloseHandle(pipe);
         std::lock_guard<std::mutex> lock(mutex_);
-        clients_.erase(reinterpret_cast<ClientId>(pipe));
+        const auto it = clients_.find(reinterpret_cast<ClientId>(ctx->pipe));
+        if (it == clients_.end())
+            return;
+        clients_.erase(it);
+        CancelIoEx(ctx->pipe, &ctx->read_ov);
+        CancelIoEx(ctx->pipe, &ctx->write_ov);
+        DisconnectNamedPipe(ctx->pipe);
+        CloseHandle(ctx->pipe);
     }
 
     void CloseClient(const ClientId client_id)

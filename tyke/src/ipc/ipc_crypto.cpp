@@ -3,6 +3,7 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
+#include <openssl/kdf.h>
 
 #include "common/log_def.h"
 #include "common/tyke_def.h"
@@ -63,6 +64,11 @@ BoolResult FrameParser::ExtractFrame(std::vector<uint8_t> &buffer, uint8_t &type
         return nonstd::make_unexpected("buffer too small for frame header");
 
     const uint32_t total_len = DecodeU32(buffer.data());
+    if (total_len > kMaxFramePayloadLen)
+    {
+        LOG_ERROR("Frame payload too large: {} > {}", total_len, kMaxFramePayloadLen);
+        return nonstd::make_unexpected("frame payload too large");
+    }
     if (buffer.size() < 4 + total_len)
         return nonstd::make_unexpected("buffer incomplete: expected " + std::to_string(4 + total_len) + " bytes, got " +
                                        std::to_string(buffer.size()));
@@ -84,7 +90,7 @@ EcdhKeyExchange::EcdhKeyExchange() : impl_(new Impl())
 
 EcdhKeyExchange::~EcdhKeyExchange() = default;
 
-BoolResult EcdhKeyExchange::GenerateKey() const
+BoolResult EcdhKeyExchange::GenerateKey()
 {
     impl_->pkey.reset();
 
@@ -131,6 +137,8 @@ ByteVecResult EcdhKeyExchange::ComputeSharedSecret(const std::vector<uint8_t> &p
     }
 
     const uint8_t   *ptr = peer_pub_der.data();
+    if (peer_pub_der.size() > static_cast<size_t>(LONG_MAX))
+        return nonstd::make_unexpected("peer public key DER too large");
     const EvpPkeyPtr peer_pkey(d2i_PUBKEY(nullptr, &ptr, static_cast<long>(peer_pub_der.size())));
     if (!peer_pkey)
     {
@@ -171,8 +179,17 @@ ByteVecResult EcdhKeyExchange::ComputeSharedSecret(const std::vector<uint8_t> &p
 
 struct AesGcmCipher::Impl
 {
-    std::vector<uint8_t> aes_key;
-    bool                 initialized = false;
+    std::vector<uint8_t>    aes_key;
+    std::atomic<bool>       initialized{false};
+    std::atomic<uint64_t>   iv_counter{0};
+
+    ~Impl()
+    {
+        if (!aes_key.empty())
+        {
+            OPENSSL_cleanse(aes_key.data(), aes_key.size());
+        }
+    }
 };
 
 AesGcmCipher::AesGcmCipher() : impl_(new Impl())
@@ -191,33 +208,85 @@ BoolResult AesGcmCipher::Init(const std::vector<uint8_t> &shared_secret) const
     }
 
     impl_->aes_key.resize(kAes256KeyLen);
-    if (!EVP_Q_digest(nullptr, "SHA256", nullptr, shared_secret.data(), shared_secret.size(), impl_->aes_key.data(),
-                      nullptr))
+
+    const EvpPkeyCtxPtr pctx(EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+    if (!pctx)
     {
-        LOG_ERROR("SHA256 digest failed");
-        return nonstd::make_unexpected("SHA256 digest failed");
+        LOG_ERROR("Failed to create HKDF context");
+        return nonstd::make_unexpected("failed to create HKDF context");
     }
 
-    impl_->initialized = true;
-    LOG_DEBUG("AES-GCM cipher initialized");
+    if (EVP_PKEY_derive_init(pctx.get()) <= 0)
+    {
+        LOG_ERROR("HKDF derive init failed");
+        return nonstd::make_unexpected("HKDF derive init failed");
+    }
+
+    if (EVP_PKEY_CTX_set_hkdf_md(pctx.get(), EVP_sha256()) <= 0)
+    {
+        LOG_ERROR("HKDF set md failed");
+        return nonstd::make_unexpected("HKDF set md failed");
+    }
+
+    if (EVP_PKEY_CTX_set1_hkdf_salt(pctx.get(), reinterpret_cast<const unsigned char *>("tyke-hkdf-salt"), 14) <= 0)
+    {
+        LOG_ERROR("HKDF set salt failed");
+        return nonstd::make_unexpected("HKDF set salt failed");
+    }
+
+    if (EVP_PKEY_CTX_set1_hkdf_key(pctx.get(), shared_secret.data(), static_cast<int>(shared_secret.size())) <= 0)
+    {
+        LOG_ERROR("HKDF set key failed");
+        return nonstd::make_unexpected("HKDF set key failed");
+    }
+
+    if (EVP_PKEY_CTX_add1_hkdf_info(pctx.get(), reinterpret_cast<const unsigned char *>("tyke-aes256-key"), 14) <= 0)
+    {
+        LOG_ERROR("HKDF set info failed");
+        return nonstd::make_unexpected("HKDF set info failed");
+    }
+
+    size_t key_len = kAes256KeyLen;
+    if (EVP_PKEY_derive(pctx.get(), impl_->aes_key.data(), &key_len) <= 0)
+    {
+        LOG_ERROR("HKDF derive failed");
+        return nonstd::make_unexpected("HKDF derive failed");
+    }
+
+    impl_->initialized.store(true, std::memory_order_release);
+    LOG_DEBUG("AES-GCM cipher initialized with HKDF");
     return true;
 }
 
 bool AesGcmCipher::IsInitialized() const
-{ return impl_->initialized; }
+{ return impl_->initialized.load(std::memory_order_acquire); }
 
 ByteVecResult AesGcmCipher::Encrypt(const std::vector<uint8_t> &plaintext) const
 {
-    if (!impl_->initialized)
+    if (!impl_->initialized.load(std::memory_order_acquire))
     {
         return nonstd::make_unexpected("cipher not initialized");
     }
 
-    std::vector<uint8_t> iv(kAesGcmIvLen);
-    if (RAND_bytes(iv.data(), static_cast<int>(iv.size())) != 1)
+    if (plaintext.size() > static_cast<size_t>(INT_MAX))
     {
-        LOG_ERROR("RAND_bytes for IV failed");
-        return nonstd::make_unexpected("RAND_bytes for IV failed");
+        return nonstd::make_unexpected("plaintext too large for single encryption");
+    }
+
+    std::vector<uint8_t> iv(kAesGcmIvLen, 0);
+    const uint64_t counter = impl_->iv_counter.fetch_add(1, std::memory_order_relaxed);
+    iv[4] = static_cast<uint8_t>((counter >> 56) & 0xFF);
+    iv[5] = static_cast<uint8_t>((counter >> 48) & 0xFF);
+    iv[6] = static_cast<uint8_t>((counter >> 40) & 0xFF);
+    iv[7] = static_cast<uint8_t>((counter >> 32) & 0xFF);
+    iv[8] = static_cast<uint8_t>((counter >> 24) & 0xFF);
+    iv[9] = static_cast<uint8_t>((counter >> 16) & 0xFF);
+    iv[10] = static_cast<uint8_t>((counter >> 8) & 0xFF);
+    iv[11] = static_cast<uint8_t>(counter & 0xFF);
+    if (RAND_bytes(iv.data(), 4) != 1)
+    {
+        LOG_ERROR("RAND_bytes for IV prefix failed");
+        return nonstd::make_unexpected("RAND_bytes for IV prefix failed");
     }
 
     const EvpCipherCtxPtr ctx(EVP_CIPHER_CTX_new());
@@ -268,7 +337,7 @@ ByteVecResult AesGcmCipher::Encrypt(const std::vector<uint8_t> &plaintext) const
 
 ByteVecResult AesGcmCipher::Decrypt(const std::vector<uint8_t> &ciphertext) const
 {
-    if (!impl_->initialized)
+    if (!impl_->initialized.load(std::memory_order_acquire))
     {
         return nonstd::make_unexpected("cipher not initialized");
     }
@@ -278,9 +347,14 @@ ByteVecResult AesGcmCipher::Decrypt(const std::vector<uint8_t> &ciphertext) cons
         return nonstd::make_unexpected("ciphertext too short");
     }
 
+    const size_t enc_len = ciphertext.size() - kAesGcmIvLen - kAesGcmTagLen;
+    if (enc_len > static_cast<size_t>(INT_MAX))
+    {
+        return nonstd::make_unexpected("ciphertext too large for single decryption");
+    }
+
     const uint8_t *iv       = ciphertext.data();
     const uint8_t *enc_data = ciphertext.data() + kAesGcmIvLen;
-    const size_t   enc_len  = ciphertext.size() - kAesGcmIvLen - kAesGcmTagLen;
     const uint8_t *tag      = ciphertext.data() + ciphertext.size() - kAesGcmTagLen;
 
     const EvpCipherCtxPtr ctx(EVP_CIPHER_CTX_new());

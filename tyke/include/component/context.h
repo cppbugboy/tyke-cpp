@@ -48,7 +48,7 @@ struct CancelState
     mutable std::condition_variable                        cv;
     std::atomic<bool>                                      atomic_done{false};
     ContextError                                           err{ContextError::kNone};
-    CancelToken                                            next_token{1};
+    std::atomic<CancelToken>                               next_token{1};
     std::unordered_map<CancelToken, std::function<void()>> callbacks;
 
     void Reset()
@@ -185,9 +185,8 @@ public:
 
 private:
     std::chrono::system_clock::time_point deadline_;
-    /** TODO: 保存时间轮任务的 ID，用于 Reset 时取消任务。 */
-    uint64_t timer_id_        = 0;    ///< 时间轮任务 ID，0 表示未注册
-    bool     timer_activated_ = false;///< 标记是否已调用 ActivateTimer()
+    std::atomic<uint64_t> timer_id_{0};
+    std::atomic<bool>     timer_activated_{false};
 };
 
 // ============================================================================

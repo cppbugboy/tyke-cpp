@@ -69,8 +69,8 @@ public:
     { return base_tick_ms_; }
     uint64_t GetMaxCapacityMs() const;
 
-private:
     static constexpr TimerId kInvalidTimerId = 0;
+private:
 
     TimerId InsertNewTask(TimePoint expire, uint32_t interval, bool repeating, std::function<void()> cb);
     TimerId GenerateNextId();
@@ -79,7 +79,7 @@ private:
     void    WorkerLoop();
 
     uint32_t                                                base_tick_ms_ = 0;
-    bool                                                    initialized_  = false;
+    std::atomic<bool>                                       initialized_{false};
     std::atomic<bool>                                       stop_{true};
     std::atomic<TimerId>                                    next_id_{0};
     std::vector<WheelLevel>                                 levels_;

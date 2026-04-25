@@ -8,11 +8,13 @@
 #include "core/framework.h"
 
 #include "common/log_def.h"
+#include "common/tyke_def.h"
 #include "common/tyke_utils.h"
 #include "component/thread_pool.h"
 #include "component/timing_wheel.h"
 #include "core/data_handler.h"
 #include "core/log_config.h"
+#include "core/request_stub.h"
 
 namespace tyke
 {
@@ -36,7 +38,7 @@ TykeFramework &TykeFramework::SetLogConfig(const std::string &log_path, const st
     return *this;
 }
 
-BoolResult TykeFramework::Start(std::string_view listen_uuid) const
+BoolResult TykeFramework::Start(std::string_view listen_uuid)
 {
     if (!GetGlobalTykeLog().IsInitialized())
     {
@@ -66,6 +68,17 @@ BoolResult TykeFramework::Start(std::string_view listen_uuid) const
     // 初始化时间轮
     GetGlobalTimingWheel().Init();
 
+    // 注册周期性超时清理任务
+    const uint32_t cleanup_interval_ms = kDefaultStubTimeoutMs / 4;
+    cleanup_timer_id_ = GetGlobalTimingWheel().AddRepeatedTask(
+            cleanup_interval_ms, cleanup_interval_ms,
+            []()
+            {
+                stub::CleanupExpiredFuncs();
+                stub::CleanupExpiredFutures();
+            });
+    LOG_DEBUG("Stub cleanup task registered, interval={}ms, timer_id={}", cleanup_interval_ms, cleanup_timer_id_);
+
     // 启动IPC服务器
     if (auto start_result = GetGlobalIpcServer().Start(listen_uuid, data_handler::DataCallback); !start_result)
     {
@@ -94,15 +107,21 @@ void TykeFramework::Shutdown()
 {
     LOG_INFO("Tyke framework shutting down");
 
+    if (cleanup_timer_id_ != TimingWheel::kInvalidTimerId)
+    {
+        GetGlobalTimingWheel().CancelTask(cleanup_timer_id_);
+        cleanup_timer_id_ = TimingWheel::kInvalidTimerId;
+    }
+
     GetGlobalIpcServer().Stop();
     GetGlobalTimingWheel().Stop();
     GetGlobalThreadPool().Stop();
     GetGlobalTykeLog().Stop();
 }
 
-TykeFramework *App()
+TykeFramework &App()
 {
-    static auto instance = new TykeFramework();
+    static TykeFramework instance;
     return instance;
 }
 }// namespace tyke

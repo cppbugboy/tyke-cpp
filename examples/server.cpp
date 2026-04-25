@@ -37,11 +37,11 @@ int main()
     fmt::print("  Tyke 示例服务端\n");
     fmt::print("========================================\n\n");
 
-    auto* framework = tyke::App();
-    framework->SetThreadPoolCount(4);
-    framework->SetLogConfig("./tyke_server.log", "debug", 1024, 5);
+    auto& framework = tyke::App();
+    framework.SetThreadPoolCount(4);
+    framework.SetLogConfig("./tyke_server.log", "debug", 1024, 5);
 
-    auto result = framework->Start("tyke_server_example");
+    auto result = framework.Start("tyke_server_example");
     if (!result.has_value())
     {
         fmt::print("服务端启动失败: {}\n", result.error());

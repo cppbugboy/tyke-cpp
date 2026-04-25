@@ -80,7 +80,7 @@ using ByteVecResult = nonstd::expected<std::vector<uint8_t>, std::string>;
 /**
      * @brief 消息类型枚举，区分同步/异步请求与响应
      */
-enum class MessageType
+enum class MessageType : uint32_t
 {
     kNone                = 0,
     kRequest             = 1,

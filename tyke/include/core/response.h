@@ -8,8 +8,10 @@
  * 当引用计数归零时自动调用 Reset() 并归还到池中。
  */
 
+
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string_view>
 
@@ -21,6 +23,11 @@
 namespace tyke
 {
 using SendDataHandler = std::function<bool(ClientId, const std::vector<uint8_t> &)>;
+
+struct ResponseState
+{
+    std::atomic<bool> is_send{false};
+};
 
 class Response
 {
@@ -48,7 +55,13 @@ public:
     /** @brief 重置所有成员到默认状态。 */
     void Reset();
 
-    Response();
+    Response() = default;
+
+    // 启用默认拷贝/移动语义（state_ 通过 shared_ptr 共享，其他成员自然拷贝/移动）
+    Response(const Response&) = default;
+    Response& operator=(const Response&) = default;
+    Response(Response&&) = default;
+    Response& operator=(Response&&) = default;
 
     [[nodiscard]] const char *GetMagic() const;
 
@@ -81,12 +94,13 @@ public:
 
     [[nodiscard]] BoolResult Send();
     [[nodiscard]] BoolResult SendAsync();
+    [[nodiscard]] bool       IsSent() const;
 
 private:
+    std::shared_ptr<ResponseState> state_ = std::make_shared<ResponseState>();
     ProtocolHeader       protocol_header_;
     ResponseMetadata     metadata_;
     std::vector<uint8_t> content_;
-    bool                 is_send_ = false;
     ClientId             client_id_{};
     SendDataHandler      send_data_handler_;
 

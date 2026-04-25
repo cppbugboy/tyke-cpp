@@ -22,7 +22,7 @@ IpcConnection::~IpcConnection()
     LOG_DEBUG("IpcConnection destructed");
 }
 
-BoolResult IpcConnection::Connect(std::string_view server_name, uint32_t timeout_ms, const uint32_t rw_timeout_ms) const
+BoolResult IpcConnection::Connect(std::string_view server_name, uint32_t timeout_ms, const uint32_t rw_timeout_ms)
 {
     LOG_DEBUG("Connecting to server: server_name={}, timeout={}ms", server_name, timeout_ms);
     if (auto result = impl_->Connect(server_name, timeout_ms, rw_timeout_ms); !result)
@@ -34,7 +34,7 @@ BoolResult IpcConnection::Connect(std::string_view server_name, uint32_t timeout
     return true;
 }
 
-BoolResult IpcConnection::WriteEncrypted(const void *data, size_t size, uint32_t timeout_ms) const
+BoolResult IpcConnection::WriteEncrypted(const void *data, size_t size, uint32_t timeout_ms)
 {
     LOG_DEBUG("WriteEncrypted: size={}, timeout={}ms", size, timeout_ms);
     if (auto result = impl_->WriteEncrypted(data, size, timeout_ms); !result)
@@ -45,7 +45,7 @@ BoolResult IpcConnection::WriteEncrypted(const void *data, size_t size, uint32_t
     return true;
 }
 
-BoolResult IpcConnection::ReadLoop(const ClientRecvDataCallback &callback, uint32_t timeout_ms) const
+BoolResult IpcConnection::ReadLoop(const ClientRecvDataCallback &callback, uint32_t timeout_ms)
 {
     LOG_DEBUG("ReadLoop: timeout={}ms", timeout_ms);
     if (auto result = impl_->ReadLoop(callback, timeout_ms); !result)
@@ -56,7 +56,7 @@ BoolResult IpcConnection::ReadLoop(const ClientRecvDataCallback &callback, uint3
     return true;
 }
 
-void IpcConnection::Close() const
+void IpcConnection::Close()
 {
     LOG_DEBUG("Closing connection");
     impl_->Close();

@@ -19,7 +19,6 @@
 #include "ipc/ipc_def.h"
 #include "request_metadata.h"
 #include "response.h"
-#include "response_future.h"
 
 namespace tyke
 {
@@ -77,7 +76,7 @@ public:
     [[nodiscard]] BoolResult SendAsyncWithFunc(const std::string                           &send_uuid,
                                                const std::function<void(const Response &)> &func,
                                                uint32_t timeout_ms = kIpcDefaultTimeoutMs);
-    [[nodiscard]] nonstd::expected<ResponseFuture, std::string>
+    [[nodiscard]] nonstd::expected<std::future<Response>, std::string>
     SendAsyncWithFuture(const std::string &send_uuid, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
 private:

@@ -54,7 +54,10 @@ public:
             const size_t     content_size = msg.content_.size();
             const size_t     total_size   = header_size + meta_size + content_size;
 
-            data_vec.clear();
+            if (data_vec.capacity() < total_size)
+            {
+                data_vec.reserve(total_size);
+            }
             data_vec.resize(total_size);
 
             msg.protocol_header_.metadata_len = static_cast<uint32_t>(meta_size);

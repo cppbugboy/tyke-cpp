@@ -15,12 +15,12 @@
 #include <cstdlib>
 #endif
 
+#include <cctype>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
 #include <iomanip>
 #include <random>
-#include <regex>
 #include <sstream>
 
 namespace tyke::utils
@@ -83,11 +83,23 @@ std::string GenerateTimestamp()
 
 bool IsValidUUID(std::string_view uuid)
 {
-    static const std::regex uuid_regex("^\\{?[0-9a-fA-F]{8}-"
-                                       "([0-9a-fA-F]{4}-){3}"
-                                       "[0-9a-fA-F]{12}\\}?$");
-
-    return std::regex_match(std::string(uuid), uuid_regex);
+    if (uuid.size() != 36)
+        return false;
+    for (size_t i = 0; i < uuid.size(); ++i)
+    {
+        const char c = uuid[i];
+        if (i == 8 || i == 13 || i == 18 || i == 23)
+        {
+            if (c != '-')
+                return false;
+        }
+        else
+        {
+            if (!std::isxdigit(static_cast<unsigned char>(c)))
+                return false;
+        }
+    }
+    return true;
 }
 
 std::string GetTempDir()
@@ -102,5 +114,17 @@ std::string GetTempDir()
     std::string temp_dir = temp.string();
     LOG_DEBUG("temp dir: {}", temp_dir);
     return temp_dir;
+}
+
+bool IsValidServerName(std::string_view name)
+{
+    if (name.empty() || name.size() > 64)
+        return false;
+    for (char c : name)
+    {
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-')
+            return false;
+    }
+    return true;
 }
 }// namespace tyke::utils

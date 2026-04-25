@@ -17,27 +17,29 @@
 
 namespace tyke::stub
 {
-/// 注册 Future 通道，等待指定 UUID 的响应。
-void AddFuture(const std::string &uuid, std::promise<Response> &promise);
+void AddFuture(const std::string &uuid, std::promise<Response> &promise, uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
-
-/// 将响应数据发送到匹配的 Future 通道。
 void SetFuture(const Response &response);
 
 void DeleteFuture(const std::string &uuid);
 
+void CleanupExpiredFutures();
 
-/// 注册回调函数，等待指定 UUID 的响应。
-void AddFunc(const std::string &msg_uuid, const std::function<void(const Response &)> &func);
+void AddFunc(const std::string &msg_uuid, const std::function<void(const Response &)> &func, uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
-/// 执行匹配的回调函数处理响应。
 void ExecFunc(const Response &response);
 
 void DeleteFunc(const std::string &msg_uuid);
 
-inline std::unordered_map<std::string, std::promise<Response>> uuid_future_map_;
-inline std::mutex                                              uuid_future_map_mutex_;
+void CleanupExpiredFuncs();
 
-inline std::unordered_map<std::string, const std::function<void(const Response &)> &> uuid_func_map_;
-inline std::mutex                                                                     uuid_func_map_mutex_;
+inline std::unordered_map<std::string, std::promise<Response>>                uuid_future_map_;
+inline std::mutex                                                              uuid_future_map_mutex_;
+inline std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_future_expire_map_;
+inline std::mutex                                                              uuid_future_expire_map_mutex_;
+
+inline std::unordered_map<std::string, std::function<void(const Response &)>> uuid_func_map_;
+inline std::mutex                                                             uuid_func_map_mutex_;
+inline std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_func_expire_map_;
+inline std::mutex                                                             uuid_func_expire_map_mutex_;
 }// namespace tyke::stub

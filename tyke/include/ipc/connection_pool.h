@@ -14,6 +14,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -24,20 +25,20 @@
 
 namespace tyke
 {
-// struct ConnectionPoolConfig
-// {
-//     size_t max_connections = kIpcDefaultMaxConnections;
-//     size_t min_idle_connections = 1;
-//     uint32_t idle_timeout_ms = kIpcDefaultIdleTimeoutMs;
-//     uint32_t connect_timeout_ms = kIpcDefaultTimeoutMs;
-//     uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs;
-//     uint32_t acquire_timeout_ms = 3000;
-// };
+struct ConnectionPoolConfig
+{
+    size_t   max_connections      = kIpcDefaultMaxConnections;
+    size_t   min_idle_connections = 1;
+    uint32_t idle_timeout_ms      = kIpcDefaultIdleTimeoutMs;
+    uint32_t connect_timeout_ms   = kIpcDefaultTimeoutMs;
+    uint32_t rw_timeout_ms        = kIpcDefaultTimeoutMs;
+    uint32_t acquire_timeout_ms   = 3000;
+};
 
 class ConnectionPool
 {
 public:
-    explicit ConnectionPool(std::string_view server_uuid);
+    explicit ConnectionPool(std::string_view server_uuid, const ConnectionPoolConfig &config = ConnectionPoolConfig{});
 
     ~ConnectionPool();
 
@@ -48,7 +49,7 @@ public:
 
     void Release(IpcConnection *conn, bool should_reconnect = false);
 
-    const std::string &GetServerUuid() const;
+    [[nodiscard]] const std::string &GetServerUuid() const;
 
     void Stop();
 
@@ -56,8 +57,10 @@ private:
     IpcConnection *CreateConnection();
 
     std::string server_uuid_;
+    ConnectionPoolConfig config_;
 
-    std::vector<IpcConnection *> connections_vec_;
+    std::vector<std::unique_ptr<IpcConnection>> connections_vec_;
+    std::atomic<size_t> total_connections_{0};
 
     mutable std::mutex      mutex_;
     std::condition_variable acquire_cv_;

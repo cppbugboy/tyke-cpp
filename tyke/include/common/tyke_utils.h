@@ -27,4 +27,6 @@ bool IsValidUUID(std::string_view uuid);
 
 
 std::string GetTempDir();
+
+bool IsValidServerName(std::string_view name);
 }// namespace tyke::utils

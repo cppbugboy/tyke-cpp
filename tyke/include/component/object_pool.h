@@ -65,7 +65,7 @@ public:
         pool_.clear();
     }
 
-    size_t Size() const
+    [[nodiscard]] size_t Size() const
     {
         std::lock_guard<std::mutex> lock(mutex_);
         return pool_.size();

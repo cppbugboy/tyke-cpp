@@ -62,6 +62,16 @@ std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector
                     LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
                     RequestHandler(*tyke_request_ptr, client_id, send_data_handler);
                 }
+                else
+                {
+                    if (used == 0)
+                    {
+                        LOG_WARN("Decode request failed, data incomplete, waiting for more data");
+                        return std::nullopt;
+                    }
+                    LOG_WARN("Decode request failed, invalid data, discarding");
+                    return 0;
+                }
                 break;
             }
             case MessageType::kRequestAsync:
@@ -75,6 +85,16 @@ std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector
                               static_cast<int>(header.msg_type));
                     RequestHandlerAsync(*tyke_request_ptr);
                 }
+                else
+                {
+                    if (used == 0)
+                    {
+                        LOG_WARN("Decode async request failed, data incomplete, waiting for more data");
+                        return std::nullopt;
+                    }
+                    LOG_WARN("Decode async request failed, invalid data, discarding");
+                    return 0;
+                }
                 break;
             }
             case MessageType::kResponseAsync:
@@ -87,6 +107,16 @@ std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector
                     LOG_DEBUG("Processing async response, route={}, msg_uuid={}", tyke_response_ptr->GetRoute(),
                               tyke_response_ptr->GetMsgUuid());
                     ResponseHandler(*tyke_response_ptr);
+                }
+                else
+                {
+                    if (used == 0)
+                    {
+                        LOG_WARN("Decode async response failed, data incomplete, waiting for more data");
+                        return std::nullopt;
+                    }
+                    LOG_WARN("Decode async response failed, invalid data, discarding");
+                    return 0;
                 }
                 break;
             }
@@ -129,12 +159,21 @@ void RequestHandler(const Request &request, const ClientId client_id, const Send
 
     const auto [fst, snd]           = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
                                                                            std::chrono::milliseconds(request.GetTimeout()));
-    const auto            timer_ctx = std::static_pointer_cast<tyke::TimerContext>(fst);
-    [[maybe_unused]] auto token     = timer_ctx->RegisterCallback(
+    const auto            timer_ctx = std::dynamic_pointer_cast<tyke::TimerContext>(fst);
+    if (!timer_ctx)
+    {
+        LOG_ERROR("Failed to cast context to TimerContext");
+        response_ptr->SetResult(StatusCode::kInternalError, "internal error");
+        if (auto send_result = response_ptr->Send(); !send_result)
+        {
+            LOG_ERROR("Send response failed: {}", send_result.error());
+        }
+        return;
+    }
+    auto token = timer_ctx->RegisterCallback(
             [response_ptr]()
             {
                 response_ptr->SetResult(StatusCode::kTimeout, "timeout");
-                // 发送响应
                 if (auto send_result = response_ptr->Send(); !send_result)
                 {
                     LOG_ERROR("Send response failed: {}", send_result.error());
@@ -142,13 +181,15 @@ void RequestHandler(const Request &request, const ClientId client_id, const Send
             });
     timer_ctx->ActivateTimer();
 
-    // 分发请求到处理器
     dispatcher::DispatchRequest(request, *response_ptr, fst);
 
-    // 发送响应
-    if (auto send_result = response_ptr->Send(); !send_result)
+    if (!response_ptr->IsSent())
     {
-        LOG_ERROR("Send response failed: {}", send_result.error());
+        timer_ctx->UnregisterCallback(token);
+        if (auto send_result = response_ptr->Send(); !send_result)
+        {
+            LOG_ERROR("Send response failed: {}", send_result.error());
+        }
     }
 }
 
@@ -181,12 +222,21 @@ void RequestHandlerAsync(const Request &request)
 
     const auto [fst, snd]           = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
                                                                            std::chrono::milliseconds(request.GetTimeout()));
-    const auto            timer_ctx = std::static_pointer_cast<tyke::TimerContext>(fst);
-    [[maybe_unused]] auto token     = timer_ctx->RegisterCallback(
+    const auto            timer_ctx = std::dynamic_pointer_cast<tyke::TimerContext>(fst);
+    if (!timer_ctx)
+    {
+        LOG_ERROR("Failed to cast context to TimerContext");
+        response_ptr->SetResult(StatusCode::kInternalError, "internal error");
+        if (auto send_result = response_ptr->SendAsync(); !send_result)
+        {
+            LOG_ERROR("Send async response failed: {}", send_result.error());
+        }
+        return;
+    }
+    auto token = timer_ctx->RegisterCallback(
             [response_ptr]()
             {
                 response_ptr->SetResult(StatusCode::kTimeout, "timeout");
-                // 异步发送响应
                 if (auto send_result = response_ptr->SendAsync(); !send_result)
                 {
                     LOG_ERROR("Send async response failed: {}", send_result.error());
@@ -194,14 +244,15 @@ void RequestHandlerAsync(const Request &request)
             });
     timer_ctx->ActivateTimer();
 
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-    // 分发请求到处理器
     dispatcher::DispatchRequest(request, *response_ptr, fst);
 
-    // 异步发送响应
-    if (auto send_result = response_ptr->SendAsync(); !send_result)
+    if (!response_ptr->IsSent())
     {
-        LOG_ERROR("Send async response failed: {}", send_result.error());
+        timer_ctx->UnregisterCallback(token);
+        if (auto send_result = response_ptr->SendAsync(); !send_result)
+        {
+            LOG_ERROR("Send async response failed: {}", send_result.error());
+        }
     }
 }
 

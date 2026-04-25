@@ -7,17 +7,25 @@
 
 #include "core/request_stub.h"
 
+#include <vector>
+
 #include "common/log_def.h"
 #include "component/timing_wheel.h"
 #include "core/response.h"
 
 namespace tyke::stub
 {
-void AddFuture(const std::string &uuid, std::promise<Response> &promise)
+void AddFuture(const std::string &uuid, std::promise<Response> &promise, uint32_t timeout_ms)
 {
-    std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
-    uuid_future_map_.emplace(uuid, std::move(promise));
-    LOG_DEBUG("Future entry added, uuid={}", uuid);
+    {
+        std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
+        uuid_future_map_.emplace(uuid, std::move(promise));
+    }
+    {
+        std::lock_guard<std::mutex> lock(uuid_future_expire_map_mutex_);
+        uuid_future_expire_map_.emplace(uuid, std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms));
+    }
+    LOG_DEBUG("Future entry added, uuid={}, timeout={}ms", uuid, timeout_ms);
 }
 
 void SetFuture(const Response &response)
@@ -40,24 +48,87 @@ void SetFuture(const Response &response)
     }
     if (found)
     {
-        extracted_promise.set_value(response);
+        {
+            std::lock_guard<std::mutex> lock(uuid_future_expire_map_mutex_);
+            uuid_future_expire_map_.erase(response.GetMsgUuid());
+        }
+        extracted_promise.set_value(std::move(response));
     }
 }
 
 void DeleteFuture(const std::string &uuid)
 {
-    std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
-    if (const auto it = uuid_future_map_.find(uuid); it != uuid_future_map_.end())
     {
-        uuid_future_map_.erase(it);
+        std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
+        uuid_future_map_.erase(uuid);
+    }
+    {
+        std::lock_guard<std::mutex> lock(uuid_future_expire_map_mutex_);
+        uuid_future_expire_map_.erase(uuid);
+    }
+    LOG_DEBUG("Future entry deleted, uuid={}", uuid);
+}
+
+void CleanupExpiredFutures()
+{
+    const auto now = std::chrono::steady_clock::now();
+    std::vector<std::string> expired_uuids;
+    {
+        std::lock_guard<std::mutex> lock(uuid_future_expire_map_mutex_);
+        for (const auto &[uuid, expire_time] : uuid_future_expire_map_)
+        {
+            if (now >= expire_time)
+            {
+                expired_uuids.push_back(uuid);
+            }
+        }
+    }
+    for (const auto &uuid : expired_uuids)
+    {
+        std::promise<Response> extracted_promise;
+        bool found = false;
+        {
+            std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
+            if (const auto it = uuid_future_map_.find(uuid); it != uuid_future_map_.end())
+            {
+                extracted_promise = std::move(it->second);
+                uuid_future_map_.erase(it);
+                found = true;
+            }
+        }
+        {
+            std::lock_guard<std::mutex> lock(uuid_future_expire_map_mutex_);
+            uuid_future_expire_map_.erase(uuid);
+        }
+        if (found)
+        {
+            Response timeout_response;
+            timeout_response.SetResult(StatusCode::kTimeout, "future timeout");
+            timeout_response.SetMsgUuid(uuid);
+            try
+            {
+                extracted_promise.set_value(std::move(timeout_response));
+            }
+            catch (const std::future_error &e)
+            {
+                LOG_WARN("Expired future promise set_value failed, uuid={}, error={}", uuid, e.what());
+            }
+            LOG_WARN("Expired future cleaned up, uuid={}", uuid);
+        }
     }
 }
 
-void AddFunc(const std::string &msg_uuid, const std::function<void(const Response &)> &func)
+void AddFunc(const std::string &msg_uuid, const std::function<void(const Response &)> &func, uint32_t timeout_ms)
 {
-    std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
-    uuid_func_map_.emplace(msg_uuid, func);
-    LOG_DEBUG("Callback entry added, uuid={}", msg_uuid);
+    {
+        std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
+        uuid_func_map_.emplace(msg_uuid, func);
+    }
+    {
+        std::lock_guard<std::mutex> lock(uuid_func_expire_map_mutex_);
+        uuid_func_expire_map_.emplace(msg_uuid, std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms));
+    }
+    LOG_DEBUG("Callback entry added, uuid={}, timeout={}ms", msg_uuid, timeout_ms);
 }
 
 void ExecFunc(const Response &response)
@@ -79,6 +150,8 @@ void ExecFunc(const Response &response)
     }
     if (found)
     {
+        std::lock_guard<std::mutex> lock(uuid_func_expire_map_mutex_);
+        uuid_func_expire_map_.erase(response.GetMsgUuid());
         LOG_DEBUG("Executing callback for response, uuid={}", response.GetMsgUuid());
         extracted_func(response);
     }
@@ -86,8 +159,35 @@ void ExecFunc(const Response &response)
 
 void DeleteFunc(const std::string &msg_uuid)
 {
-    std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
-    uuid_func_map_.erase(msg_uuid);
-    LOG_DEBUG("Callback entry added, uuid={}", msg_uuid);
+    {
+        std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
+        uuid_func_map_.erase(msg_uuid);
+    }
+    {
+        std::lock_guard<std::mutex> lock(uuid_func_expire_map_mutex_);
+        uuid_func_expire_map_.erase(msg_uuid);
+    }
+    LOG_DEBUG("Callback entry deleted, uuid={}", msg_uuid);
+}
+
+void CleanupExpiredFuncs()
+{
+    const auto now = std::chrono::steady_clock::now();
+    std::vector<std::string> expired_uuids;
+    {
+        std::lock_guard<std::mutex> lock(uuid_func_expire_map_mutex_);
+        for (const auto &[uuid, expire_time] : uuid_func_expire_map_)
+        {
+            if (now >= expire_time)
+            {
+                expired_uuids.push_back(uuid);
+            }
+        }
+    }
+    for (const auto &uuid : expired_uuids)
+    {
+        DeleteFunc(uuid);
+        LOG_WARN("Expired callback cleaned up, uuid={}", uuid);
+    }
 }
 }// namespace tyke::stub

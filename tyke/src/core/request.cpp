@@ -141,7 +141,7 @@ BoolResult Request::SendAsyncWithFunc(const std::string &send_uuid, const std::f
     return result;
 }
 
-nonstd::expected<ResponseFuture, std::string> Request::SendAsyncWithFuture(const std::string &send_uuid,
+nonstd::expected<std::future<Response>, std::string> Request::SendAsyncWithFuture(const std::string &send_uuid,
                                                                            uint32_t           timeout_ms)
 {
     LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
@@ -153,11 +153,10 @@ nonstd::expected<ResponseFuture, std::string> Request::SendAsyncWithFuture(const
 
     std::promise<Response> promise;
     auto                   future = promise.get_future();
-    stub::AddFuture(metadata_.GetMsgUuid(), promise);
-    ResponseFuture response_future(metadata_.GetMsgUuid(), std::move(future));
+    stub::AddFuture(metadata_.GetMsgUuid(), promise, timeout_ms);
 
     LOG_DEBUG("Future registered, msg_uuid={}", GetMsgUuid());
-    return response_future;
+    return std::move(future);
 }
 
 std::optional<bool> Request::AddMetadata(const std::string_view key, const JsonValue &value)

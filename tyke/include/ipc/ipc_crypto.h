@@ -22,6 +22,8 @@ constexpr uint8_t kMsgHandshakeResp = 0x02;
 
 constexpr uint8_t kMsgData = 0x03;
 
+constexpr uint32_t kMaxFramePayloadLen = 16 * 1024 * 1024;
+
 
 class FrameParser
 {
@@ -42,7 +44,7 @@ public:
     ~EcdhKeyExchange();
 
 
-    [[nodiscard]] BoolResult GenerateKey() const;
+    [[nodiscard]] BoolResult GenerateKey();
 
 
     [[nodiscard]] ByteVecResult GetPublicKeyDer() const;

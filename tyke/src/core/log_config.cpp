@@ -11,6 +11,8 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include <unordered_map>
+
 #include "common/log_def.h"
 
 namespace tyke
@@ -61,25 +63,12 @@ void TykeLog::SetLogLevel(const std::string &log_level) const
         return;
     }
 
-    spdlog::level::level_enum level = spdlog::level::info;
-    if (log_level == "debug")
-    {
-        level = spdlog::level::debug;
-    }
-    else if (log_level == "info")
-    {
-        level = spdlog::level::info;
-    }
-    else if (log_level == "warn")
-    {
-        level = spdlog::level::warn;
-    }
-    else if (log_level == "error")
-    {
-        level = spdlog::level::err;
-    }
-
-    tyke_logger_->set_level(level);
+    static const std::unordered_map<std::string, spdlog::level::level_enum> level_map = {
+        {"debug", spdlog::level::debug}, {"info", spdlog::level::info},
+        {"warn", spdlog::level::warn},   {"error", spdlog::level::err}
+    };
+    auto it = level_map.find(log_level);
+    tyke_logger_->set_level(it != level_map.end() ? it->second : spdlog::level::info);
     LOG_DEBUG("Log level set to: {}", log_level);
 }
 

@@ -7,16 +7,14 @@
 
 namespace tyke
 {
-Response::Response() = default;
-
 void Response::Reset()
 {
-    protocol_header_ = ProtocolHeader{};
-    metadata_        = ResponseMetadata{};
+    state_             = std::make_shared<ResponseState>();
+    protocol_header_   = ProtocolHeader{};
+    metadata_          = ResponseMetadata{};
     content_.clear();
-    is_send_           = false;
     client_id_         = {};
-    send_data_handler_ = nullptr;
+    send_data_handler_ = {};
 }
 
 const char *Response::GetMagic() const
@@ -93,7 +91,7 @@ BoolResult Response::Send()
 {
     LOG_DEBUG("Send: route={}, msg_uuid={}", GetRoute(), GetMsgUuid());
 
-    if (is_send_)
+    if (state_->is_send.load(std::memory_order_acquire))
     {
         LOG_WARN("Response already sent, msg_uuid={}", GetMsgUuid());
         return nonstd::make_unexpected("response already sent");
@@ -123,7 +121,7 @@ BoolResult Response::Send()
         return nonstd::make_unexpected("send data handler failed");
     }
 
-    is_send_ = true;
+    state_->is_send.store(true, std::memory_order_release);
     LOG_DEBUG("Response sent successfully, msg_uuid={}", GetMsgUuid());
     return true;
 }
@@ -132,7 +130,7 @@ BoolResult Response::SendAsync()
 {
     LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}", GetRoute(), GetMsgUuid(), metadata_.GetAsyncUuid());
 
-    if (is_send_)
+    if (state_->is_send.load(std::memory_order_acquire))
     {
         LOG_WARN("Response already sent, msg_uuid={}", GetMsgUuid());
         return nonstd::make_unexpected("response already sent");
@@ -156,7 +154,7 @@ BoolResult Response::SendAsync()
         return nonstd::make_unexpected("send async failed: " + send_result.error());
     }
 
-    is_send_ = true;
+    state_->is_send.store(true, std::memory_order_release);
     LOG_DEBUG("Async response sent successfully, msg_uuid={}", GetMsgUuid());
     return true;
 }
@@ -181,4 +179,7 @@ Response &Response::SetClientId(const ClientId client_id)
     client_id_ = client_id;
     return *this;
 }
+
+bool Response::IsSent() const
+{ return state_->is_send.load(std::memory_order_acquire); }
 }// namespace tyke

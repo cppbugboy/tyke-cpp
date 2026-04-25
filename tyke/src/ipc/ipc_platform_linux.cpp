@@ -8,6 +8,7 @@
 #ifndef _WIN32
 #include <atomic>
 #include <cerrno>
+#include <cstring>
 #include <mutex>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
@@ -18,6 +19,7 @@
 #include <unordered_map>
 
 #include "common/log_def.h"
+#include "common/tyke_utils.h"
 #include "component/thread_pool.h"
 #include "ipc/ipc_crypto.h"
 #include "ipc/ipc_internal_platform.h"
@@ -34,6 +36,8 @@ public:
     BoolResult Connect(std::string_view server_name, uint32_t, const uint32_t rw_timeout_ms) override
     {
         LOG_INFO("ipc client connecting to: {}", server_name);
+        if (!utils::IsValidServerName(server_name))
+            return nonstd::make_unexpected("invalid server name");
         fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
         if (fd_ < 0)
             return nonstd::make_unexpected("socket creation failed");
@@ -44,8 +48,9 @@ public:
         setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
         sockaddr_un addr{};
         addr.sun_family = AF_UNIX;
-        snprintf(addr.sun_path, sizeof(addr.sun_path), "/tmp/%s", server_name.data());
-        if (connect(fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0)
+        addr.sun_path[0] = '\0';
+        snprintf(addr.sun_path + 1, sizeof(addr.sun_path) - 1, "tyke_%s", server_name.data());
+        if (connect(fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(sa_family_t) + strlen(addr.sun_path + 1) + 1) < 0)
         {
             Close();
             return nonstd::make_unexpected(std::string("connect failed for: ") + std::string(server_name));
@@ -195,7 +200,7 @@ class ServerImplLinux : public IServerImpl
         crypto::AesGcmCipher    cipher;
         std::vector<uint8_t>    raw_recv_buf;
         std::vector<uint8_t>    pending_writes;
-        bool                    writing;
+        std::atomic<bool>         writing{false};
         std::mutex              write_mutex;
 
         explicit ClientContext(int f) : fd(f), state(STATE_WAIT_HELLO), writing(false)
@@ -211,18 +216,20 @@ public:
     BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) override
     {
         LOG_INFO("ipc server starting on: {}", server_name);
+        if (!utils::IsValidServerName(server_name))
+            return nonstd::make_unexpected("invalid server name");
         if (running_.load())
             return nonstd::make_unexpected("server already running");
         callback_    = std::move(callback);
-        server_name_ = std::string("/tmp/") + std::string(server_name);
+        server_name_ = std::string(server_name);
         listen_fd_   = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
         if (listen_fd_ < 0)
             return nonstd::make_unexpected("socket creation failed");
         sockaddr_un addr{};
         addr.sun_family = AF_UNIX;
-        snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", server_name_.c_str());
-        unlink(addr.sun_path);
-        if (bind(listen_fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0)
+        addr.sun_path[0] = '\0';
+        snprintf(addr.sun_path + 1, sizeof(addr.sun_path) - 1, "tyke_%s", server_name.data());
+        if (bind(listen_fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(sa_family_t) + strlen(addr.sun_path + 1) + 1) < 0)
         {
             close(listen_fd_);
             return nonstd::make_unexpected("bind failed");
@@ -273,7 +280,6 @@ public:
         close(listen_fd_);
         close(epoll_fd_);
         close(wakeup_fd_);
-        unlink(server_name_.c_str());
     }
 
     BoolResult SendToClient(const ClientId id, const std::vector<uint8_t> &data) override

@@ -256,7 +256,7 @@ void DemoSendAsyncWithFuture()
     if (future_result.has_value())
     {
         fmt::print("异步请求已发送，等待 Future 结果...\n");
-        auto response = future_result.value().GetResponse();
+        auto response = future_result->get();
         PrintAsyncResponse(response, "SendAsyncWithFuture");
     }
     else
@@ -280,11 +280,11 @@ int main()
     fmt::print("  Tyke 示例客户端\n");
     fmt::print("========================================\n\n");
 
-    auto* framework = tyke::App();
-    framework->SetThreadPoolCount(4);
-    framework->SetLogConfig("./tyke_client.log", "debug", 1024, 5);
+    auto& framework = tyke::App();
+    framework.SetThreadPoolCount(4);
+    framework.SetLogConfig("./tyke_client.log", "debug", 1024, 5);
 
-    auto result = framework->Start(kClientListenerUuid);
+    auto result = framework.Start(kClientListenerUuid);
     if (!result.has_value())
     {
         fmt::print("客户端启动失败: {}\n", result.error());

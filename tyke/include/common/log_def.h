@@ -11,17 +11,37 @@
 #include <spdlog/spdlog.h>
 
 #define LOG_DEBUG(...)                                                                                                 \
-    spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::debug,   \
-                                      __VA_ARGS__)
+    do {                                                                                                               \
+        if (spdlog::default_logger_raw() && spdlog::default_logger_raw()->should_log(spdlog::level::debug))            \
+        {                                                                                                              \
+            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                  \
+                                              spdlog::level::debug, __VA_ARGS__);                                      \
+        }                                                                                                              \
+    } while (0)
 
 #define LOG_INFO(...)                                                                                                  \
-    spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::info,    \
-                                      __VA_ARGS__)
+    do {                                                                                                               \
+        if (spdlog::default_logger_raw() && spdlog::default_logger_raw()->should_log(spdlog::level::info))             \
+        {                                                                                                              \
+            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                  \
+                                              spdlog::level::info, __VA_ARGS__);                                       \
+        }                                                                                                              \
+    } while (0)
 
 #define LOG_WARN(...)                                                                                                  \
-    spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::warn,    \
-                                      __VA_ARGS__)
+    do {                                                                                                               \
+        if (spdlog::default_logger_raw() && spdlog::default_logger_raw()->should_log(spdlog::level::warn))             \
+        {                                                                                                              \
+            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                  \
+                                              spdlog::level::warn, __VA_ARGS__);                                       \
+        }                                                                                                              \
+    } while (0)
 
 #define LOG_ERROR(...)                                                                                                 \
-    spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::err,     \
-                                      __VA_ARGS__)
+    do {                                                                                                               \
+        if (spdlog::default_logger_raw() && spdlog::default_logger_raw()->should_log(spdlog::level::err))              \
+        {                                                                                                              \
+            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                  \
+                                              spdlog::level::err, __VA_ARGS__);                                        \
+        }                                                                                                              \
+    } while (0)

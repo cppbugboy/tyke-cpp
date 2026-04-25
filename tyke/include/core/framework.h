@@ -11,6 +11,7 @@
 #include <string>
 
 #include "component/singleton.h"
+#include "component/timing_wheel.h"
 #include "ipc/ipc_server.h"
 #include "request_router.h"
 #include "response_router.h"
@@ -31,7 +32,7 @@ public:
                                 uint32_t file_count);
 
 
-    [[nodiscard]] BoolResult Start(std::string_view listen_uuid) const;
+    [[nodiscard]] BoolResult Start(std::string_view listen_uuid);
 
 
     void Shutdown();
@@ -48,8 +49,9 @@ private:
     std::string log_level_    = "info";
     uint32_t    file_size_mb_ = 1024;
     uint32_t    file_count_   = 5;
+    TimerId     cleanup_timer_id_ = TimingWheel::kInvalidTimerId;
 };
 
 
-TykeFramework *App();
+TykeFramework &App();
 }// namespace tyke

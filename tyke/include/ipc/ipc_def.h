@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file ipc_types.h
  * @brief IPC模块类型定义
  * @author Nick
@@ -24,6 +24,9 @@ constexpr uint32_t kIpcDefaultTimeoutMs = 5000;
 
 /// IPC默认最大连接数
 constexpr size_t kIpcDefaultMaxConnections = 4;
+
+/// IPC默认空闲超时时间（毫秒）
+constexpr uint32_t kIpcDefaultIdleTimeoutMs = 30000;
 
 /// 客户端接收数据回调函数类型
 using ClientRecvDataCallback = std::function<bool(const std::vector<uint8_t> &)>;

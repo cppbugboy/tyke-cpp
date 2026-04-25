@@ -19,6 +19,7 @@
 #include <unordered_map>
 
 #include "common/json_def.h"
+#include "common/log_def.h"
 #include "common/tyke_def.h"
 
 namespace tyke
@@ -102,6 +103,7 @@ public:
         }
         catch (...)
         {
+            LOG_ERROR("Unknown exception in AddMetadata for key={}", std::string(key));
             return std::nullopt;
         }
         return true;
