@@ -120,7 +120,7 @@ bool IsValidServerName(std::string_view name)
 {
     if (name.empty() || name.size() > 64)
         return false;
-    for (char c : name)
+    for (char c: name)
     {
         if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-')
             return false;

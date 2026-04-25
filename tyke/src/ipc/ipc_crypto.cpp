@@ -1,9 +1,9 @@
 #include "ipc/ipc_crypto.h"
 
 #include <openssl/evp.h>
+#include <openssl/kdf.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
-#include <openssl/kdf.h>
 
 #include "common/log_def.h"
 #include "common/tyke_def.h"
@@ -136,7 +136,7 @@ ByteVecResult EcdhKeyExchange::ComputeSharedSecret(const std::vector<uint8_t> &p
         return nonstd::make_unexpected("no ECDH key available");
     }
 
-    const uint8_t   *ptr = peer_pub_der.data();
+    const uint8_t *ptr = peer_pub_der.data();
     if (peer_pub_der.size() > static_cast<size_t>(LONG_MAX))
         return nonstd::make_unexpected("peer public key DER too large");
     const EvpPkeyPtr peer_pkey(d2i_PUBKEY(nullptr, &ptr, static_cast<long>(peer_pub_der.size())));
@@ -179,9 +179,9 @@ ByteVecResult EcdhKeyExchange::ComputeSharedSecret(const std::vector<uint8_t> &p
 
 struct AesGcmCipher::Impl
 {
-    std::vector<uint8_t>    aes_key;
-    std::atomic<bool>       initialized{false};
-    std::atomic<uint64_t>   iv_counter{0};
+    std::vector<uint8_t>  aes_key;
+    std::atomic<bool>     initialized{false};
+    std::atomic<uint64_t> iv_counter{0};
 
     ~Impl()
     {
@@ -274,15 +274,15 @@ ByteVecResult AesGcmCipher::Encrypt(const std::vector<uint8_t> &plaintext) const
     }
 
     std::vector<uint8_t> iv(kAesGcmIvLen, 0);
-    const uint64_t counter = impl_->iv_counter.fetch_add(1, std::memory_order_relaxed);
-    iv[4] = static_cast<uint8_t>((counter >> 56) & 0xFF);
-    iv[5] = static_cast<uint8_t>((counter >> 48) & 0xFF);
-    iv[6] = static_cast<uint8_t>((counter >> 40) & 0xFF);
-    iv[7] = static_cast<uint8_t>((counter >> 32) & 0xFF);
-    iv[8] = static_cast<uint8_t>((counter >> 24) & 0xFF);
-    iv[9] = static_cast<uint8_t>((counter >> 16) & 0xFF);
-    iv[10] = static_cast<uint8_t>((counter >> 8) & 0xFF);
-    iv[11] = static_cast<uint8_t>(counter & 0xFF);
+    const uint64_t       counter = impl_->iv_counter.fetch_add(1, std::memory_order_relaxed);
+    iv[4]                        = static_cast<uint8_t>((counter >> 56) & 0xFF);
+    iv[5]                        = static_cast<uint8_t>((counter >> 48) & 0xFF);
+    iv[6]                        = static_cast<uint8_t>((counter >> 40) & 0xFF);
+    iv[7]                        = static_cast<uint8_t>((counter >> 32) & 0xFF);
+    iv[8]                        = static_cast<uint8_t>((counter >> 24) & 0xFF);
+    iv[9]                        = static_cast<uint8_t>((counter >> 16) & 0xFF);
+    iv[10]                       = static_cast<uint8_t>((counter >> 8) & 0xFF);
+    iv[11]                       = static_cast<uint8_t>(counter & 0xFF);
     if (RAND_bytes(iv.data(), 4) != 1)
     {
         LOG_ERROR("RAND_bytes for IV prefix failed");

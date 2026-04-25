@@ -11,37 +11,41 @@
 #include <spdlog/spdlog.h>
 
 #define LOG_DEBUG(...)                                                                                                 \
-    do {                                                                                                               \
+    do                                                                                                                 \
+    {                                                                                                                  \
         if (spdlog::default_logger_raw() && spdlog::default_logger_raw()->should_log(spdlog::level::debug))            \
         {                                                                                                              \
-            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                  \
+            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                 \
                                               spdlog::level::debug, __VA_ARGS__);                                      \
         }                                                                                                              \
     } while (0)
 
 #define LOG_INFO(...)                                                                                                  \
-    do {                                                                                                               \
+    do                                                                                                                 \
+    {                                                                                                                  \
         if (spdlog::default_logger_raw() && spdlog::default_logger_raw()->should_log(spdlog::level::info))             \
         {                                                                                                              \
-            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                  \
+            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                 \
                                               spdlog::level::info, __VA_ARGS__);                                       \
         }                                                                                                              \
     } while (0)
 
 #define LOG_WARN(...)                                                                                                  \
-    do {                                                                                                               \
+    do                                                                                                                 \
+    {                                                                                                                  \
         if (spdlog::default_logger_raw() && spdlog::default_logger_raw()->should_log(spdlog::level::warn))             \
         {                                                                                                              \
-            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                  \
+            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                 \
                                               spdlog::level::warn, __VA_ARGS__);                                       \
         }                                                                                                              \
     } while (0)
 
 #define LOG_ERROR(...)                                                                                                 \
-    do {                                                                                                               \
+    do                                                                                                                 \
+    {                                                                                                                  \
         if (spdlog::default_logger_raw() && spdlog::default_logger_raw()->should_log(spdlog::level::err))              \
         {                                                                                                              \
-            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                  \
+            spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},                 \
                                               spdlog::level::err, __VA_ARGS__);                                        \
         }                                                                                                              \
     } while (0)

@@ -56,11 +56,11 @@ public:
 private:
     IpcConnection *CreateConnection();
 
-    std::string server_uuid_;
+    std::string          server_uuid_;
     ConnectionPoolConfig config_;
 
     std::vector<std::unique_ptr<IpcConnection>> connections_vec_;
-    std::atomic<size_t> total_connections_{0};
+    std::atomic<size_t>                         total_connections_{0};
 
     mutable std::mutex      mutex_;
     std::condition_variable acquire_cv_;

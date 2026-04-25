@@ -29,8 +29,7 @@ public:
     [[nodiscard]] BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
                                      uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs);
 
-    [[nodiscard]] BoolResult WriteEncrypted(const void *data, size_t size,
-                                            uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+    [[nodiscard]] BoolResult WriteEncrypted(const void *data, size_t size, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
     [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback &callback,
                                       uint32_t                      timeout_ms = kIpcDefaultTimeoutMs);

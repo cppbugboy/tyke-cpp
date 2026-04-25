@@ -70,13 +70,12 @@ BoolResult TykeFramework::Start(std::string_view listen_uuid)
 
     // 注册周期性超时清理任务
     const uint32_t cleanup_interval_ms = kDefaultStubTimeoutMs / 4;
-    cleanup_timer_id_ = GetGlobalTimingWheel().AddRepeatedTask(
-            cleanup_interval_ms, cleanup_interval_ms,
-            []()
-            {
-                stub::CleanupExpiredFuncs();
-                stub::CleanupExpiredFutures();
-            });
+    cleanup_timer_id_ = GetGlobalTimingWheel().AddRepeatedTask(cleanup_interval_ms, cleanup_interval_ms,
+                                                               []()
+                                                               {
+                                                                   stub::CleanupExpiredFuncs();
+                                                                   stub::CleanupExpiredFutures();
+                                                               });
     LOG_DEBUG("Stub cleanup task registered, interval={}ms, timer_id={}", cleanup_interval_ms, cleanup_timer_id_);
 
     // 启动IPC服务器

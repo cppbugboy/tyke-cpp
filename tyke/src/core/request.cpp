@@ -142,7 +142,7 @@ BoolResult Request::SendAsyncWithFunc(const std::string &send_uuid, const std::f
 }
 
 nonstd::expected<std::future<Response>, std::string> Request::SendAsyncWithFuture(const std::string &send_uuid,
-                                                                           uint32_t           timeout_ms)
+                                                                                  uint32_t           timeout_ms)
 {
     LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
 

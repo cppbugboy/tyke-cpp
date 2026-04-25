@@ -10,7 +10,6 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
-
 #include <unordered_map>
 
 #include "common/log_def.h"
@@ -64,9 +63,10 @@ void TykeLog::SetLogLevel(const std::string &log_level) const
     }
 
     static const std::unordered_map<std::string, spdlog::level::level_enum> level_map = {
-        {"debug", spdlog::level::debug}, {"info", spdlog::level::info},
-        {"warn", spdlog::level::warn},   {"error", spdlog::level::err}
-    };
+            {"debug", spdlog::level::debug},
+            {"info", spdlog::level::info},
+            {"warn", spdlog::level::warn},
+            {"error", spdlog::level::err}};
     auto it = level_map.find(log_level);
     tyke_logger_->set_level(it != level_map.end() ? it->second : spdlog::level::info);
     LOG_DEBUG("Log level set to: {}", log_level);

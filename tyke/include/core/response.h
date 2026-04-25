@@ -58,10 +58,10 @@ public:
     Response() = default;
 
     // 启用默认拷贝/移动语义（state_ 通过 shared_ptr 共享，其他成员自然拷贝/移动）
-    Response(const Response&) = default;
-    Response& operator=(const Response&) = default;
-    Response(Response&&) = default;
-    Response& operator=(Response&&) = default;
+    Response(const Response &)            = default;
+    Response &operator=(const Response &) = default;
+    Response(Response &&)                 = default;
+    Response &operator=(Response &&)      = default;
 
     [[nodiscard]] const char *GetMagic() const;
 
@@ -98,11 +98,11 @@ public:
 
 private:
     std::shared_ptr<ResponseState> state_ = std::make_shared<ResponseState>();
-    ProtocolHeader       protocol_header_;
-    ResponseMetadata     metadata_;
-    std::vector<uint8_t> content_;
-    ClientId             client_id_{};
-    SendDataHandler      send_data_handler_;
+    ProtocolHeader                 protocol_header_;
+    ResponseMetadata               metadata_;
+    std::vector<uint8_t>           content_;
+    ClientId                       client_id_{};
+    SendDataHandler                send_data_handler_;
 
     inline static ObjectPool<Response> pool_{1024};// 全局共享对象池
 };

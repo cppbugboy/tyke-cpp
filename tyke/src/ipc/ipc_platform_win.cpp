@@ -243,7 +243,7 @@ class ServerImplWin : public IServerImpl
         std::vector<uint8_t>    raw_recv_buf;
         std::vector<uint8_t>    pending_writes;
         bool                    connected;
-        std::atomic<bool>         writing{false};
+        std::atomic<bool>       writing{false};
         std::mutex              write_mutex;
         uint8_t                 raw_read_buf[4096];
 
@@ -525,7 +525,7 @@ private:
     void CloseClient(const std::shared_ptr<ClientContext> &ctx)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        const auto it = clients_.find(reinterpret_cast<ClientId>(ctx->pipe));
+        const auto                  it = clients_.find(reinterpret_cast<ClientId>(ctx->pipe));
         if (it == clients_.end())
             return;
         clients_.erase(it);

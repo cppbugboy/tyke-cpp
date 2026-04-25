@@ -185,8 +185,8 @@ public:
 
 private:
     std::chrono::system_clock::time_point deadline_;
-    std::atomic<uint64_t> timer_id_{0};
-    std::atomic<bool>     timer_activated_{false};
+    std::atomic<uint64_t>                 timer_id_{0};
+    std::atomic<bool>                     timer_activated_{false};
 };
 
 // ============================================================================

@@ -138,7 +138,7 @@ void TimerContext::Init(ContextPtr parent, const std::chrono::system_clock::time
             effective_deadline = parent_deadline;
         }
     }
-    deadline_        = effective_deadline;
+    deadline_ = effective_deadline;
     timer_activated_.store(false, std::memory_order_relaxed);
     timer_id_.store(0, std::memory_order_relaxed);
 }
@@ -169,15 +169,15 @@ void TimerContext::ActivateTimer()
     const auto steady_deadline = steady_now + (deadline_ - sys_now);
 
     // 向全局时间轮注册到期回调
-    timer_id_.store(GetGlobalTimingWheel().AddTaskAt(
-            steady_deadline,
-            [weak = std::move(weak)]()
-            {
-                if (const auto ctx = weak.lock())
-                {
-                    ctx->Cancel(ContextError::kDeadlineExceeded);
-                }
-            }), std::memory_order_release);
+    timer_id_.store(GetGlobalTimingWheel().AddTaskAt(steady_deadline,
+                                                     [weak = std::move(weak)]()
+                                                     {
+                                                         if (const auto ctx = weak.lock())
+                                                         {
+                                                             ctx->Cancel(ContextError::kDeadlineExceeded);
+                                                         }
+                                                     }),
+                    std::memory_order_release);
 
     timer_activated_.store(true, std::memory_order_release);
 }
@@ -190,7 +190,7 @@ void TimerContext::Reset()
         timer_id_.store(0, std::memory_order_release);
     }
     timer_activated_.store(false, std::memory_order_release);
-    deadline_        = {};
+    deadline_ = {};
     CancelContext::Reset();
 }
 

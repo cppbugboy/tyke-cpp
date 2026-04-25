@@ -7,9 +7,7 @@
 namespace tyke::context
 {
 ContextPtr ContextFactory::Background()
-{
-    return ContextPool::Background();
-}
+{ return ContextPool::Background(); }
 
 ContextPtr ContextFactory::TODO()
 { return Background(); }

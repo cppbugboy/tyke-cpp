@@ -25,7 +25,8 @@ void DeleteFuture(const std::string &uuid);
 
 void CleanupExpiredFutures();
 
-void AddFunc(const std::string &msg_uuid, const std::function<void(const Response &)> &func, uint32_t timeout_ms = kDefaultStubTimeoutMs);
+void AddFunc(const std::string &msg_uuid, const std::function<void(const Response &)> &func,
+             uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
 void ExecFunc(const Response &response);
 

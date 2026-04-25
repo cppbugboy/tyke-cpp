@@ -70,8 +70,8 @@ public:
     uint64_t GetMaxCapacityMs() const;
 
     static constexpr TimerId kInvalidTimerId = 0;
-private:
 
+private:
     TimerId InsertNewTask(TimePoint expire, uint32_t interval, bool repeating, std::function<void()> cb);
     TimerId GenerateNextId();
     void    InsertTask(const std::shared_ptr<TimerTask> &task);

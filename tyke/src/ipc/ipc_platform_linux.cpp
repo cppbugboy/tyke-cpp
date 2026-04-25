@@ -47,7 +47,7 @@ public:
         setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
         setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
         sockaddr_un addr{};
-        addr.sun_family = AF_UNIX;
+        addr.sun_family  = AF_UNIX;
         addr.sun_path[0] = '\0';
         snprintf(addr.sun_path + 1, sizeof(addr.sun_path) - 1, "tyke_%s", server_name.data());
         if (connect(fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(sa_family_t) + strlen(addr.sun_path + 1) + 1) < 0)
@@ -200,7 +200,7 @@ class ServerImplLinux : public IServerImpl
         crypto::AesGcmCipher    cipher;
         std::vector<uint8_t>    raw_recv_buf;
         std::vector<uint8_t>    pending_writes;
-        std::atomic<bool>         writing{false};
+        std::atomic<bool>       writing{false};
         std::mutex              write_mutex;
 
         explicit ClientContext(int f) : fd(f), state(STATE_WAIT_HELLO), writing(false)
@@ -226,10 +226,11 @@ public:
         if (listen_fd_ < 0)
             return nonstd::make_unexpected("socket creation failed");
         sockaddr_un addr{};
-        addr.sun_family = AF_UNIX;
+        addr.sun_family  = AF_UNIX;
         addr.sun_path[0] = '\0';
         snprintf(addr.sun_path + 1, sizeof(addr.sun_path) - 1, "tyke_%s", server_name.data());
-        if (bind(listen_fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(sa_family_t) + strlen(addr.sun_path + 1) + 1) < 0)
+        if (bind(listen_fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(sa_family_t) + strlen(addr.sun_path + 1) + 1) <
+            0)
         {
             close(listen_fd_);
             return nonstd::make_unexpected("bind failed");

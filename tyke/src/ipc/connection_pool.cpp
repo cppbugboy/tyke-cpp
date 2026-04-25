@@ -41,8 +41,12 @@ TResult<IpcConnection *> ConnectionPool::Acquire()
     if (config_.max_connections > 0 && total_connections_.load(std::memory_order_relaxed) >= config_.max_connections)
     {
         if (!acquire_cv_.wait_for(lock, std::chrono::milliseconds(config_.acquire_timeout_ms),
-                                  [this] { return !connections_vec_.empty() ||
-                                                  total_connections_.load(std::memory_order_relaxed) < config_.max_connections; }))
+                                  [this]
+                                  {
+                                      return !connections_vec_.empty() ||
+                                             total_connections_.load(std::memory_order_relaxed) <
+                                                     config_.max_connections;
+                                  }))
         {
             return nonstd::make_unexpected("connection pool exhausted, max=" + std::to_string(config_.max_connections));
         }

@@ -157,9 +157,9 @@ void RequestHandler(const Request &request, const ClientId client_id, const Send
             .SetAsyncUuid(request.GetAsyncUuid())
             .SetSendDataHandler(send_data_handler);
 
-    const auto [fst, snd]           = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
-                                                                           std::chrono::milliseconds(request.GetTimeout()));
-    const auto            timer_ctx = std::dynamic_pointer_cast<tyke::TimerContext>(fst);
+    const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
+                                                                 std::chrono::milliseconds(request.GetTimeout()));
+    const auto timer_ctx  = std::dynamic_pointer_cast<tyke::TimerContext>(fst);
     if (!timer_ctx)
     {
         LOG_ERROR("Failed to cast context to TimerContext");
@@ -220,9 +220,9 @@ void RequestHandlerAsync(const Request &request)
             break;
     }
 
-    const auto [fst, snd]           = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
-                                                                           std::chrono::milliseconds(request.GetTimeout()));
-    const auto            timer_ctx = std::dynamic_pointer_cast<tyke::TimerContext>(fst);
+    const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
+                                                                 std::chrono::milliseconds(request.GetTimeout()));
+    const auto timer_ctx  = std::dynamic_pointer_cast<tyke::TimerContext>(fst);
     if (!timer_ctx)
     {
         LOG_ERROR("Failed to cast context to TimerContext");

@@ -256,16 +256,17 @@ void TimingWheel::WorkerLoop()
                 if (!task->cancelled && task->callback)
                 {
                     auto cb = task->callback;
-                    GetGlobalThreadPool().Enqueue([cb = std::move(cb)]()
-                    {
-                        try
-                        {
-                            cb();
-                        }
-                        catch (...)
-                        {
-                        }
-                    });
+                    GetGlobalThreadPool().Enqueue(
+                            [cb = std::move(cb)]()
+                            {
+                                try
+                                {
+                                    cb();
+                                }
+                                catch (...)
+                                {
+                                }
+                            });
                 }
                 if (task->is_repeating && !task->cancelled)
                 {

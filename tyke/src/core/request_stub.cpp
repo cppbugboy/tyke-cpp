@@ -19,16 +19,16 @@ namespace tyke::stub
 {
 namespace
 {
-    std::unordered_map<std::string, std::promise<Response>>                uuid_future_map_;
-    std::mutex                                                             uuid_future_map_mutex_;
-    std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_future_expire_map_;
-    std::mutex                                                             uuid_future_expire_map_mutex_;
+std::unordered_map<std::string, std::promise<Response>>                uuid_future_map_;
+std::mutex                                                             uuid_future_map_mutex_;
+std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_future_expire_map_;
+std::mutex                                                             uuid_future_expire_map_mutex_;
 
-    std::unordered_map<std::string, std::function<void(const Response &)>> uuid_func_map_;
-    std::mutex                                                             uuid_func_map_mutex_;
-    std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_func_expire_map_;
-    std::mutex                                                             uuid_func_expire_map_mutex_;
-}
+std::unordered_map<std::string, std::function<void(const Response &)>> uuid_func_map_;
+std::mutex                                                             uuid_func_map_mutex_;
+std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_func_expire_map_;
+std::mutex                                                             uuid_func_expire_map_mutex_;
+}// namespace
 
 void AddFuture(const std::string &uuid, std::promise<Response> &promise, const uint32_t timeout_ms)
 {
@@ -86,11 +86,11 @@ void DeleteFuture(const std::string &uuid)
 
 void CleanupExpiredFutures()
 {
-    const auto now = std::chrono::steady_clock::now();
+    const auto               now = std::chrono::steady_clock::now();
     std::vector<std::string> expired_uuids;
     {
         std::lock_guard<std::mutex> lock(uuid_future_expire_map_mutex_);
-        for (const auto &[uuid, expire_time] : uuid_future_expire_map_)
+        for (const auto &[uuid, expire_time]: uuid_future_expire_map_)
         {
             if (now >= expire_time)
             {
@@ -98,10 +98,10 @@ void CleanupExpiredFutures()
             }
         }
     }
-    for (const auto &uuid : expired_uuids)
+    for (const auto &uuid: expired_uuids)
     {
         std::promise<Response> extracted_promise;
-        bool found = false;
+        bool                   found = false;
         {
             std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
             if (const auto it = uuid_future_map_.find(uuid); it != uuid_future_map_.end())
@@ -141,7 +141,8 @@ void AddFunc(const std::string &msg_uuid, const std::function<void(const Respons
     }
     {
         std::lock_guard<std::mutex> lock(uuid_func_expire_map_mutex_);
-        uuid_func_expire_map_.emplace(msg_uuid, std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms));
+        uuid_func_expire_map_.emplace(msg_uuid,
+                                      std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms));
     }
     LOG_DEBUG("Callback entry added, uuid={}, timeout={}ms", msg_uuid, timeout_ms);
 }
@@ -187,11 +188,11 @@ void DeleteFunc(const std::string &msg_uuid)
 
 void CleanupExpiredFuncs()
 {
-    const auto now = std::chrono::steady_clock::now();
+    const auto               now = std::chrono::steady_clock::now();
     std::vector<std::string> expired_uuids;
     {
         std::lock_guard<std::mutex> lock(uuid_func_expire_map_mutex_);
-        for (const auto &[uuid, expire_time] : uuid_func_expire_map_)
+        for (const auto &[uuid, expire_time]: uuid_func_expire_map_)
         {
             if (now >= expire_time)
             {
@@ -199,7 +200,7 @@ void CleanupExpiredFuncs()
             }
         }
     }
-    for (const auto &uuid : expired_uuids)
+    for (const auto &uuid: expired_uuids)
     {
         DeleteFunc(uuid);
         LOG_WARN("Expired callback cleaned up, uuid={}", uuid);

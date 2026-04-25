@@ -9,9 +9,9 @@ namespace tyke
 {
 void Response::Reset()
 {
-    state_             = std::make_shared<ResponseState>();
-    protocol_header_   = ProtocolHeader{};
-    metadata_          = ResponseMetadata{};
+    state_           = std::make_shared<ResponseState>();
+    protocol_header_ = ProtocolHeader{};
+    metadata_        = ResponseMetadata{};
     content_.clear();
     client_id_         = {};
     send_data_handler_ = {};
@@ -92,8 +92,7 @@ BoolResult Response::Send()
     LOG_DEBUG("Send: route={}, msg_uuid={}", GetRoute(), GetMsgUuid());
 
     bool expected = false;
-    if (!state_->is_send.compare_exchange_strong(expected, true,
-            std::memory_order_acq_rel, std::memory_order_acquire))
+    if (!state_->is_send.compare_exchange_strong(expected, true, std::memory_order_acq_rel, std::memory_order_acquire))
     {
         LOG_WARN("Response already sent, msg_uuid={}", GetMsgUuid());
         return nonstd::make_unexpected("response already sent");
@@ -135,8 +134,7 @@ BoolResult Response::SendAsync()
     LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}", GetRoute(), GetMsgUuid(), metadata_.GetAsyncUuid());
 
     bool expected = false;
-    if (!state_->is_send.compare_exchange_strong(expected, true,
-            std::memory_order_acq_rel, std::memory_order_acquire))
+    if (!state_->is_send.compare_exchange_strong(expected, true, std::memory_order_acq_rel, std::memory_order_acquire))
     {
         LOG_WARN("Response already sent, msg_uuid={}", GetMsgUuid());
         return nonstd::make_unexpected("response already sent");
