@@ -25,18 +25,26 @@ using JsonValue = std::variant<std::monostate, bool, int, long long, double, std
  * @param v 源变体值
  * @return 对应的JSON对象
  */
-inline nlohmann::json VariantToJson(const JsonValue& v)
+inline nlohmann::json VariantToJson(const JsonValue &v)
 {
-    return std::visit([](auto&& arg) -> nlohmann::json
-    {
-        using T = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<T, std::monostate>) return nullptr;
-        else if constexpr (std::is_same_v<T, bool>) return arg;
-        else if constexpr (std::is_same_v<T, int>) return arg;
-        else if constexpr (std::is_same_v<T, long long>) return arg;
-        else if constexpr (std::is_same_v<T, double>) return arg;
-        else if constexpr (std::is_same_v<T, std::string>) return arg;
-    }, v);
+    return std::visit(
+            [](auto &&arg) -> nlohmann::json
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::monostate>)
+                    return nullptr;
+                else if constexpr (std::is_same_v<T, bool>)
+                    return arg;
+                else if constexpr (std::is_same_v<T, int>)
+                    return arg;
+                else if constexpr (std::is_same_v<T, long long>)
+                    return arg;
+                else if constexpr (std::is_same_v<T, double>)
+                    return arg;
+                else if constexpr (std::is_same_v<T, std::string>)
+                    return arg;
+            },
+            v);
 }
 
 /**
@@ -44,7 +52,7 @@ inline nlohmann::json VariantToJson(const JsonValue& v)
  * @param j 源JSON对象
  * @return 对应的变体值，无法识别的类型回退为字符串
  */
-inline JsonValue JsonToVariant(const nlohmann::json& j)
+inline JsonValue JsonToVariant(const nlohmann::json &j)
 {
     if (j.is_null())
         return std::monostate{};

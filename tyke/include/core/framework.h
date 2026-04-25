@@ -10,46 +10,46 @@
 
 #include <string>
 
-#include "request_router.h"
-#include "response_router.h"
 #include "component/singleton.h"
 #include "ipc/ipc_server.h"
+#include "request_router.h"
+#include "response_router.h"
 
 namespace tyke
 {
-    class TykeFramework
-    {
-    public:
-        TykeFramework();
+class TykeFramework
+{
+public:
+    TykeFramework();
 
-        ~TykeFramework();
+    ~TykeFramework();
 
-        TykeFramework& SetThreadPoolCount(uint32_t thread_pool_count);
-
-
-        TykeFramework& SetLogConfig(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
-                                    uint32_t file_count);
+    TykeFramework &SetThreadPoolCount(uint32_t thread_pool_count);
 
 
-        [[nodiscard]] BoolResult Start(std::string_view listen_uuid) const;
+    TykeFramework &SetLogConfig(const std::string &log_path, const std::string &log_level, uint32_t file_size_mb,
+                                uint32_t file_count);
 
 
-        void Shutdown();
+    [[nodiscard]] BoolResult Start(std::string_view listen_uuid) const;
 
 
-        static RequestRouter& GetRequestRouter();
+    void Shutdown();
 
 
-        static ResponseRouter& GetResponseRouter();
-
-    private:
-        uint32_t thread_pool_count_ = 0;
-        std::string log_path_;
-        std::string log_level_ = "info";
-        uint32_t file_size_mb_ = 1024;
-        uint32_t file_count_ = 5;
-    };
+    static RequestRouter &GetRequestRouter();
 
 
-    TykeFramework* App();
-}
+    static ResponseRouter &GetResponseRouter();
+
+private:
+    uint32_t    thread_pool_count_ = 0;
+    std::string log_path_;
+    std::string log_level_    = "info";
+    uint32_t    file_size_mb_ = 1024;
+    uint32_t    file_count_   = 5;
+};
+
+
+TykeFramework *App();
+}// namespace tyke

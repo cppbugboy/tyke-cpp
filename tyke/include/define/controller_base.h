@@ -7,36 +7,36 @@
 
 #pragma once
 
-#define REQUEST_CONTROLLER_REGISTER(ControllerFlag, RegisterMethod) \
-static tyke::ControllerAutoRegister _auto_register_request_##ControllerFlag(RegisterMethod);
+#define REQUEST_CONTROLLER_REGISTER(ControllerFlag, RegisterMethod)                                                    \
+    static tyke::ControllerAutoRegister _auto_register_request_##ControllerFlag(RegisterMethod);
 
-#define RESPONSE_CONTROLLER_REGISTER(ControllerFlag, RegisterMethod) \
-static tyke::ControllerAutoRegister _auto_register_response_##ControllerFlag(RegisterMethod);
+#define RESPONSE_CONTROLLER_REGISTER(ControllerFlag, RegisterMethod)                                                   \
+    static tyke::ControllerAutoRegister _auto_register_response_##ControllerFlag(RegisterMethod);
 
 namespace tyke
 {
-    class ControllerAutoRegister
-    {
-    public:
-        ControllerAutoRegister() = default;
+class ControllerAutoRegister
+{
+public:
+    ControllerAutoRegister() = default;
 
-        explicit ControllerAutoRegister(void (*RegisterMethod)())
+    explicit ControllerAutoRegister(void (*RegisterMethod)())
+    {
+        if (RegisterMethod)
         {
-            if (RegisterMethod)
-            {
-                RegisterMethod();
-            }
+            RegisterMethod();
         }
-    };
+    }
+};
 
 
-    class ControllerBase
-    {
-    public:
-        ControllerBase() = default;
-        virtual ~ControllerBase() = default;
+class ControllerBase
+{
+public:
+    ControllerBase()          = default;
+    virtual ~ControllerBase() = default;
 
 
-        virtual void RegisterMethod() = 0;
-    };
-}
+    virtual void RegisterMethod() = 0;
+};
+}// namespace tyke

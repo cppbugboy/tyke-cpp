@@ -14,5 +14,5 @@
 
 namespace tyke
 {
-    using RequestController = ControllerBase;
+using RequestController = ControllerBase;
 }

@@ -19,47 +19,47 @@
 #include <thread>
 #include <vector>
 
-#include "ipc_client.h"
 #include "common/tyke_def.h"
+#include "ipc_client.h"
 
 namespace tyke
 {
-    // struct ConnectionPoolConfig
-    // {
-    //     size_t max_connections = kIpcDefaultMaxConnections;
-    //     size_t min_idle_connections = 1;
-    //     uint32_t idle_timeout_ms = kIpcDefaultIdleTimeoutMs;
-    //     uint32_t connect_timeout_ms = kIpcDefaultTimeoutMs;
-    //     uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs;
-    //     uint32_t acquire_timeout_ms = 3000;
-    // };
+// struct ConnectionPoolConfig
+// {
+//     size_t max_connections = kIpcDefaultMaxConnections;
+//     size_t min_idle_connections = 1;
+//     uint32_t idle_timeout_ms = kIpcDefaultIdleTimeoutMs;
+//     uint32_t connect_timeout_ms = kIpcDefaultTimeoutMs;
+//     uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs;
+//     uint32_t acquire_timeout_ms = 3000;
+// };
 
-    class ConnectionPool
-    {
-    public:
-        explicit ConnectionPool(std::string_view server_uuid);
+class ConnectionPool
+{
+public:
+    explicit ConnectionPool(std::string_view server_uuid);
 
-        ~ConnectionPool();
+    ~ConnectionPool();
 
-        ConnectionPool(const ConnectionPool&) = delete;
-        ConnectionPool& operator=(const ConnectionPool&) = delete;
+    ConnectionPool(const ConnectionPool &)            = delete;
+    ConnectionPool &operator=(const ConnectionPool &) = delete;
 
-        TResult<IpcConnection*> Acquire();
+    TResult<IpcConnection *> Acquire();
 
-        void Release(IpcConnection* conn, bool should_reconnect = false);
+    void Release(IpcConnection *conn, bool should_reconnect = false);
 
-        const std::string& GetServerUuid() const;
+    const std::string &GetServerUuid() const;
 
-        void Stop();
+    void Stop();
 
-    private:
-        IpcConnection* CreateConnection();
+private:
+    IpcConnection *CreateConnection();
 
-        std::string server_uuid_;
+    std::string server_uuid_;
 
-        std::vector<IpcConnection*> connections_vec_;
+    std::vector<IpcConnection *> connections_vec_;
 
-        mutable std::mutex mutex_;
-        std::condition_variable acquire_cv_;
-    };
-}
+    mutable std::mutex      mutex_;
+    std::condition_variable acquire_cv_;
+};
+}// namespace tyke

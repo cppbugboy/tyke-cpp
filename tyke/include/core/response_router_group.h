@@ -12,14 +12,14 @@
 #include <vector>
 
 #include "define/response_filter.h"
-#include "router_group.h"
 #include "response.h"
+#include "router_group.h"
 
 namespace tyke
 {
-    using ResponseHandlerFunc = std::function<void(const Response &)>;
+using ResponseHandlerFunc = std::function<void(const Response &)>;
 
-    using ResponseRouteEntry = typename RouterGroup<ResponseFilter, ResponseHandlerFunc>::RouteEntry;
+using ResponseRouteEntry = typename RouterGroup<ResponseFilter, ResponseHandlerFunc>::RouteEntry;
 
-    using ResponseRouterGroup = RouterGroup<ResponseFilter, ResponseHandlerFunc>;
-}
+using ResponseRouterGroup = RouterGroup<ResponseFilter, ResponseHandlerFunc>;
+}// namespace tyke

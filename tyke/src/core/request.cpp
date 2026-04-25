@@ -10,212 +10,180 @@
 
 namespace tyke
 {
-    void Request::Reset()
+void Request::Reset()
+{
+    protocol_header_ = ProtocolHeader{};
+    metadata_        = RequestMetadata{};
+    content_.clear();
+}
+
+const char *Request::GetMagic() const
+{ return protocol_header_.magic; }
+
+MessageType Request::GetMessageType() const
+{ return static_cast<MessageType>(protocol_header_.msg_type); }
+
+void Request::GetContent(std::string &content_type, std::vector<uint8_t> &content) const
+{
+    content_type = metadata_.GetContentType();
+    content      = content_;
+}
+
+Request &Request::SetContent(const ContentType &content_type, const std::vector<uint8_t> &content)
+{
+    metadata_.SetContentType(ContentTypeMap().at(content_type));
+    content_ = content;
+    return *this;
+}
+
+Request &Request::SetModule(const std::string_view module)
+{
+    metadata_.SetModule(module);
+    return *this;
+}
+
+const std::string &Request::GetModule() const
+{ return metadata_.GetModule(); }
+
+Request &Request::SetRoute(const std::string_view route)
+{
+    metadata_.SetRoute(route);
+    return *this;
+}
+
+const std::string &Request::GetRoute() const
+{ return metadata_.GetRoute(); }
+
+BoolResult Request::EncodeAndSend(const std::string &send_uuid, MessageType msg_type, uint32_t timeout_ms)
+{
+    LOG_DEBUG("EncodeAndSend: send_uuid={}, route={}, msg_type={}, timeout={}ms", send_uuid, GetRoute(),
+              static_cast<int>(msg_type), timeout_ms);
+
+    metadata_.SetTimeout(timeout_ms);
+    protocol_header_.msg_type = msg_type;
+    metadata_.SetMsgUuid(utils::GenerateUUID()).SetTimestamp(utils::GenerateTimestamp());
+
+    std::vector<uint8_t> data_vec;
+    try
     {
-        protocol_header_ = ProtocolHeader{};
-        metadata_ = RequestMetadata{};
-        content_.clear();
+        DataProc::EncodeRequest(*this, data_vec);
+    }
+    catch (const std::exception &e)
+    {
+        LOG_ERROR("Encode request failed: {}", e.what());
+        return nonstd::make_unexpected("encode request failed");
     }
 
-    const char* Request::GetMagic() const
+    auto send_result = IpcClient::SendAsync(send_uuid, data_vec, timeout_ms);
+    if (!send_result)
     {
-        return protocol_header_.magic;
+        LOG_ERROR("Send request failed: {}", send_result.error());
+        return nonstd::make_unexpected("send request failed: " + send_result.error());
     }
 
-    MessageType Request::GetMessageType() const
+    LOG_DEBUG("Request sent successfully, msg_uuid={}", GetMsgUuid());
+    return true;
+}
+
+BoolResult Request::Send(const std::string &send_uuid, Response &response, uint32_t timeout_ms)
+{
+    LOG_DEBUG("Send: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
+
+    metadata_.SetTimeout(timeout_ms);
+    protocol_header_.msg_type = MessageType::kRequest;
+    metadata_.SetMsgUuid(utils::GenerateUUID()).SetTimestamp(utils::GenerateTimestamp());
+
+    std::vector<uint8_t> data_vec;
+    try
     {
-        return static_cast<MessageType>(protocol_header_.msg_type);
+        DataProc::EncodeRequest(*this, data_vec);
+    }
+    catch (const std::exception &e)
+    {
+        LOG_ERROR("Encode request failed: {}", e.what());
+        return nonstd::make_unexpected("encode request failed");
     }
 
-    void Request::GetContent(std::string& content_type,
-                                 std::vector<uint8_t>& content) const
+    auto send_result = IpcClient::Send(
+            send_uuid, data_vec,
+            [&response](const std::vector<uint8_t> &recv_data) -> bool
+            {
+                uint32_t   data_size     = 0;
+                const auto decode_result = DataProc::DecodeResponse(recv_data, response, data_size);
+                return decode_result.has_value();
+            },
+            timeout_ms);
+    if (!send_result)
     {
-        content_type = metadata_.GetContentType();
-        content = content_;
+        LOG_ERROR("Send request failed: {}", send_result.error());
+        return nonstd::make_unexpected("send request failed: " + send_result.error());
     }
 
-    Request& Request::SetContent(const ContentType& content_type,
-                                         const std::vector<uint8_t>& content)
+    LOG_DEBUG("Sync request completed, msg_uuid={}", GetMsgUuid());
+    return true;
+}
+
+BoolResult Request::SendAsync(const std::string &send_uuid, const uint32_t timeout_ms)
+{ return EncodeAndSend(send_uuid, MessageType::kRequestAsync, timeout_ms); }
+
+BoolResult Request::SendAsyncWithFunc(const std::string &send_uuid, const std::function<void(const Response &)> &func,
+                                      uint32_t timeout_ms)
+{
+    LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
+
+    auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFunc, timeout_ms);
+    if (!result)
     {
-        metadata_.SetContentType(ContentTypeMap().at(content_type));
-        content_ = content;
-        return *this;
+        LOG_ERROR("Send request failed: {}", result.error());
+        return nonstd::make_unexpected("encode request failed");
+    }
+    stub::AddFunc(metadata_.GetMsgUuid(), func);
+    return result;
+}
+
+nonstd::expected<ResponseFuture, std::string> Request::SendAsyncWithFuture(const std::string &send_uuid,
+                                                                           uint32_t           timeout_ms)
+{
+    LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
+
+    if (auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFuture, timeout_ms); !result)
+    {
+        return nonstd::make_unexpected(result.error());
     }
 
-    Request& Request::SetModule(const std::string_view module)
-    {
-        metadata_.SetModule(module);
-        return *this;
-    }
+    std::promise<Response> promise;
+    auto                   future = promise.get_future();
+    stub::AddFuture(metadata_.GetMsgUuid(), promise);
+    ResponseFuture response_future(metadata_.GetMsgUuid(), std::move(future));
 
-    const std::string& Request::GetModule() const
-    {
-        return metadata_.GetModule();
-    }
+    LOG_DEBUG("Future registered, msg_uuid={}", GetMsgUuid());
+    return response_future;
+}
 
-    Request& Request::SetRoute(const std::string_view route)
-    {
-        metadata_.SetRoute(route);
-        return *this;
-    }
+std::optional<bool> Request::AddMetadata(const std::string_view key, const JsonValue &value)
+{ return metadata_.AddMetadata(key, value); }
 
-    const std::string& Request::GetRoute() const
-    {
-        return metadata_.GetRoute();
-    }
+std::optional<JsonValue> Request::GetMetadata(const std::string_view key) const
+{ return metadata_.GetMetadata(key); }
 
-    BoolResult Request::EncodeAndSend(const std::string& send_uuid,
-                                          MessageType msg_type,
-                                          uint32_t timeout_ms)
-    {
-        LOG_DEBUG("EncodeAndSend: send_uuid={}, route={}, msg_type={}, timeout={}ms",
-                  send_uuid, GetRoute(), static_cast<int>(msg_type), timeout_ms);
+const std::string &Request::GetMsgUuid() const
+{ return metadata_.GetMsgUuid(); }
 
-        metadata_.SetTimeout(timeout_ms);
-        protocol_header_.msg_type = msg_type;
-        metadata_.SetMsgUuid(utils::GenerateUUID()).SetTimestamp(utils::GenerateTimestamp());
+Request &Request::SetAsyncUuid(const std::string_view async_uuid)
+{
+    metadata_.SetAsyncUuid(async_uuid);
+    return *this;
+}
 
-        std::vector<uint8_t> data_vec;
-        try
-        {
-            DataProc::EncodeRequest(*this, data_vec);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_ERROR("Encode request failed: {}", e.what());
-            return nonstd::make_unexpected("encode request failed");
-        }
+const std::string &Request::GetAsyncUuid() const
+{ return metadata_.GetAsyncUuid(); }
 
-        auto send_result = IpcClient::SendAsync(send_uuid, data_vec, timeout_ms);
-        if (!send_result)
-        {
-            LOG_ERROR("Send request failed: {}", send_result.error());
-            return nonstd::make_unexpected("send request failed: " + send_result.error());
-        }
+Request &Request::SetTimeout(const uint64_t timeout)
+{
+    metadata_.SetTimeout(timeout);
+    return *this;
+}
 
-        LOG_DEBUG("Request sent successfully, msg_uuid={}", GetMsgUuid());
-        return true;
-    }
-
-    BoolResult Request::Send(const std::string& send_uuid, Response& response,
-                                 uint32_t timeout_ms)
-    {
-        LOG_DEBUG("Send: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
-
-        metadata_.SetTimeout(timeout_ms);
-        protocol_header_.msg_type = MessageType::kRequest;
-        metadata_.SetMsgUuid(utils::GenerateUUID()).SetTimestamp(utils::GenerateTimestamp());
-
-        std::vector<uint8_t> data_vec;
-        try
-        {
-            DataProc::EncodeRequest(*this, data_vec);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_ERROR("Encode request failed: {}", e.what());
-            return nonstd::make_unexpected("encode request failed");
-        }
-
-        auto send_result = IpcClient::Send(send_uuid, data_vec,
-                                           [&response](const std::vector<uint8_t>& recv_data) -> bool
-                                           {
-                                               uint32_t data_size = 0;
-                                               const auto decode_result = DataProc::DecodeResponse(
-                                                   recv_data, response, data_size);
-                                               return decode_result.has_value();
-                                           },
-                                           timeout_ms);
-        if (!send_result)
-        {
-            LOG_ERROR("Send request failed: {}", send_result.error());
-            return nonstd::make_unexpected("send request failed: " + send_result.error());
-        }
-
-        LOG_DEBUG("Sync request completed, msg_uuid={}", GetMsgUuid());
-        return true;
-    }
-
-    BoolResult Request::SendAsync(const std::string& send_uuid,
-                                      const uint32_t timeout_ms)
-    {
-        return EncodeAndSend(send_uuid, MessageType::kRequestAsync, timeout_ms);
-    }
-
-    BoolResult Request::SendAsyncWithFunc(
-        const std::string& send_uuid,
-        const std::function<void(const Response &)>& func,
-        uint32_t timeout_ms)
-    {
-        LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}, timeout={}ms",
-                  send_uuid, GetRoute(), timeout_ms);
-
-        auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFunc, timeout_ms);
-        if (!result)
-        {
-            LOG_ERROR("Send request failed: {}", result.error());
-            return nonstd::make_unexpected("encode request failed");
-        }
-        stub::AddFunc(metadata_.GetMsgUuid(), func);
-        return result;
-    }
-
-    nonstd::expected<ResponseFuture, std::string> Request::SendAsyncWithFuture(
-        const std::string& send_uuid, uint32_t timeout_ms)
-    {
-        LOG_DEBUG("SendAsyncWithFuture: send_uuid={}, route={}, timeout={}ms",
-                  send_uuid, GetRoute(), timeout_ms);
-
-        if (auto result = EncodeAndSend(send_uuid, MessageType::kRequestAsyncFuture, timeout_ms);
-            !result)
-        {
-            return nonstd::make_unexpected(result.error());
-        }
-
-        std::promise<Response> promise;
-        auto future = promise.get_future();
-        stub::AddFuture(metadata_.GetMsgUuid(), promise);
-        ResponseFuture response_future(metadata_.GetMsgUuid(), std::move(future));
-
-        LOG_DEBUG("Future registered, msg_uuid={}", GetMsgUuid());
-        return response_future;
-    }
-
-    std::optional<bool> Request::AddMetadata(const std::string_view key,
-                                                 const JsonValue& value)
-    {
-        return metadata_.AddMetadata(key, value);
-    }
-
-    std::optional<JsonValue> Request::GetMetadata(const std::string_view key) const
-    {
-        return metadata_.GetMetadata(key);
-    }
-
-    const std::string& Request::GetMsgUuid() const
-    {
-        return metadata_.GetMsgUuid();
-    }
-
-    Request& Request::SetAsyncUuid(const std::string_view async_uuid)
-    {
-        metadata_.SetAsyncUuid(async_uuid);
-        return *this;
-    }
-
-    const std::string& Request::GetAsyncUuid() const
-    {
-        return metadata_.GetAsyncUuid();
-    }
-
-    Request& Request::SetTimeout(const uint64_t timeout)
-    {
-        metadata_.SetTimeout(timeout);
-        return *this;
-    }
-
-    uint64_t Request::GetTimeout() const
-    {
-        return metadata_.GetTimeout();
-    }
-} // namespace tyke
+uint64_t Request::GetTimeout() const
+{ return metadata_.GetTimeout(); }
+}// namespace tyke

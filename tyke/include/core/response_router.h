@@ -7,27 +7,26 @@
 
 #pragma once
 
-#include "response_router_group.h"
 #include "core/router_base.h"
+#include "response_router_group.h"
 
 namespace tyke
 {
-    class ResponseRouter : public RouterBase<ResponseRouterGroup>
+class ResponseRouter : public RouterBase<ResponseRouterGroup>
+{
+    friend class RouterBase<ResponseRouterGroup>;
+
+public:
+    ResponseRouter() : RouterBase<ResponseRouterGroup>()
     {
-        friend class RouterBase<ResponseRouterGroup>;
-
-    public:
-        ResponseRouter() : RouterBase<ResponseRouterGroup>()
-        {
-        }
-
-        ~ResponseRouter() = default;
-    };
-
-    inline ResponseRouter& GetGlobalResponseRouter()
-    {
-        static ResponseRouter instance;
-        return instance;
     }
-}
 
+    ~ResponseRouter() = default;
+};
+
+inline ResponseRouter &GetGlobalResponseRouter()
+{
+    static ResponseRouter instance;
+    return instance;
+}
+}// namespace tyke

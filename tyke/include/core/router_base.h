@@ -22,39 +22,36 @@
 
 namespace tyke
 {
-    template <typename RouterGroupType>
-    class RouterBase
+template<typename RouterGroupType>
+class RouterBase
+{
+public:
+    using RouteEntry = typename RouterGroupType::RouteEntry;
+
+    RouterBase()
     {
-    public:
-        using RouteEntry = typename RouterGroupType::RouteEntry;
+        root_group_ = std::make_shared<RouterGroupType>("", &route_table_);
+        LOG_DEBUG("RouterBase initialized");
+    }
 
-        RouterBase()
+    ~RouterBase() = default;
+
+    std::shared_ptr<RouterGroupType> GetRoot()
+    { return root_group_; }
+
+    RouteEntry *GetRouteEntry(std::string_view path)
+    {
+        if (auto it = route_table_.find(std::string(path)); it != route_table_.end())
         {
-            root_group_ = std::make_shared<RouterGroupType>("", &route_table_);
-            LOG_DEBUG("RouterBase initialized");
+            LOG_DEBUG("Route entry found: path={}", path);
+            return &(it->second);
         }
+        LOG_WARN("Route entry not found: path={}", path);
+        return nullptr;
+    }
 
-        ~RouterBase() = default;
-
-        std::shared_ptr<RouterGroupType> GetRoot()
-        {
-            return root_group_;
-        }
-
-        RouteEntry* GetRouteEntry(std::string_view path)
-        {
-            if (auto it = route_table_.find(std::string(path)); it != route_table_.end())
-            {
-                LOG_DEBUG("Route entry found: path={}", path);
-                return &(it->second);
-            }
-            LOG_WARN("Route entry not found: path={}", path);
-            return nullptr;
-        }
-
-    private:
-        std::unordered_map<std::string, RouteEntry> route_table_;
-        std::shared_ptr<RouterGroupType> root_group_;
-    };
-}
-
+private:
+    std::unordered_map<std::string, RouteEntry> route_table_;
+    std::shared_ptr<RouterGroupType>            root_group_;
+};
+}// namespace tyke

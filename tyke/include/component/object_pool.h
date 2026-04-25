@@ -16,123 +16,128 @@
 
 namespace tyke
 {
-    template <typename T>
-    class ObjectPool
+template<typename T>
+class ObjectPool
+{
+public:
+    ObjectPool() = default;
+
+    explicit ObjectPool(size_t max_capacity) : max_capacity_(max_capacity)
     {
-    public:
-        ObjectPool() = default;
+    }
 
-        explicit ObjectPool(size_t max_capacity) : max_capacity_(max_capacity)
-        {
-        }
+    ~ObjectPool()
+    { Clear(); }
 
-        ~ObjectPool() { Clear(); }
+    ObjectPool(const ObjectPool &)            = delete;
+    ObjectPool &operator=(const ObjectPool &) = delete;
 
-        ObjectPool(const ObjectPool&) = delete;
-        ObjectPool& operator=(const ObjectPool&) = delete;
-
-        T* Acquire()
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (pool_.empty())
-            {
-                return new T();
-            }
-            T* obj = pool_.back();
-            pool_.pop_back();
-            return obj;
-        }
-
-        void Release(T* obj)
-        {
-            if (!obj) return;
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (max_capacity_ > 0 && pool_.size() >= max_capacity_)
-            {
-                delete obj;
-                return;
-            }
-            pool_.push_back(obj);
-        }
-
-        void Clear()
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            for (auto* obj : pool_) delete obj;
-            pool_.clear();
-        }
-
-        size_t Size() const
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            return pool_.size();
-        }
-
-    private:
-        mutable std::mutex mutex_;
-        std::vector<T*> pool_;
-        size_t max_capacity_ = 0;
-    };
-
-    template <typename T>
-    class PooledPtr
+    T *Acquire()
     {
-    public:
-        static PooledPtr Acquire(ObjectPool<T>& pool)
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (pool_.empty())
         {
-            return PooledPtr(pool.Acquire(), &pool);
+            return new T();
         }
+        T *obj = pool_.back();
+        pool_.pop_back();
+        return obj;
+    }
 
-        PooledPtr() : ptr_(nullptr), pool_(nullptr)
+    void Release(T *obj)
+    {
+        if (!obj)
+            return;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (max_capacity_ > 0 && pool_.size() >= max_capacity_)
         {
+            delete obj;
+            return;
         }
+        pool_.push_back(obj);
+    }
 
-        ~PooledPtr() { Reset(); }
+    void Clear()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (auto *obj: pool_)
+            delete obj;
+        pool_.clear();
+    }
 
-        PooledPtr(PooledPtr&& other) noexcept
-            : ptr_(other.ptr_), pool_(other.pool_)
+    size_t Size() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return pool_.size();
+    }
+
+private:
+    mutable std::mutex mutex_;
+    std::vector<T *>   pool_;
+    size_t             max_capacity_ = 0;
+};
+
+template<typename T>
+class PooledPtr
+{
+public:
+    static PooledPtr Acquire(ObjectPool<T> &pool)
+    { return PooledPtr(pool.Acquire(), &pool); }
+
+    PooledPtr() : ptr_(nullptr), pool_(nullptr)
+    {
+    }
+
+    ~PooledPtr()
+    { Reset(); }
+
+    PooledPtr(PooledPtr &&other) noexcept : ptr_(other.ptr_), pool_(other.pool_)
+    {
+        other.ptr_  = nullptr;
+        other.pool_ = nullptr;
+    }
+
+    PooledPtr &operator=(PooledPtr &&other) noexcept
+    {
+        if (this != &other)
         {
-            other.ptr_ = nullptr;
+            Reset();
+            ptr_        = other.ptr_;
+            pool_       = other.pool_;
+            other.ptr_  = nullptr;
             other.pool_ = nullptr;
         }
+        return *this;
+    }
 
-        PooledPtr& operator=(PooledPtr&& other) noexcept
+    PooledPtr(const PooledPtr &)            = delete;
+    PooledPtr &operator=(const PooledPtr &) = delete;
+
+    T *Get() const
+    { return ptr_; }
+    T &operator*() const
+    { return *ptr_; }
+    T *operator->() const
+    { return ptr_; }
+    explicit operator bool() const
+    { return ptr_ != nullptr; }
+
+    void Reset()
+    {
+        if (ptr_ && pool_)
         {
-            if (this != &other)
-            {
-                Reset();
-                ptr_ = other.ptr_;
-                pool_ = other.pool_;
-                other.ptr_ = nullptr;
-                other.pool_ = nullptr;
-            }
-            return *this;
+            pool_->Release(ptr_);
         }
+        ptr_  = nullptr;
+        pool_ = nullptr;
+    }
 
-        PooledPtr(const PooledPtr&) = delete;
-        PooledPtr& operator=(const PooledPtr&) = delete;
+private:
+    PooledPtr(T *ptr, ObjectPool<T> *pool) : ptr_(ptr), pool_(pool)
+    {
+    }
 
-        T* Get() const { return ptr_; }
-        T& operator*() const { return *ptr_; }
-        T* operator->() const { return ptr_; }
-        explicit operator bool() const { return ptr_ != nullptr; }
-
-        void Reset()
-        {
-            if (ptr_ && pool_)
-            {
-                pool_->Release(ptr_);
-            }
-            ptr_ = nullptr;
-            pool_ = nullptr;
-        }
-
-    private:
-        PooledPtr(T* ptr, ObjectPool<T>* pool) : ptr_(ptr), pool_(pool)
-        {
-        }
-
-        T* ptr_;
-        ObjectPool<T>* pool_;
-    };
-} // namespace tyke
+    T             *ptr_;
+    ObjectPool<T> *pool_;
+};
+}// namespace tyke

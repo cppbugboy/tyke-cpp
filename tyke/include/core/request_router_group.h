@@ -12,14 +12,14 @@
 #include <vector>
 
 #include "define/request_filter.h"
-#include "router_group.h"
 #include "request.h"
+#include "router_group.h"
 
 namespace tyke
 {
-    using RequestHandlerFunc = std::function<void(const Request &, Response &, const ContextPtr &)>;
+using RequestHandlerFunc = std::function<void(const Request &, Response &, const ContextPtr &)>;
 
-    using RequestRouteEntry = RouterGroup<RequestFilter, RequestHandlerFunc>::RouteEntry;
+using RequestRouteEntry = RouterGroup<RequestFilter, RequestHandlerFunc>::RouteEntry;
 
-    using RequestRouterGroup = RouterGroup<RequestFilter, RequestHandlerFunc>;
-}
+using RequestRouterGroup = RouterGroup<RequestFilter, RequestHandlerFunc>;
+}// namespace tyke

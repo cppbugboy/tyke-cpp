@@ -8,57 +8,57 @@
 
 #pragma once
 
-#include "ipc_def.h"
-#include <memory>
 #include <chrono>
+#include <memory>
 #include <string_view>
 
 #include "common/tyke_def.h"
+#include "ipc_def.h"
 
 namespace tyke
 {
-    class IpcConnection
-    {
-    public:
-        IpcConnection();
+class IpcConnection
+{
+public:
+    IpcConnection();
 
 
-        ~IpcConnection();
+    ~IpcConnection();
 
 
-        [[nodiscard]] BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
-                                         uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs) const;
+    [[nodiscard]] BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
+                                     uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
-        [[nodiscard]] BoolResult WriteEncrypted(const void* data, size_t size,
-                                                uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
+    [[nodiscard]] BoolResult WriteEncrypted(const void *data, size_t size,
+                                            uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
-        [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback& callback,
-                                          uint32_t timeout_ms = kIpcDefaultTimeoutMs) const;
+    [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback &callback,
+                                      uint32_t                      timeout_ms = kIpcDefaultTimeoutMs) const;
 
 
-        void Close() const;
+    void Close() const;
 
 
-        [[nodiscard]] bool IsValid() const;
+    [[nodiscard]] bool IsValid() const;
 
-    private:
-        std::unique_ptr<class IClientConnectionImpl> impl_;
-    };
-
-
-    class IpcClient
-    {
-    public:
-        IpcClient() = delete;
+private:
+    std::unique_ptr<class IClientConnectionImpl> impl_;
+};
 
 
-        static BoolResult Send(std::string_view server_name, const std::vector<uint8_t>& request,
-                               const ClientRecvDataCallback& callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+class IpcClient
+{
+public:
+    IpcClient() = delete;
 
 
-        static BoolResult SendAsync(std::string_view server_name, const std::vector<uint8_t>& request,
-                                    uint32_t timeout_ms = kIpcDefaultTimeoutMs);
-    };
-}
+    static BoolResult Send(std::string_view server_name, const std::vector<uint8_t> &request,
+                           const ClientRecvDataCallback &callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+
+
+    static BoolResult SendAsync(std::string_view server_name, const std::vector<uint8_t> &request,
+                                uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+};
+}// namespace tyke

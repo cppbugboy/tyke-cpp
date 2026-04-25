@@ -13,16 +13,16 @@
 
 namespace tyke
 {
-    class RequestFilter
-    {
-    public:
-        RequestFilter() = default;
-        virtual ~RequestFilter() = default;
+class RequestFilter
+{
+public:
+    RequestFilter()          = default;
+    virtual ~RequestFilter() = default;
 
 
-        virtual bool Before(const Request& request, Response& response, ContextPtr context) = 0;
+    virtual bool Before(const Request &request, Response &response, ContextPtr context) = 0;
 
 
-        virtual bool After(const Request& request, Response& response, ContextPtr context) = 0;
-    };
-}
+    virtual bool After(const Request &request, Response &response, ContextPtr context) = 0;
+};
+}// namespace tyke

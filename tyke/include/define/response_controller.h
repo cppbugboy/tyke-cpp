@@ -14,5 +14,5 @@
 
 namespace tyke
 {
-    using ResponseController = ControllerBase;
+using ResponseController = ControllerBase;
 }

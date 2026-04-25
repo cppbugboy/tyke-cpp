@@ -20,22 +20,22 @@
 
 namespace tyke
 {
-    class ConnectionPoolFactory
-    {
-    public:
-        ConnectionPoolFactory();
-        ~ConnectionPoolFactory();
+class ConnectionPoolFactory
+{
+public:
+    ConnectionPoolFactory();
+    ~ConnectionPoolFactory();
 
-        std::shared_ptr<ConnectionPool> GetPool(const std::string& server_uuid);
+    std::shared_ptr<ConnectionPool> GetPool(const std::string &server_uuid);
 
-        void RemovePool(const std::string& server_uuid);
+    void RemovePool(const std::string &server_uuid);
 
-        void Shutdown();
+    void Shutdown();
 
-    private:
-        std::mutex mutex_;
-        std::unordered_map<std::string, std::shared_ptr<ConnectionPool>> pools_;
-    };
+private:
+    std::mutex                                                       mutex_;
+    std::unordered_map<std::string, std::shared_ptr<ConnectionPool>> pools_;
+};
 
-    ConnectionPoolFactory& GetGlobalConnectionPoolFactory();
-}
+ConnectionPoolFactory &GetGlobalConnectionPoolFactory();
+}// namespace tyke

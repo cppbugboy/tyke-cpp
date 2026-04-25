@@ -15,18 +15,18 @@
 
 namespace tyke
 {
-    class ResponseFuture
-    {
-    public:
-        /// 构造 ResponseFuture，绑定消息 UUID 和响应通道。
-        ResponseFuture(std::string msg_uuid, std::future<Response> future);
+class ResponseFuture
+{
+public:
+    /// 构造 ResponseFuture，绑定消息 UUID 和响应通道。
+    ResponseFuture(std::string msg_uuid, std::future<Response> future);
 
-        Response GetResponse();
+    Response GetResponse();
 
-        Response GetResponse(uint32_t timeout_ms);
+    Response GetResponse(uint32_t timeout_ms);
 
-    private:
-        std::string msg_uuid_;
-        std::future<Response> future_;
-    };
-}
+private:
+    std::string           msg_uuid_;
+    std::future<Response> future_;
+};
+}// namespace tyke
