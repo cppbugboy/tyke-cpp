@@ -313,5 +313,7 @@ int main()
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
     fmt::print("\n所有示例执行完毕\n");
+
+    framework.Shutdown();
     return 0;
 }

@@ -56,6 +56,7 @@ int main()
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    framework.Shutdown();
     fmt::print("服务端已关闭\n");
     return 0;
 }
