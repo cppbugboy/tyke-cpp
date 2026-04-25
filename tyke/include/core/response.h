@@ -22,7 +22,7 @@
 
 namespace tyke
 {
-    using SendDataHandler = std::function<bool(ClientId, const std::vector<uint8_t> &)>;
+    using SendDataHandler = std::function<bool(ClientId, const std::vector<uint8_t>&)>;
 
     struct ResponseState
     {

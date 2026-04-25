@@ -11,17 +11,28 @@
 
 namespace tyke::crypto
 {
-    static std::vector<uint8_t> HkdfExtract(const std::vector<uint8_t>& salt, const std::vector<uint8_t>& ikm)
+    static ByteVecResult HkdfExtract(const std::vector<uint8_t>& salt, const std::vector<uint8_t>& ikm)
     {
         std::vector<uint8_t> prk(SHA256_DIGEST_LENGTH);
         unsigned int prk_len = 0;
-        HMAC(EVP_sha256(), salt.data(), static_cast<int>(salt.size()), ikm.data(), ikm.size(), prk.data(), &prk_len);
+        if (HMAC(EVP_sha256(), salt.empty() ? nullptr : salt.data(), static_cast<int>(salt.size()),
+                 ikm.data(), static_cast<int>(ikm.size()), prk.data(), &prk_len) == nullptr)
+        {
+            LOG_ERROR("HMAC computation failed in HkdfExtract");
+            return nonstd::make_unexpected("HMAC computation failed in HkdfExtract");
+        }
         return prk;
     }
 
-    static std::vector<uint8_t> HkdfExpand(const std::vector<uint8_t>& prk, const std::vector<uint8_t>& info,
-                                           size_t length)
+    static ByteVecResult HkdfExpand(const std::vector<uint8_t>& prk, const std::vector<uint8_t>& info,
+                                    size_t length)
     {
+        if (length > 255 * SHA256_DIGEST_LENGTH)
+        {
+            LOG_ERROR("HKDF expand requested length too large: {}", length);
+            return nonstd::make_unexpected("HKDF expand requested length too large");
+        }
+
         std::vector<uint8_t> output;
         output.reserve(length);
         uint8_t counter = 1;
@@ -30,13 +41,19 @@ namespace tyke::crypto
         while (output.size() < length)
         {
             std::vector<uint8_t> data;
+            data.reserve(prev.size() + info.size() + 1);
             data.insert(data.end(), prev.begin(), prev.end());
             data.insert(data.end(), info.begin(), info.end());
             data.push_back(counter);
 
             std::vector<uint8_t> t(SHA256_DIGEST_LENGTH);
             unsigned int t_len = 0;
-            HMAC(EVP_sha256(), prk.data(), static_cast<int>(prk.size()), data.data(), data.size(), t.data(), &t_len);
+            if (HMAC(EVP_sha256(), prk.data(), static_cast<int>(prk.size()), data.data(),
+                     static_cast<int>(data.size()), t.data(), &t_len) == nullptr)
+            {
+                LOG_ERROR("HMAC computation failed in HkdfExpand at counter {}", counter);
+                return nonstd::make_unexpected("HMAC computation failed in HkdfExpand");
+            }
 
             size_t remaining = length - output.size();
             if (remaining > t.size())
@@ -44,17 +61,21 @@ namespace tyke::crypto
                 remaining = t.size();
             }
             output.insert(output.end(), t.begin(), t.begin() + remaining);
-            prev = t;
+            prev = std::move(t);
             counter++;
         }
         return output;
     }
 
-    static std::vector<uint8_t> HkdfDeriveKey(const std::vector<uint8_t>& salt, const std::vector<uint8_t>& ikm,
-                                              const std::vector<uint8_t>& info, size_t length)
+    static ByteVecResult HkdfDeriveKey(const std::vector<uint8_t>& salt, const std::vector<uint8_t>& ikm,
+                                       const std::vector<uint8_t>& info, size_t length)
     {
-        auto prk = HkdfExtract(salt, ikm);
-        return HkdfExpand(prk, info, length);
+        auto prk_result = HkdfExtract(salt, ikm);
+        if (!prk_result)
+        {
+            return nonstd::make_unexpected("HkdfExtract failed: " + prk_result.error());
+        }
+        return HkdfExpand(prk_result.value(), info, length);
     }
 
     struct EvpCipherCtxDeleter
@@ -119,7 +140,8 @@ namespace tyke::crypto
         const uint32_t total_len = DecodeLe32(buffer.data());
         if (total_len > kMaxFramePayloadLen)
         {
-            LOG_ERROR("Frame payload too large: {} > {}", total_len, kMaxFramePayloadLen);
+            LOG_ERROR("Frame payload too large: {} > {}, discarding buffer", total_len, kMaxFramePayloadLen);
+            buffer.clear();
             return nonstd::make_unexpected("frame payload too large");
         }
         if (buffer.size() < 4 + total_len)
@@ -263,17 +285,27 @@ namespace tyke::crypto
 
         impl_->aes_key.resize(kAes256KeyLen);
 
-        std::vector<uint8_t> salt = {'t', 'y', 'k', 'e', '-', 'h', 'k', 'd', 'f', '-', 's', 'a', 'l', 't'};
-        std::vector<uint8_t> info = {'t', 'y', 'k', 'e', '-', 'a', 'e', 's', '2', '5', '6', '-', 'k', 'e', 'y'};
+        std::vector<uint8_t> salt = {
+            't', 'y', 'k', 'e', '-', 'v', '1', '-', 'h', 'k', 'd', 'f', '-', 's', 'a', 'l', 't'
+        };
+        std::vector<uint8_t> info = {
+            't', 'y', 'k', 'e', '-', 'v', '1', '-', 'a', 'e', 's', '2', '5', '6', '-', 'k', 'e', 'y'
+        };
 
-        auto key = HkdfDeriveKey(salt, shared_secret, info, kAes256KeyLen);
-        if (key.size() != kAes256KeyLen)
+        auto key_result = HkdfDeriveKey(salt, shared_secret, info, kAes256KeyLen);
+        if (!key_result)
         {
-            LOG_ERROR("HKDF derive key failed");
-            return nonstd::make_unexpected("HKDF derive key failed");
+            LOG_ERROR("HKDF derive key failed: {}", key_result.error());
+            return nonstd::make_unexpected("HKDF derive key failed: " + key_result.error());
         }
 
-        impl_->aes_key = std::move(key);
+        if (key_result.value().size() != kAes256KeyLen)
+        {
+            LOG_ERROR("HKDF derive key length mismatch");
+            return nonstd::make_unexpected("HKDF derive key length mismatch");
+        }
+
+        impl_->aes_key = std::move(key_result.value());
         impl_->initialized.store(true, std::memory_order_release);
         LOG_DEBUG("AES-GCM cipher initialized with HKDF");
         return true;
@@ -297,6 +329,11 @@ namespace tyke::crypto
         }
 
         std::vector<uint8_t> iv(kAesGcmIvLen, 0);
+        if (RAND_bytes(iv.data(), 4) != 1)
+        {
+            LOG_ERROR("RAND_bytes for IV prefix failed");
+            return nonstd::make_unexpected("RAND_bytes for IV prefix failed");
+        }
         const uint64_t counter = impl_->iv_counter.fetch_add(1, std::memory_order_relaxed);
         iv[4] = static_cast<uint8_t>((counter >> 56) & 0xFF);
         iv[5] = static_cast<uint8_t>((counter >> 48) & 0xFF);
@@ -306,11 +343,6 @@ namespace tyke::crypto
         iv[9] = static_cast<uint8_t>((counter >> 16) & 0xFF);
         iv[10] = static_cast<uint8_t>((counter >> 8) & 0xFF);
         iv[11] = static_cast<uint8_t>(counter & 0xFF);
-        if (RAND_bytes(iv.data(), 4) != 1)
-        {
-            LOG_ERROR("RAND_bytes for IV prefix failed");
-            return nonstd::make_unexpected("RAND_bytes for IV prefix failed");
-        }
 
         const EvpCipherCtxPtr ctx(EVP_CIPHER_CTX_new());
         if (!ctx)

@@ -41,6 +41,8 @@ namespace tyke
             LOG_INFO("ipc client connecting to: {}", server_name);
             if (!utils::IsValidServerName(server_name))
                 return nonstd::make_unexpected("invalid server name");
+            if (server_name.size() + 5 >= sizeof(sockaddr_un::sun_path) - 1)
+                return nonstd::make_unexpected("server name too long for unix domain socket");
             fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
             if (fd_ < 0)
                 return nonstd::make_unexpected("socket creation failed");
@@ -224,6 +226,8 @@ namespace tyke
             LOG_INFO("ipc server starting on: {}", server_name);
             if (!utils::IsValidServerName(server_name))
                 return nonstd::make_unexpected("invalid server name");
+            if (server_name.size() + 5 >= sizeof(sockaddr_un::sun_path) - 1)
+                return nonstd::make_unexpected("server name too long for unix domain socket");
             if (running_.load())
                 return nonstd::make_unexpected("server already running");
             callback_ = std::move(callback);

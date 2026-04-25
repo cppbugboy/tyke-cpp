@@ -25,7 +25,7 @@ namespace tyke
     }
 
     Framework& Framework::SetLogConfig(const std::string& log_path, const std::string& log_level,
-                                               const uint32_t file_size_mb, const uint32_t file_count)
+                                       const uint32_t file_size_mb, const uint32_t file_count)
     {
         log_path_ = log_path;
         log_level_ = log_level;
@@ -42,8 +42,9 @@ namespace tyke
     {
         if (!GetGlobalLogConfig().IsInitialized())
         {
-            if (!GetGlobalLogConfig().Init(log_path_.empty() ? utils::GetTempDir() + "/tyke.log" : log_path_, log_level_,
-                                         file_size_mb_, file_count_))
+            if (!GetGlobalLogConfig().Init(log_path_.empty() ? utils::GetTempDir() + "/tyke.log" : log_path_,
+                                           log_level_,
+                                           file_size_mb_, file_count_))
             {
                 fmt::print("Tyke framework start failed: {}", log_path_);
                 return false;

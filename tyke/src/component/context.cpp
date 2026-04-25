@@ -49,6 +49,7 @@ namespace tyke
     {
         parent_ = std::move(parent);
         if (parent_&& parent_
+        
         ->
         IsDone()
         )
@@ -149,6 +150,7 @@ namespace tyke
         // 与父上下文的截止时间比较，取较早者
         auto effective_deadline = deadline;
         if (parent_&& parent_
+        
         ->
         Deadline().has_value()
         )

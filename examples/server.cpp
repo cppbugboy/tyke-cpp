@@ -9,6 +9,7 @@
 #include <mimalloc-new-delete.h>
 #endif
 
+#include <atomic>
 #include <csignal>
 #include <thread>
 
@@ -18,7 +19,7 @@
 #include "controllers/example_request_controller.h"
 #include "controllers/example_response_controller.h"
 
-static volatile bool g_running = true;
+static std::atomic<bool> g_running{true};
 
 void SignalHandler(int signal)
 {

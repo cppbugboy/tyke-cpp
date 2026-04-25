@@ -9,6 +9,7 @@
 #endif
 #include "mimalloc.h"
 
+#include <atomic>
 #include <chrono>
 #include <csignal>
 #include <iostream>
@@ -24,11 +25,22 @@
 static const std::string kServerUuid = "tyke_server_example";
 static const std::string kClientListenerUuid = "tyke_client_listener_cpp";
 
-static volatile bool g_running = true;
+static std::atomic<bool> g_running{true};
 
 void SignalHandler(int signal)
 {
     g_running = false;
+}
+
+static tm SafeLocaltime(time_t time)
+{
+    tm tm_buf{};
+#ifdef _WIN32
+    localtime_s(&tm_buf, &time);
+#else
+    localtime_r(&time, &tm_buf);
+#endif
+    return tm_buf;
 }
 
 void PrintRequestHeader(const std::string& title, const std::string& target_uuid, const tyke::Request& request)
@@ -37,7 +49,7 @@ void PrintRequestHeader(const std::string& title, const std::string& target_uuid
     auto time_t = std::chrono::system_clock::to_time_t(now);
 
     fmt::print("\n========================================\n");
-    fmt::print("[{:%Y-%m-%d %H:%M:%S}] {}\n", *std::localtime(&time_t), title);
+    fmt::print("[{:%Y-%m-%d %H:%M:%S}] {}\n", SafeLocaltime(time_t), title);
     fmt::print("========================================\n");
     fmt::print("目标UUID: {}\n", target_uuid);
     fmt::print("模块: {}\n", request.GetModule());
@@ -75,7 +87,7 @@ void PrintSyncResponse(const tyke::Response& response)
     response.GetResult(status, reason);
 
     fmt::print("----------------------------------------\n");
-    fmt::print("[{:%Y-%m-%d %H:%M:%S}] 收到同步响应\n", *std::localtime(&time_t));
+    fmt::print("[{:%Y-%m-%d %H:%M:%S}] 收到同步响应\n", SafeLocaltime(time_t));
     fmt::print("----------------------------------------\n");
     fmt::print("状态码: {}\n", (int)status);
     fmt::print("原因: {}\n", reason);
@@ -109,7 +121,7 @@ void PrintAsyncResponse(const tyke::Response& response, const std::string& metho
     response.GetResult(status, reason);
 
     fmt::print("----------------------------------------\n");
-    fmt::print("[{:%Y-%m-%d %H:%M:%S}] 收到异步响应 ({})\n", *std::localtime(&time_t), method_name);
+    fmt::print("[{:%Y-%m-%d %H:%M:%S}] 收到异步响应 ({})\n", SafeLocaltime(time_t), method_name);
     fmt::print("----------------------------------------\n");
     fmt::print("消息UUID: {}\n", response.GetMsgUuid());
     fmt::print("状态码: {}\n", (int)status);

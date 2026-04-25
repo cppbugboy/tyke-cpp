@@ -22,7 +22,7 @@ namespace tyke
     }
 
     BoolResult LogConfig::Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
-                             uint32_t file_count)
+                               uint32_t file_count)
     {
         if (tyke_logger_)
         {

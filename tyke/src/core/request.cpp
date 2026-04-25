@@ -137,7 +137,7 @@ namespace tyke
     }
 
     BoolResult Request::SendAsyncWithFunc(const std::string& send_uuid,
-                                          const std::function<void(const Response &)>& func,
+                                          const std::function<void(const Response&)>& func,
                                           uint32_t timeout_ms)
     {
         LOG_DEBUG("SendAsyncWithFunc: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);

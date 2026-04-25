@@ -1,27 +1,36 @@
-/**
- * @file connection_pool.cpp
- * @brief 连接池实现。管理IpcConnection的获取、归还、健康检查和空闲清理。
- * @author Nick
- * @date 2026/04/20
- */
-
 #include "ipc/connection_pool.h"
 
 #include "common/log_def.h"
 
 namespace tyke
 {
+    void ConnectionDeleter::operator()(IpcConnection* conn) const
+    {
+        if (pool && conn)
+        {
+            pool->Release(conn);
+        }
+    }
+
     ConnectionPool::ConnectionPool(const std::string_view server_uuid, const ConnectionPoolConfig& config)
         : server_uuid_(server_uuid), config_(config)
     {
         LOG_INFO("Connection pool created, server={}", server_uuid_);
     }
 
-    ConnectionPool::~ConnectionPool() = default;
+    ConnectionPool::~ConnectionPool()
+    {
+        Stop();
+    }
 
-    TResult<IpcConnection*> ConnectionPool::Acquire()
+    TResult<PooledConnection> ConnectionPool::Acquire()
     {
         std::unique_lock<std::mutex> lock(mutex_);
+
+        if (stopped_.load(std::memory_order_acquire))
+        {
+            return nonstd::make_unexpected("connection pool is stopped");
+        }
 
         while (!connections_vec_.empty())
         {
@@ -32,10 +41,11 @@ namespace tyke
             if (conn_uptr->IsValid())
             {
                 IpcConnection* raw = conn_uptr.release();
-                return raw;
+                return PooledConnection(raw, ConnectionDeleter{this});
             }
 
             LOG_WARN("Idle connection invalid, destroying, server={}", server_uuid_);
+            delete conn_uptr.release();
             total_connections_.fetch_sub(1, std::memory_order_relaxed);
             lock.lock();
         }
@@ -46,7 +56,8 @@ namespace tyke
             if (!acquire_cv_.wait_for(lock, std::chrono::milliseconds(config_.acquire_timeout_ms),
                                       [this]
                                       {
-                                          return !connections_vec_.empty() ||
+                                          return stopped_.load(std::memory_order_acquire) ||
+                                              !connections_vec_.empty() ||
                                               total_connections_.load(std::memory_order_relaxed) <
                                               config_.max_connections;
                                       }))
@@ -55,21 +66,29 @@ namespace tyke
                     "connection pool exhausted, max=" + std::to_string(config_.max_connections));
             }
 
+            if (stopped_.load(std::memory_order_acquire))
+            {
+                return nonstd::make_unexpected("connection pool is stopped");
+            }
+
             if (!connections_vec_.empty())
             {
                 auto conn_uptr = std::move(connections_vec_.back());
                 connections_vec_.pop_back();
                 if (conn_uptr->IsValid())
                 {
-                    return conn_uptr.release();
+                    return PooledConnection(conn_uptr.release(), ConnectionDeleter{this});
                 }
+                delete conn_uptr.release();
                 total_connections_.fetch_sub(1, std::memory_order_relaxed);
             }
         }
 
+        lock.unlock();
+
         if (auto conn = CreateConnection())
         {
-            return conn;
+            return PooledConnection(conn, ConnectionDeleter{this});
         }
         return nonstd::make_unexpected("failed to create connection for pool");
     }
@@ -80,6 +99,13 @@ namespace tyke
             return;
 
         std::lock_guard<std::mutex> lock(mutex_);
+
+        if (stopped_.load(std::memory_order_acquire))
+        {
+            delete conn;
+            total_connections_.fetch_sub(1, std::memory_order_relaxed);
+            return;
+        }
 
         if (should_reconnect || !conn->IsValid())
         {
@@ -103,7 +129,16 @@ namespace tyke
 
     void ConnectionPool::Stop()
     {
+        if (stopped_.exchange(true, std::memory_order_acq_rel))
+            return;
+
+        acquire_cv_.notify_all();
+
         std::lock_guard<std::mutex> lock(mutex_);
+        for (auto& conn : connections_vec_)
+        {
+            conn->Close();
+        }
         connections_vec_.clear();
         total_connections_.store(0, std::memory_order_relaxed);
     }

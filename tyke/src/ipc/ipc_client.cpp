@@ -1,10 +1,3 @@
-/**
- * @file ipc_client.cpp
- * @brief IPC客户端实现。提供同步/异步发送接口，支持ECDH+AES-GCM加密通信。
- * @author Nick
- * @date 2026/04/19
- */
-
 #include "ipc/ipc_client.h"
 
 #include "common/log_def.h"
@@ -82,26 +75,24 @@ namespace tyke
             return nonstd::make_unexpected("send: " + conn_result.error());
         }
 
-        IpcConnection * conn = conn_result.value();
-        bool should_reconnect = false;
+        auto& conn = *conn_result.value();
 
-        if (auto write_result = conn->WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
+        if (auto write_result = conn.WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
         {
             LOG_ERROR("IpcClient::Send write failed: {}", write_result.error());
-            should_reconnect = true;
-            pool->Release(conn, should_reconnect);
+            conn_result.value().release();
+            pool->Release(&conn, true);
             return nonstd::make_unexpected("send: " + write_result.error());
         }
 
-        if (auto read_result = conn->ReadLoop(callback, timeout_ms); !read_result)
+        if (auto read_result = conn.ReadLoop(callback, timeout_ms); !read_result)
         {
             LOG_ERROR("IpcClient::Send read failed: {}", read_result.error());
-            should_reconnect = true;
-            pool->Release(conn, should_reconnect);
+            conn_result.value().release();
+            pool->Release(&conn, true);
             return nonstd::make_unexpected("send: " + read_result.error());
         }
 
-        pool->Release(conn, should_reconnect);
         LOG_DEBUG("IpcClient::Send completed successfully");
         return true;
     }
@@ -119,19 +110,13 @@ namespace tyke
             return nonstd::make_unexpected("send async: " + conn_result.error());
         }
 
-        IpcConnection * conn = conn_result.value();
-        bool should_reconnect = false;
+        auto& conn = *conn_result.value();
 
-        if (auto write_result = conn->WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
+        if (auto write_result = conn.WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
         {
             LOG_ERROR("IpcClient::SendAsync write failed: {}", write_result.error());
-            should_reconnect = true;
-        }
-
-        pool->Release(conn, should_reconnect);
-
-        if (should_reconnect)
-        {
+            conn_result.value().release();
+            pool->Release(&conn, true);
             return nonstd::make_unexpected("send async: write encrypted failed");
         }
 

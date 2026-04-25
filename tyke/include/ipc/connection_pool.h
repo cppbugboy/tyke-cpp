@@ -25,6 +25,8 @@
 
 namespace tyke
 {
+    class ConnectionPool;
+
     struct ConnectionPoolConfig
     {
         size_t max_connections = kIpcDefaultMaxConnections;
@@ -34,6 +36,14 @@ namespace tyke
         uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs;
         uint32_t acquire_timeout_ms = 3000;
     };
+
+    struct ConnectionDeleter
+    {
+        ConnectionPool* pool = nullptr;
+        void operator()(IpcConnection* conn) const;
+    };
+
+    using PooledConnection = std::unique_ptr<IpcConnection, ConnectionDeleter>;
 
     class ConnectionPool
     {
@@ -46,7 +56,7 @@ namespace tyke
         ConnectionPool(const ConnectionPool&) = delete;
         ConnectionPool& operator=(const ConnectionPool&) = delete;
 
-        TResult<IpcConnection*> Acquire();
+        [[nodiscard]] TResult<PooledConnection> Acquire();
 
         void Release(IpcConnection* conn, bool should_reconnect = false);
 
@@ -62,6 +72,7 @@ namespace tyke
 
         std::vector<std::unique_ptr<IpcConnection>> connections_vec_;
         std::atomic<size_t> total_connections_{0};
+        std::atomic<bool> stopped_{false};
 
         mutable std::mutex mutex_;
         std::condition_variable acquire_cv_;

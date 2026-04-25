@@ -29,7 +29,7 @@ namespace tyke
 
 
         Framework& SetLogConfig(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
-                                    uint32_t file_count);
+                                uint32_t file_count);
 
 
         [[nodiscard]] BoolResult Start(std::string_view listen_uuid);

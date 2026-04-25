@@ -34,7 +34,7 @@ namespace tyke
         ObjectPool(const ObjectPool&) = delete;
         ObjectPool& operator=(const ObjectPool&) = delete;
 
-        T* Acquire()
+        [[nodiscard]] T* Acquire()
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (pool_.empty())

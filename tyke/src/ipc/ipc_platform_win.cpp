@@ -28,7 +28,7 @@ namespace tyke
             ClientConnectionImplWin::Close();
         }
 
-        BoolResult Connect(std::string_view server_name, const uint32_t timeout_ms, uint32_t) override
+        BoolResult Connect(std::string_view server_name, const uint32_t timeout_ms, uint32_t rw_timeout_ms) override
         {
             LOG_INFO("ipc client connecting to: {}", server_name);
             if (!utils::IsValidServerName(server_name))
@@ -45,7 +45,12 @@ namespace tyke
                 return nonstd::make_unexpected(std::string("CreateFile failed for pipe: ") + std::string(server_name));
             DWORD mode = PIPE_READMODE_BYTE;
             SetNamedPipeHandleState(pipe_, &mode, nullptr, nullptr);
-            return DoHandshake(timeout_ms);
+            if (rw_timeout_ms > 0)
+            {
+                DWORD rw_timeout = rw_timeout_ms;
+                SetNamedPipeHandleState(pipe_, nullptr, &rw_timeout, nullptr);
+            }
+            return DoHandshake(rw_timeout_ms > 0 ? rw_timeout_ms : timeout_ms);
         }
 
         BoolResult WriteEncrypted(const void* data, const size_t size, const uint32_t timeout_ms) override
