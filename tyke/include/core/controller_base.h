@@ -15,28 +15,28 @@
 
 namespace tyke
 {
-class ControllerAutoRegister
-{
-public:
-    ControllerAutoRegister() = default;
-
-    explicit ControllerAutoRegister(void (*RegisterMethod)())
+    class ControllerAutoRegister
     {
-        if (RegisterMethod)
+    public:
+        ControllerAutoRegister() = default;
+
+        explicit ControllerAutoRegister(void (*RegisterMethod)())
         {
-            RegisterMethod();
+            if (RegisterMethod)
+            {
+                RegisterMethod();
+            }
         }
-    }
-};
+    };
 
 
-class ControllerBase
-{
-public:
-    ControllerBase()          = default;
-    virtual ~ControllerBase() = default;
+    class ControllerBase
+    {
+    public:
+        ControllerBase() = default;
+        virtual ~ControllerBase() = default;
 
 
-    virtual void RegisterMethod() = 0;
-};
-}// namespace tyke
+        virtual void RegisterMethod() = 0;
+    };
+} // namespace tyke

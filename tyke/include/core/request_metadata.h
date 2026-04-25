@@ -16,11 +16,11 @@
 
 namespace tyke
 {
-class RequestMetadata : public MetadataBase<RequestMetadata>
-{
-public:
-    friend void                                   to_json(nlohmann::json &j, const RequestMetadata &t);
-    friend void                                   from_json(const nlohmann::json &j, RequestMetadata &t);
-    static const std::unordered_set<std::string> &JsonKeySet();
-};
-}// namespace tyke
+    class RequestMetadata : public MetadataBase<RequestMetadata>
+    {
+    public:
+        friend void to_json(nlohmann::json& j, const RequestMetadata& t);
+        friend void from_json(const nlohmann::json& j, RequestMetadata& t);
+        static const std::unordered_set<std::string>& JsonKeySet();
+    };
+} // namespace tyke

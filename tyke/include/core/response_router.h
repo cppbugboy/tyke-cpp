@@ -12,21 +12,21 @@
 
 namespace tyke
 {
-class ResponseRouter : public RouterBase<ResponseRouterGroup>
-{
-    friend class RouterBase<ResponseRouterGroup>;
-
-public:
-    ResponseRouter() : RouterBase<ResponseRouterGroup>()
+    class ResponseRouter : public RouterBase<ResponseRouterGroup>
     {
+        friend class RouterBase<ResponseRouterGroup>;
+
+    public:
+        ResponseRouter() : RouterBase<ResponseRouterGroup>()
+        {
+        }
+
+        ~ResponseRouter() = default;
+    };
+
+    inline ResponseRouter& GetGlobalResponseRouter()
+    {
+        static ResponseRouter instance;
+        return instance;
     }
-
-    ~ResponseRouter() = default;
-};
-
-inline ResponseRouter &GetGlobalResponseRouter()
-{
-    static ResponseRouter instance;
-    return instance;
-}
-}// namespace tyke
+} // namespace tyke

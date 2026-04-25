@@ -18,109 +18,115 @@
 
 namespace tyke
 {
-TykeFramework &TykeFramework::SetThreadPoolCount(const uint32_t thread_pool_count)
-{
-    thread_pool_count_ = thread_pool_count;
-    return *this;
-}
-
-TykeFramework &TykeFramework::SetLogConfig(const std::string &log_path, const std::string &log_level,
-                                           const uint32_t file_size_mb, const uint32_t file_count)
-{
-    log_path_     = log_path;
-    log_level_    = log_level;
-    file_size_mb_ = file_size_mb;
-    file_count_   = file_count;
-    if (!GetGlobalTykeLog().Init(log_path_, log_level_, file_size_mb_, file_count_))
+    TykeFramework& TykeFramework::SetThreadPoolCount(const uint32_t thread_pool_count)
     {
-        fmt::print("Tyke framework initialization failed: {}", log_path_);
+        thread_pool_count_ = thread_pool_count;
+        return *this;
     }
-    return *this;
-}
 
-BoolResult TykeFramework::Start(std::string_view listen_uuid)
-{
-    if (!GetGlobalTykeLog().IsInitialized())
+    TykeFramework& TykeFramework::SetLogConfig(const std::string& log_path, const std::string& log_level,
+                                               const uint32_t file_size_mb, const uint32_t file_count)
     {
-        if (!GetGlobalTykeLog().Init(log_path_.empty() ? utils::GetTempDir() + "/tyke.log" : log_path_, log_level_,
-                                     file_size_mb_, file_count_))
+        log_path_ = log_path;
+        log_level_ = log_level;
+        file_size_mb_ = file_size_mb;
+        file_count_ = file_count;
+        if (!GetGlobalTykeLog().Init(log_path_, log_level_, file_size_mb_, file_count_))
         {
-            fmt::print("Tyke framework start failed: {}", log_path_);
-            return false;
+            fmt::print("Tyke framework initialization failed: {}", log_path_);
         }
+        return *this;
     }
 
-    LOG_INFO("Tyke framework starting, listen_uuid={}", listen_uuid);
-
-    // 初始化线程池
-    unsigned int thread_pool_count = thread_pool_count_;
-    if (thread_pool_count == 0)
+    BoolResult TykeFramework::Start(std::string_view listen_uuid)
     {
-        thread_pool_count = std::thread::hardware_concurrency();
+        if (!GetGlobalTykeLog().IsInitialized())
+        {
+            if (!GetGlobalTykeLog().Init(log_path_.empty() ? utils::GetTempDir() + "/tyke.log" : log_path_, log_level_,
+                                         file_size_mb_, file_count_))
+            {
+                fmt::print("Tyke framework start failed: {}", log_path_);
+                return false;
+            }
+        }
+
+        LOG_INFO("Tyke framework starting, listen_uuid={}", listen_uuid);
+
+        // 初始化线程池
+        unsigned int thread_pool_count = thread_pool_count_;
+        if (thread_pool_count == 0)
+        {
+            thread_pool_count = std::thread::hardware_concurrency();
+        }
+        if (thread_pool_count == 0)
+        {
+            thread_pool_count = 4;
+        }
+        GetGlobalThreadPool().Init(thread_pool_count);
+        LOG_DEBUG("Thread pool initialized with {} threads", thread_pool_count_);
+
+        // 初始化时间轮
+        GetGlobalTimingWheel().Init();
+
+        // 注册周期性超时清理任务
+        const uint32_t cleanup_interval_ms = kDefaultStubTimeoutMs / 4;
+        cleanup_timer_id_ = GetGlobalTimingWheel().AddRepeatedTask(cleanup_interval_ms, cleanup_interval_ms,
+                                                                   []()
+                                                                   {
+                                                                       stub::CleanupExpiredFuncs();
+                                                                       stub::CleanupExpiredFutures();
+                                                                   });
+        LOG_DEBUG("Stub cleanup task registered, interval={}ms, timer_id={}", cleanup_interval_ms, cleanup_timer_id_);
+
+        // 启动IPC服务器
+        if (auto start_result = GetGlobalIpcServer().Start(listen_uuid, data_handler::DataCallback); !start_result)
+        {
+            LOG_ERROR("IPC server start failed: {}", start_result.error());
+            return nonstd::make_unexpected("ipc server start failed: " + start_result.error());
+        }
+
+        LOG_INFO("Tyke framework started successfully");
+        return true;
     }
-    if (thread_pool_count == 0)
+
+    RequestRouter& TykeFramework::GetRequestRouter()
     {
-        thread_pool_count = 4;
+        return GetGlobalRequestRouter();
     }
-    GetGlobalThreadPool().Init(thread_pool_count);
-    LOG_DEBUG("Thread pool initialized with {} threads", thread_pool_count_);
 
-    // 初始化时间轮
-    GetGlobalTimingWheel().Init();
-
-    // 注册周期性超时清理任务
-    const uint32_t cleanup_interval_ms = kDefaultStubTimeoutMs / 4;
-    cleanup_timer_id_ = GetGlobalTimingWheel().AddRepeatedTask(cleanup_interval_ms, cleanup_interval_ms,
-                                                               []()
-                                                               {
-                                                                   stub::CleanupExpiredFuncs();
-                                                                   stub::CleanupExpiredFutures();
-                                                               });
-    LOG_DEBUG("Stub cleanup task registered, interval={}ms, timer_id={}", cleanup_interval_ms, cleanup_timer_id_);
-
-    // 启动IPC服务器
-    if (auto start_result = GetGlobalIpcServer().Start(listen_uuid, data_handler::DataCallback); !start_result)
+    ResponseRouter& TykeFramework::GetResponseRouter()
     {
-        LOG_ERROR("IPC server start failed: {}", start_result.error());
-        return nonstd::make_unexpected("ipc server start failed: " + start_result.error());
+        return GetGlobalResponseRouter();
     }
 
-    LOG_INFO("Tyke framework started successfully");
-    return true;
-}
-
-RequestRouter &TykeFramework::GetRequestRouter()
-{ return GetGlobalRequestRouter(); }
-
-ResponseRouter &TykeFramework::GetResponseRouter()
-{ return GetGlobalResponseRouter(); }
-
-TykeFramework::TykeFramework()
-{
-}
-
-TykeFramework::~TykeFramework()
-{ Shutdown(); }
-
-void TykeFramework::Shutdown()
-{
-    LOG_INFO("Tyke framework shutting down");
-
-    if (cleanup_timer_id_ != TimingWheel::kInvalidTimerId)
+    TykeFramework::TykeFramework()
     {
-        GetGlobalTimingWheel().CancelTask(cleanup_timer_id_);
-        cleanup_timer_id_ = TimingWheel::kInvalidTimerId;
     }
 
-    GetGlobalIpcServer().Stop();
-    GetGlobalTimingWheel().Stop();
-    GetGlobalThreadPool().Stop();
-    GetGlobalTykeLog().Stop();
-}
+    TykeFramework::~TykeFramework()
+    {
+        Shutdown();
+    }
 
-TykeFramework &App()
-{
-    static TykeFramework instance;
-    return instance;
-}
-}// namespace tyke
+    void TykeFramework::Shutdown()
+    {
+        LOG_INFO("Tyke framework shutting down");
+
+        if (cleanup_timer_id_ != TimingWheel::kInvalidTimerId)
+        {
+            GetGlobalTimingWheel().CancelTask(cleanup_timer_id_);
+            cleanup_timer_id_ = TimingWheel::kInvalidTimerId;
+        }
+
+        GetGlobalIpcServer().Stop();
+        GetGlobalTimingWheel().Stop();
+        GetGlobalThreadPool().Stop();
+        GetGlobalTykeLog().Stop();
+    }
+
+    TykeFramework& App()
+    {
+        static TykeFramework instance;
+        return instance;
+    }
+} // namespace tyke

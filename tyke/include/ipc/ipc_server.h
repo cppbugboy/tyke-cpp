@@ -17,28 +17,28 @@
 
 namespace tyke
 {
-class IpcServer
-{
-public:
-    IpcServer();
+    class IpcServer
+    {
+    public:
+        IpcServer();
 
-    ~IpcServer();
+        ~IpcServer();
 
-    [[nodiscard]] BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) const;
-
-
-    void Stop() const;
+        [[nodiscard]] BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) const;
 
 
-    [[nodiscard]] BoolResult SendToClient(ClientId id, const std::vector<uint8_t> &data) const;
+        void Stop() const;
 
-private:
-    std::unique_ptr<class IServerImpl> impl_;
-};
 
-inline IpcServer &GetGlobalIpcServer()
-{
-    static IpcServer instance;
-    return instance;
-}
-}// namespace tyke
+        [[nodiscard]] BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) const;
+
+    private:
+        std::unique_ptr<class IServerImpl> impl_;
+    };
+
+    inline IpcServer& GetGlobalIpcServer()
+    {
+        static IpcServer instance;
+        return instance;
+    }
+} // namespace tyke

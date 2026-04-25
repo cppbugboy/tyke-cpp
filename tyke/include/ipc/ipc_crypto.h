@@ -16,70 +16,70 @@
 
 namespace tyke::crypto
 {
-constexpr uint8_t kMsgHandshakeInit = 0x01;
+    constexpr uint8_t kMsgHandshakeInit = 0x01;
 
-constexpr uint8_t kMsgHandshakeResp = 0x02;
+    constexpr uint8_t kMsgHandshakeResp = 0x02;
 
-constexpr uint8_t kMsgData = 0x03;
+    constexpr uint8_t kMsgData = 0x03;
 
-constexpr uint32_t kMaxFramePayloadLen = 16 * 1024 * 1024;
-
-
-class FrameParser
-{
-public:
-    static std::vector<uint8_t> BuildFrame(uint8_t type, const std::vector<uint8_t> &payload);
+    constexpr uint32_t kMaxFramePayloadLen = 16 * 1024 * 1024;
 
 
-    static BoolResult ExtractFrame(std::vector<uint8_t> &buffer, uint8_t &type, std::vector<uint8_t> &payload);
-};
+    class FrameParser
+    {
+    public:
+        static std::vector<uint8_t> BuildFrame(uint8_t type, const std::vector<uint8_t>& payload);
 
 
-class EcdhKeyExchange
-{
-public:
-    EcdhKeyExchange();
+        static BoolResult ExtractFrame(std::vector<uint8_t>& buffer, uint8_t& type, std::vector<uint8_t>& payload);
+    };
 
 
-    ~EcdhKeyExchange();
+    class EcdhKeyExchange
+    {
+    public:
+        EcdhKeyExchange();
 
 
-    [[nodiscard]] BoolResult GenerateKey();
+        ~EcdhKeyExchange();
 
 
-    [[nodiscard]] ByteVecResult GetPublicKeyDer() const;
+        [[nodiscard]] BoolResult GenerateKey();
 
 
-    [[nodiscard]] ByteVecResult ComputeSharedSecret(const std::vector<uint8_t> &peer_pub_der) const;
-
-private:
-    struct Impl;
-    std::unique_ptr<Impl> impl_;
-};
+        [[nodiscard]] ByteVecResult GetPublicKeyDer() const;
 
 
-class AesGcmCipher
-{
-public:
-    AesGcmCipher();
+        [[nodiscard]] ByteVecResult ComputeSharedSecret(const std::vector<uint8_t>& peer_pub_der) const;
+
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> impl_;
+    };
 
 
-    ~AesGcmCipher();
+    class AesGcmCipher
+    {
+    public:
+        AesGcmCipher();
 
 
-    [[nodiscard]] BoolResult Init(const std::vector<uint8_t> &shared_secret) const;
+        ~AesGcmCipher();
 
 
-    [[nodiscard]] bool IsInitialized() const;
+        [[nodiscard]] BoolResult Init(const std::vector<uint8_t>& shared_secret) const;
 
 
-    [[nodiscard]] ByteVecResult Encrypt(const std::vector<uint8_t> &plaintext) const;
+        [[nodiscard]] bool IsInitialized() const;
 
 
-    [[nodiscard]] ByteVecResult Decrypt(const std::vector<uint8_t> &ciphertext) const;
+        [[nodiscard]] ByteVecResult Encrypt(const std::vector<uint8_t>& plaintext) const;
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> impl_;
-};
-}// namespace tyke::crypto
+
+        [[nodiscard]] ByteVecResult Decrypt(const std::vector<uint8_t>& ciphertext) const;
+
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> impl_;
+    };
+} // namespace tyke::crypto

@@ -16,25 +16,25 @@
 
 namespace tyke
 {
-/// 客户端标识类型
-using ClientId = uint64_t;
+    /// 客户端标识类型
+    using ClientId = uint64_t;
 
-/// IPC默认超时时间（毫秒）
-constexpr uint32_t kIpcDefaultTimeoutMs = 5000;
+    /// IPC默认超时时间（毫秒）
+    constexpr uint32_t kIpcDefaultTimeoutMs = 5000;
 
-/// IPC默认最大连接数
-constexpr size_t kIpcDefaultMaxConnections = 4;
+    /// IPC默认最大连接数
+    constexpr size_t kIpcDefaultMaxConnections = 4;
 
-/// IPC默认空闲超时时间（毫秒）
-constexpr uint32_t kIpcDefaultIdleTimeoutMs = 30000;
+    /// IPC默认空闲超时时间（毫秒）
+    constexpr uint32_t kIpcDefaultIdleTimeoutMs = 30000;
 
-/// 客户端接收数据回调函数类型
-using ClientRecvDataCallback = std::function<bool(const std::vector<uint8_t> &)>;
+    /// 客户端接收数据回调函数类型
+    using ClientRecvDataCallback = std::function<bool(const std::vector<uint8_t> &)>;
 
-/// 服务器发送数据回调函数类型
-using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<uint8_t> &)>;
+    /// 服务器发送数据回调函数类型
+    using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<uint8_t> &)>;
 
-/**
+    /**
      * @brief 服务器接收数据回调函数类型
      * @param ClientId 客户端标识
      * @param std::vector<uint8_t> 接收到的原始数据
@@ -42,6 +42,6 @@ using ServerSendDataCallback = std::function<bool(ClientId, const std::vector<ui
      * @return std::optional<uint32_t> - 有值时表示已消费字节数（0表示数据不合法已丢弃），
      *         无值(std::nullopt)表示数据不完整需等待更多数据
      */
-using ServerRecvDataCallback =
-        std::function<std::optional<uint32_t>(ClientId, const std::vector<uint8_t> &, const ServerSendDataCallback &)>;
-}// namespace tyke
+    using ServerRecvDataCallback =
+    std::function<std::optional<uint32_t>(ClientId, const std::vector<uint8_t> &, const ServerSendDataCallback &)>;
+} // namespace tyke

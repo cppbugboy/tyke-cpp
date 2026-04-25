@@ -25,44 +25,45 @@
 
 namespace tyke
 {
-struct ConnectionPoolConfig
-{
-    size_t   max_connections      = kIpcDefaultMaxConnections;
-    size_t   min_idle_connections = 1;
-    uint32_t idle_timeout_ms      = kIpcDefaultIdleTimeoutMs;
-    uint32_t connect_timeout_ms   = kIpcDefaultTimeoutMs;
-    uint32_t rw_timeout_ms        = kIpcDefaultTimeoutMs;
-    uint32_t acquire_timeout_ms   = 3000;
-};
+    struct ConnectionPoolConfig
+    {
+        size_t max_connections = kIpcDefaultMaxConnections;
+        size_t min_idle_connections = 1;
+        uint32_t idle_timeout_ms = kIpcDefaultIdleTimeoutMs;
+        uint32_t connect_timeout_ms = kIpcDefaultTimeoutMs;
+        uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs;
+        uint32_t acquire_timeout_ms = 3000;
+    };
 
-class ConnectionPool
-{
-public:
-    explicit ConnectionPool(std::string_view server_uuid, const ConnectionPoolConfig &config = ConnectionPoolConfig{});
+    class ConnectionPool
+    {
+    public:
+        explicit ConnectionPool(std::string_view server_uuid,
+                                const ConnectionPoolConfig& config = ConnectionPoolConfig{});
 
-    ~ConnectionPool();
+        ~ConnectionPool();
 
-    ConnectionPool(const ConnectionPool &)            = delete;
-    ConnectionPool &operator=(const ConnectionPool &) = delete;
+        ConnectionPool(const ConnectionPool&) = delete;
+        ConnectionPool& operator=(const ConnectionPool&) = delete;
 
-    TResult<IpcConnection *> Acquire();
+        TResult<IpcConnection*> Acquire();
 
-    void Release(IpcConnection *conn, bool should_reconnect = false);
+        void Release(IpcConnection* conn, bool should_reconnect = false);
 
-    [[nodiscard]] const std::string &GetServerUuid() const;
+        [[nodiscard]] const std::string& GetServerUuid() const;
 
-    void Stop();
+        void Stop();
 
-private:
-    IpcConnection *CreateConnection();
+    private:
+        IpcConnection* CreateConnection();
 
-    std::string          server_uuid_;
-    ConnectionPoolConfig config_;
+        std::string server_uuid_;
+        ConnectionPoolConfig config_;
 
-    std::vector<std::unique_ptr<IpcConnection>> connections_vec_;
-    std::atomic<size_t>                         total_connections_{0};
+        std::vector<std::unique_ptr<IpcConnection>> connections_vec_;
+        std::atomic<size_t> total_connections_{0};
 
-    mutable std::mutex      mutex_;
-    std::condition_variable acquire_cv_;
-};
-}// namespace tyke
+        mutable std::mutex mutex_;
+        std::condition_variable acquire_cv_;
+    };
+} // namespace tyke

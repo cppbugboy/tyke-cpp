@@ -17,20 +17,21 @@
 
 namespace tyke::stub
 {
-void AddFuture(const std::string &uuid, std::promise<Response> &promise, uint32_t timeout_ms = kDefaultStubTimeoutMs);
+    void AddFuture(const std::string& uuid, std::promise<Response>& promise,
+                   uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
-void SetFuture(const Response &response);
+    void SetFuture(const Response& response);
 
-void DeleteFuture(const std::string &uuid);
+    void DeleteFuture(const std::string& uuid);
 
-void CleanupExpiredFutures();
+    void CleanupExpiredFutures();
 
-void AddFunc(const std::string &msg_uuid, const std::function<void(const Response &)> &func,
-             uint32_t timeout_ms = kDefaultStubTimeoutMs);
+    void AddFunc(const std::string& msg_uuid, const std::function<void(const Response &)>& func,
+                 uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
-void ExecFunc(const Response &response);
+    void ExecFunc(const Response& response);
 
-void DeleteFunc(const std::string &msg_uuid);
+    void DeleteFunc(const std::string& msg_uuid);
 
-void CleanupExpiredFuncs();
-}// namespace tyke::stub
+    void CleanupExpiredFuncs();
+} // namespace tyke::stub

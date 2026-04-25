@@ -16,81 +16,85 @@
 
 namespace tyke::dispatcher
 {
-void DispatchRequest(const Request &request, Response &response, const ContextPtr &context_ptr)
-{
-    LOG_DEBUG("Dispatching request: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
-
-    const auto route_entry = GetGlobalRequestRouter().GetRouteEntry(request.GetRoute());
-    if (route_entry == nullptr)
+    void DispatchRequest(const Request& request, Response& response, const ContextPtr& context_ptr)
     {
-        LOG_WARN("Request route not found: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
-        response.SetResult(StatusCode::kRouteError, "Not Found");
-        return;
-    }
+        LOG_DEBUG("Dispatching request: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
 
-    for (const auto &filter: route_entry->filter_chain)
-    {
-        LOG_DEBUG("Executing request filter Before: {}, msg_uuid={}", typeid(*filter).name(), request.GetMsgUuid());
-        if (!filter->Before(request, response, context_ptr))
+        const auto route_entry = GetGlobalRequestRouter().GetRouteEntry(request.GetRoute());
+        if (route_entry == nullptr)
         {
-            LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(),
-                      request.GetMsgUuid());
+            LOG_WARN("Request route not found: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
+            response.SetResult(StatusCode::kRouteError, "Not Found");
             return;
         }
+
+        for (const auto& filter : route_entry->filter_chain)
+        {
+            LOG_DEBUG("Executing request filter Before: {}, msg_uuid={}", typeid(*filter).name(), request.GetMsgUuid());
+            if (!filter->Before(request, response, context_ptr))
+            {
+                LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(),
+                          request.GetMsgUuid());
+                return;
+            }
+        }
+
+        LOG_DEBUG("Executing request handler for route: {}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
+        route_entry->handler(request, response, context_ptr);
+
+        for (auto it = route_entry->filter_chain.rbegin(); it != route_entry->filter_chain.rend(); ++it)
+        {
+            LOG_DEBUG("Executing request filter After: {}, msg_uuid={}", typeid(**it).name(), request.GetMsgUuid());
+            if (!(*it)->After(request, response, context_ptr))
+            {
+                LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(),
+                          request.GetMsgUuid());
+                return;
+            }
+        }
+
+        LOG_INFO("Request dispatched: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
     }
 
-    LOG_DEBUG("Executing request handler for route: {}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
-    route_entry->handler(request, response, context_ptr);
-
-    for (auto it = route_entry->filter_chain.rbegin(); it != route_entry->filter_chain.rend(); ++it)
+    void DispatchResponse(const Response& response)
     {
-        LOG_DEBUG("Executing request filter After: {}, msg_uuid={}", typeid(**it).name(), request.GetMsgUuid());
-        if (!(*it)->After(request, response, context_ptr))
+        LOG_DEBUG("Dispatching response: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
+
+        const auto route_entry = GetGlobalResponseRouter().GetRouteEntry(response.GetRoute());
+        if (route_entry == nullptr)
         {
-            LOG_DEBUG("Request filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(), request.GetMsgUuid());
+            LOG_WARN("Response dropped: no route and no stub handler found: route={}, msg_uuid={}", response.GetRoute(),
+                     response.GetMsgUuid());
             return;
         }
-    }
 
-    LOG_INFO("Request dispatched: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
-}
-
-void DispatchResponse(const Response &response)
-{
-    LOG_DEBUG("Dispatching response: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
-
-    const auto route_entry = GetGlobalResponseRouter().GetRouteEntry(response.GetRoute());
-    if (route_entry == nullptr)
-    {
-        LOG_WARN("Response dropped: no route and no stub handler found: route={}, msg_uuid={}", response.GetRoute(),
-                 response.GetMsgUuid());
-        return;
-    }
-
-    for (const auto &filter: route_entry->filter_chain)
-    {
-        LOG_DEBUG("Executing response filter Before: {}, msg_uuid={}", typeid(*filter).name(), response.GetMsgUuid());
-        if (!filter->Before(response))
+        for (const auto& filter : route_entry->filter_chain)
         {
-            LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(),
+            LOG_DEBUG("Executing response filter Before: {}, msg_uuid={}", typeid(*filter).name(),
                       response.GetMsgUuid());
-            return;
+            if (!filter->Before(response))
+            {
+                LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(*filter).name(),
+                          response.GetMsgUuid());
+                return;
+            }
         }
-    }
 
-    LOG_DEBUG("Executing response handler for route: {}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
-    route_entry->handler(response);
+        LOG_DEBUG("Executing response handler for route: {}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
+        route_entry->handler(response);
 
-    for (auto it = route_entry->filter_chain.rbegin(); it != route_entry->filter_chain.rend(); ++it)
-    {
-        LOG_DEBUG("Executing response filter After: {}, msg_uuid={}", typeid(**it).name(), response.GetMsgUuid());
-        if (!(*it)->After(response))
+        for (auto it = route_entry->filter_chain.rbegin(); it != route_entry->filter_chain.rend(); ++it)
         {
-            LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(), response.GetMsgUuid());
-            return;
+            LOG_DEBUG("Executing response filter After: {}, msg_uuid={}", typeid(**it).name(), response.GetMsgUuid());
+            if (!(*it)->After(response))
+            {
+                LOG_DEBUG("Response filter interrupted chain: {}, msg_uuid={}", typeid(**it).name(),
+                          response.GetMsgUuid());
+                return;
+            }
         }
-    }
 
-    LOG_DEBUG("Response dispatched successfully: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
-}
-}// namespace tyke::dispatcher
+        LOG_DEBUG("Response dispatched successfully: route={}, msg_uuid={}", response.GetRoute(),
+                  response.GetMsgUuid());
+    }
+} // namespace tyke::dispatcher

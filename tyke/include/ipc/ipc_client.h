@@ -17,44 +17,45 @@
 
 namespace tyke
 {
-class IpcConnection
-{
-public:
-    IpcConnection();
+    class IpcConnection
+    {
+    public:
+        IpcConnection();
 
 
-    ~IpcConnection();
+        ~IpcConnection();
 
 
-    [[nodiscard]] BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
-                                     uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs);
+        [[nodiscard]] BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
+                                         uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs);
 
-    [[nodiscard]] BoolResult WriteEncrypted(const void *data, size_t size, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+        [[nodiscard]] BoolResult WriteEncrypted(const void* data, size_t size,
+                                                uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
-    [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback &callback,
-                                      uint32_t                      timeout_ms = kIpcDefaultTimeoutMs);
+        [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback& callback,
+                                          uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
-    void Close();
-
-
-    [[nodiscard]] bool IsValid() const;
-
-private:
-    std::unique_ptr<class IClientConnectionImpl> impl_;
-};
+        void Close();
 
 
-class IpcClient
-{
-public:
-    IpcClient() = delete;
+        [[nodiscard]] bool IsValid() const;
+
+    private:
+        std::unique_ptr<class IClientConnectionImpl> impl_;
+    };
 
 
-    static BoolResult Send(std::string_view server_name, const std::vector<uint8_t> &request,
-                           const ClientRecvDataCallback &callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+    class IpcClient
+    {
+    public:
+        IpcClient() = delete;
 
 
-    static BoolResult SendAsync(std::string_view server_name, const std::vector<uint8_t> &request,
-                                uint32_t timeout_ms = kIpcDefaultTimeoutMs);
-};
-}// namespace tyke
+        static BoolResult Send(std::string_view server_name, const std::vector<uint8_t>& request,
+                               const ClientRecvDataCallback& callback, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+
+
+        static BoolResult SendAsync(std::string_view server_name, const std::vector<uint8_t>& request,
+                                    uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+    };
+} // namespace tyke

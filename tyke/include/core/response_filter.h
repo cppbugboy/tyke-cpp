@@ -12,16 +12,16 @@
 
 namespace tyke
 {
-class ResponseFilter
-{
-public:
-    ResponseFilter()          = default;
-    virtual ~ResponseFilter() = default;
+    class ResponseFilter
+    {
+    public:
+        ResponseFilter() = default;
+        virtual ~ResponseFilter() = default;
 
 
-    virtual bool Before(const Response &response) = 0;
+        virtual bool Before(const Response& response) = 0;
 
 
-    virtual bool After(const Response &response) = 0;
-};
-}// namespace tyke
+        virtual bool After(const Response& response) = 0;
+    };
+} // namespace tyke

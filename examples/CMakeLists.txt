@@ -51,14 +51,14 @@ if (MSVC)
     )
 
     # ---------- 为每个可执行目标复制所有 DLL ----------
-    foreach(exe IN ITEMS tyke_server_example tyke_client_example)
-        foreach(dll IN LISTS WIN_DLL_FILES)
+    foreach (exe IN ITEMS tyke_server_example tyke_client_example)
+        foreach (dll IN LISTS WIN_DLL_FILES)
             add_custom_command(TARGET ${exe} POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
                     "${THIRD_PARTY_LIB_DIR}/${dll}"
                     $<TARGET_FILE_DIR:${exe}>
                     COMMENT "Copying ${dll} to ${exe} output dir"
             )
-        endforeach()
-    endforeach()
+        endforeach ()
+    endforeach ()
 endif ()

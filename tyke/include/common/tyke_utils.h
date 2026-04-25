@@ -17,16 +17,16 @@
 
 namespace tyke::utils
 {
-std::string GenerateUUID();
+    std::string GenerateUUID();
 
 
-std::string GenerateTimestamp();
+    std::string GenerateTimestamp();
 
 
-bool IsValidUUID(std::string_view uuid);
+    bool IsValidUUID(std::string_view uuid);
 
 
-std::string GetTempDir();
+    std::string GetTempDir();
 
-bool IsValidServerName(std::string_view name);
-}// namespace tyke::utils
+    bool IsValidServerName(std::string_view name);
+} // namespace tyke::utils

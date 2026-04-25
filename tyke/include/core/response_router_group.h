@@ -17,9 +17,9 @@
 
 namespace tyke
 {
-using ResponseHandlerFunc = std::function<void(const Response &)>;
+    using ResponseHandlerFunc = std::function<void(const Response &)>;
 
-using ResponseRouteEntry = typename RouterGroup<ResponseFilter, ResponseHandlerFunc>::RouteEntry;
+    using ResponseRouteEntry = typename RouterGroup<ResponseFilter, ResponseHandlerFunc>::RouteEntry;
 
-using ResponseRouterGroup = RouterGroup<ResponseFilter, ResponseHandlerFunc>;
-}// namespace tyke
+    using ResponseRouterGroup = RouterGroup<ResponseFilter, ResponseHandlerFunc>;
+} // namespace tyke

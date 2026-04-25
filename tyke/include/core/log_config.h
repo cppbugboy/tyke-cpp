@@ -18,30 +18,30 @@
 
 namespace tyke
 {
-class TykeLog
-{
-public:
-    TykeLog()  = default;
-    ~TykeLog() = default;
+    class TykeLog
+    {
+    public:
+        TykeLog() = default;
+        ~TykeLog() = default;
 
-    BoolResult Init(const std::string &log_path, const std::string &log_level, uint32_t file_size_mb,
-                    uint32_t file_count);
+        BoolResult Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
+                        uint32_t file_count);
 
-    [[nodiscard]] bool IsInitialized() const;
-
-
-    void SetLogLevel(const std::string &log_level) const;
+        [[nodiscard]] bool IsInitialized() const;
 
 
-    void Stop() const;
+        void SetLogLevel(const std::string& log_level) const;
 
-private:
-    std::shared_ptr<spdlog::logger> tyke_logger_;
-};
 
-inline TykeLog &GetGlobalTykeLog()
-{
-    static TykeLog instance;
-    return instance;
-}
-}// namespace tyke
+        void Stop() const;
+
+    private:
+        std::shared_ptr<spdlog::logger> tyke_logger_;
+    };
+
+    inline TykeLog& GetGlobalTykeLog()
+    {
+        static TykeLog instance;
+        return instance;
+    }
+} // namespace tyke

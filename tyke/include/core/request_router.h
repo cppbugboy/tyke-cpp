@@ -12,21 +12,21 @@
 
 namespace tyke
 {
-class RequestRouter : public RouterBase<RequestRouterGroup>
-{
-    friend class RouterBase<RequestRouterGroup>;
-
-public:
-    RequestRouter() : RouterBase<RequestRouterGroup>()
+    class RequestRouter : public RouterBase<RequestRouterGroup>
     {
+        friend class RouterBase<RequestRouterGroup>;
+
+    public:
+        RequestRouter() : RouterBase<RequestRouterGroup>()
+        {
+        }
+
+        ~RequestRouter() = default;
+    };
+
+    inline RequestRouter& GetGlobalRequestRouter()
+    {
+        static RequestRouter instance;
+        return instance;
     }
-
-    ~RequestRouter() = default;
-};
-
-inline RequestRouter &GetGlobalRequestRouter()
-{
-    static RequestRouter instance;
-    return instance;
-}
-}// namespace tyke
+} // namespace tyke
