@@ -16,12 +16,12 @@
 
 namespace tyke
 {
-    bool TykeLog::IsInitialized() const
+    bool LogConfig::IsInitialized() const
     {
         return tyke_logger_ != nullptr;
     }
 
-    BoolResult TykeLog::Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
+    BoolResult LogConfig::Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
                              uint32_t file_count)
     {
         if (tyke_logger_)
@@ -57,7 +57,7 @@ namespace tyke
         }
     }
 
-    void TykeLog::SetLogLevel(const std::string& log_level) const
+    void LogConfig::SetLogLevel(const std::string& log_level) const
     {
         if (!tyke_logger_)
         {
@@ -75,7 +75,7 @@ namespace tyke
         LOG_DEBUG("Log level set to: {}", log_level);
     }
 
-    void TykeLog::Stop() const
+    void LogConfig::Stop() const
     {
         if (tyke_logger_)
         {

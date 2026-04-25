@@ -18,17 +18,17 @@
 
 namespace tyke
 {
-    class TykeFramework
+    class Framework
     {
     public:
-        TykeFramework();
+        Framework();
 
-        ~TykeFramework();
+        ~Framework();
 
-        TykeFramework& SetThreadPoolCount(uint32_t thread_pool_count);
+        Framework& SetThreadPoolCount(uint32_t thread_pool_count);
 
 
-        TykeFramework& SetLogConfig(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
+        Framework& SetLogConfig(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
                                     uint32_t file_count);
 
 
@@ -53,5 +53,5 @@ namespace tyke
     };
 
 
-    TykeFramework& App();
+    Framework& App();
 } // namespace tyke

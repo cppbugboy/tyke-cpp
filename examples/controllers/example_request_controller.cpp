@@ -23,7 +23,7 @@ namespace controller::request::examples
     {
         fmt::print("注册请求路由处理器...\n");
 
-        auto router = tyke::TykeFramework::GetRequestRouter();
+        auto router = tyke::Framework::GetRequestRouter();
         const auto root = router.GetRoot();
 
         auto user_group = root->Group("/api/user");

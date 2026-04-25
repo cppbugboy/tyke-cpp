@@ -21,7 +21,7 @@ namespace controller::response::examples
     {
         fmt::print("注册响应路由处理器...\n");
 
-        auto router = tyke::TykeFramework::GetResponseRouter();
+        auto router = tyke::Framework::GetResponseRouter();
         const auto root = router.GetRoot();
 
         const auto async_group = root->Group("/api/async");

@@ -1,5 +1,5 @@
 /**
- * @file tyke_framework.cpp
+ * @file framework.cpp
  * @brief Tyke 框架主入口实现。
  * @author Nick
  * @date 2026/04/20
@@ -18,31 +18,31 @@
 
 namespace tyke
 {
-    TykeFramework& TykeFramework::SetThreadPoolCount(const uint32_t thread_pool_count)
+    Framework& Framework::SetThreadPoolCount(const uint32_t thread_pool_count)
     {
         thread_pool_count_ = thread_pool_count;
         return *this;
     }
 
-    TykeFramework& TykeFramework::SetLogConfig(const std::string& log_path, const std::string& log_level,
+    Framework& Framework::SetLogConfig(const std::string& log_path, const std::string& log_level,
                                                const uint32_t file_size_mb, const uint32_t file_count)
     {
         log_path_ = log_path;
         log_level_ = log_level;
         file_size_mb_ = file_size_mb;
         file_count_ = file_count;
-        if (!GetGlobalTykeLog().Init(log_path_, log_level_, file_size_mb_, file_count_))
+        if (!GetGlobalLogConfig().Init(log_path_, log_level_, file_size_mb_, file_count_))
         {
             fmt::print("Tyke framework initialization failed: {}", log_path_);
         }
         return *this;
     }
 
-    BoolResult TykeFramework::Start(std::string_view listen_uuid)
+    BoolResult Framework::Start(std::string_view listen_uuid)
     {
-        if (!GetGlobalTykeLog().IsInitialized())
+        if (!GetGlobalLogConfig().IsInitialized())
         {
-            if (!GetGlobalTykeLog().Init(log_path_.empty() ? utils::GetTempDir() + "/tyke.log" : log_path_, log_level_,
+            if (!GetGlobalLogConfig().Init(log_path_.empty() ? utils::GetTempDir() + "/tyke.log" : log_path_, log_level_,
                                          file_size_mb_, file_count_))
             {
                 fmt::print("Tyke framework start failed: {}", log_path_);
@@ -89,26 +89,26 @@ namespace tyke
         return true;
     }
 
-    RequestRouter& TykeFramework::GetRequestRouter()
+    RequestRouter& Framework::GetRequestRouter()
     {
         return GetGlobalRequestRouter();
     }
 
-    ResponseRouter& TykeFramework::GetResponseRouter()
+    ResponseRouter& Framework::GetResponseRouter()
     {
         return GetGlobalResponseRouter();
     }
 
-    TykeFramework::TykeFramework()
+    Framework::Framework()
     {
     }
 
-    TykeFramework::~TykeFramework()
+    Framework::~Framework()
     {
         Shutdown();
     }
 
-    void TykeFramework::Shutdown()
+    void Framework::Shutdown()
     {
         LOG_INFO("Tyke framework shutting down");
 
@@ -121,12 +121,12 @@ namespace tyke
         GetGlobalIpcServer().Stop();
         GetGlobalTimingWheel().Stop();
         GetGlobalThreadPool().Stop();
-        GetGlobalTykeLog().Stop();
+        GetGlobalLogConfig().Stop();
     }
 
-    TykeFramework& App()
+    Framework& App()
     {
-        static TykeFramework instance;
+        static Framework instance;
         return instance;
     }
 } // namespace tyke

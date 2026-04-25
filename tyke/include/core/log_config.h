@@ -18,11 +18,11 @@
 
 namespace tyke
 {
-    class TykeLog
+    class LogConfig
     {
     public:
-        TykeLog() = default;
-        ~TykeLog() = default;
+        LogConfig() = default;
+        ~LogConfig() = default;
 
         BoolResult Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
                         uint32_t file_count);
@@ -39,9 +39,9 @@ namespace tyke
         std::shared_ptr<spdlog::logger> tyke_logger_;
     };
 
-    inline TykeLog& GetGlobalTykeLog()
+    inline LogConfig& GetGlobalLogConfig()
     {
-        static TykeLog instance;
+        static LogConfig instance;
         return instance;
     }
 } // namespace tyke
