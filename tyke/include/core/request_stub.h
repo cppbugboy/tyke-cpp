@@ -9,9 +9,9 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <future>
 #include <string>
-#include <unordered_map>
 
 #include "response.h"
 
@@ -32,14 +32,4 @@ void ExecFunc(const Response &response);
 void DeleteFunc(const std::string &msg_uuid);
 
 void CleanupExpiredFuncs();
-
-inline std::unordered_map<std::string, std::promise<Response>>                uuid_future_map_;
-inline std::mutex                                                              uuid_future_map_mutex_;
-inline std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_future_expire_map_;
-inline std::mutex                                                              uuid_future_expire_map_mutex_;
-
-inline std::unordered_map<std::string, std::function<void(const Response &)>> uuid_func_map_;
-inline std::mutex                                                             uuid_func_map_mutex_;
-inline std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_func_expire_map_;
-inline std::mutex                                                             uuid_func_expire_map_mutex_;
 }// namespace tyke::stub

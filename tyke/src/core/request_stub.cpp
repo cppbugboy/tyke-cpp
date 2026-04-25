@@ -7,6 +7,8 @@
 
 #include "core/request_stub.h"
 
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 
 #include "common/log_def.h"
@@ -15,7 +17,20 @@
 
 namespace tyke::stub
 {
-void AddFuture(const std::string &uuid, std::promise<Response> &promise, uint32_t timeout_ms)
+namespace
+{
+    std::unordered_map<std::string, std::promise<Response>>                uuid_future_map_;
+    std::mutex                                                             uuid_future_map_mutex_;
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_future_expire_map_;
+    std::mutex                                                             uuid_future_expire_map_mutex_;
+
+    std::unordered_map<std::string, std::function<void(const Response &)>> uuid_func_map_;
+    std::mutex                                                             uuid_func_map_mutex_;
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> uuid_func_expire_map_;
+    std::mutex                                                             uuid_func_expire_map_mutex_;
+}
+
+void AddFuture(const std::string &uuid, std::promise<Response> &promise, const uint32_t timeout_ms)
 {
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);

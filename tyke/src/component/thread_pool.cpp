@@ -1,5 +1,7 @@
 #include "component/thread_pool.h"
 
+#include "common/log_def.h"
+
 namespace tyke
 {
 ThreadPool::ThreadPool() : stop_(false)
@@ -35,7 +37,18 @@ void ThreadPool::Init(size_t threads)
                             task = std::move(tasks_.front());
                             tasks_.pop();
                         }
-                        task();
+                        try
+                        {
+                            task();
+                        }
+                        catch (const std::exception &e)
+                        {
+                            LOG_ERROR("Task threw unhandled exception: {}", e.what());
+                        }
+                        catch (...)
+                        {
+                            LOG_ERROR("Task threw unknown unhandled exception");
+                        }
                     }
                 });
     }

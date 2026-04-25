@@ -1,6 +1,7 @@
 #include "component/context.h"
 
 // 时间轮和线程池的头文件仅用于 TODO 注释中的集成说明，实际引入需按需取消注释。
+#include "common/log_def.h"
 #include "component/thread_pool.h"
 #include "component/timing_wheel.h"
 
@@ -151,6 +152,17 @@ void TimerContext::ActivateTimer()
     if (IsDone())
         return;
 
+    std::weak_ptr<TimerContext> weak;
+    try
+    {
+        weak = std::weak_ptr<TimerContext>(std::static_pointer_cast<TimerContext>(shared_from_this()));
+    }
+    catch (const std::bad_weak_ptr &)
+    {
+        LOG_ERROR("TimerContext::ActivateTimer called without shared_ptr management");
+        return;
+    }
+
     // 将系统时钟截止时间转换为稳态时钟
     const auto steady_now      = std::chrono::steady_clock::now();
     const auto sys_now         = std::chrono::system_clock::now();
@@ -159,7 +171,7 @@ void TimerContext::ActivateTimer()
     // 向全局时间轮注册到期回调
     timer_id_.store(GetGlobalTimingWheel().AddTaskAt(
             steady_deadline,
-            [weak = std::weak_ptr<TimerContext>(std::static_pointer_cast<TimerContext>(shared_from_this()))]()
+            [weak = std::move(weak)]()
             {
                 if (const auto ctx = weak.lock())
                 {

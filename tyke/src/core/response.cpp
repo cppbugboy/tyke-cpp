@@ -91,7 +91,9 @@ BoolResult Response::Send()
 {
     LOG_DEBUG("Send: route={}, msg_uuid={}", GetRoute(), GetMsgUuid());
 
-    if (state_->is_send.load(std::memory_order_acquire))
+    bool expected = false;
+    if (!state_->is_send.compare_exchange_strong(expected, true,
+            std::memory_order_acq_rel, std::memory_order_acquire))
     {
         LOG_WARN("Response already sent, msg_uuid={}", GetMsgUuid());
         return nonstd::make_unexpected("response already sent");
@@ -100,6 +102,7 @@ BoolResult Response::Send()
     if (!send_data_handler_)
     {
         LOG_ERROR("Send data handler is not set, msg_uuid={}", GetMsgUuid());
+        state_->is_send.store(false, std::memory_order_release);
         return nonstd::make_unexpected("send data handler is not set");
     }
 
@@ -112,16 +115,17 @@ BoolResult Response::Send()
     catch (const std::exception &e)
     {
         LOG_ERROR("Encode response failed: {}", e.what());
+        state_->is_send.store(false, std::memory_order_release);
         return nonstd::make_unexpected("encode response failed");
     }
 
     if (!send_data_handler_(client_id_, data_vec))
     {
         LOG_ERROR("Send data handler failed, msg_uuid={}", GetMsgUuid());
+        state_->is_send.store(false, std::memory_order_release);
         return nonstd::make_unexpected("send data handler failed");
     }
 
-    state_->is_send.store(true, std::memory_order_release);
     LOG_DEBUG("Response sent successfully, msg_uuid={}", GetMsgUuid());
     return true;
 }
@@ -130,7 +134,9 @@ BoolResult Response::SendAsync()
 {
     LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}", GetRoute(), GetMsgUuid(), metadata_.GetAsyncUuid());
 
-    if (state_->is_send.load(std::memory_order_acquire))
+    bool expected = false;
+    if (!state_->is_send.compare_exchange_strong(expected, true,
+            std::memory_order_acq_rel, std::memory_order_acquire))
     {
         LOG_WARN("Response already sent, msg_uuid={}", GetMsgUuid());
         return nonstd::make_unexpected("response already sent");
@@ -145,16 +151,17 @@ BoolResult Response::SendAsync()
     catch (const std::exception &e)
     {
         LOG_ERROR("Encode response failed: {}", e.what());
+        state_->is_send.store(false, std::memory_order_release);
         return nonstd::make_unexpected("encode response failed");
     }
 
     if (auto send_result = IpcClient::SendAsync(metadata_.GetAsyncUuid(), data_vec); !send_result)
     {
         LOG_ERROR("Send async failed: {}", send_result.error());
+        state_->is_send.store(false, std::memory_order_release);
         return nonstd::make_unexpected("send async failed: " + send_result.error());
     }
 
-    state_->is_send.store(true, std::memory_order_release);
     LOG_DEBUG("Async response sent successfully, msg_uuid={}", GetMsgUuid());
     return true;
 }

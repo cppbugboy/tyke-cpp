@@ -59,8 +59,7 @@ TResult<IpcConnection *> ConnectionPool::Acquire()
         }
     }
 
-    lock.unlock();
-    if (IpcConnection *conn = CreateConnection())
+    if (auto conn = CreateConnection())
     {
         return conn;
     }
@@ -101,15 +100,14 @@ void ConnectionPool::Stop()
 
 IpcConnection *ConnectionPool::CreateConnection()
 {
-    const auto conn = new IpcConnection();
+    auto conn = std::make_unique<IpcConnection>();
     if (auto result = conn->Connect(server_uuid_, config_.connect_timeout_ms, config_.rw_timeout_ms); !result)
     {
         LOG_ERROR("Failed to connect new connection, server={}, error={}", server_uuid_, result.error());
-        delete conn;
         return nullptr;
     }
     total_connections_.fetch_add(1, std::memory_order_relaxed);
     LOG_DEBUG("Created and connected new connection, server={}", server_uuid_);
-    return conn;
+    return conn.release();
 }
 }// namespace tyke
