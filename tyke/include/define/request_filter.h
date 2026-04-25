@@ -9,7 +9,7 @@
 #pragma once
 
 #include "component/context.h"
-#include "core/tyke_request.h"
+#include "core/request.h"
 
 namespace tyke
 {
@@ -20,9 +20,9 @@ namespace tyke
         virtual ~RequestFilter() = default;
 
 
-        virtual bool Before(const TykeRequest& request, TykeResponse& response, ContextPtr context) = 0;
+        virtual bool Before(const Request& request, Response& response, ContextPtr context) = 0;
 
 
-        virtual bool After(const TykeRequest& request, TykeResponse& response, ContextPtr context) = 0;
+        virtual bool After(const Request& request, Response& response, ContextPtr context) = 0;
     };
 }

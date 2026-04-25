@@ -25,15 +25,15 @@ namespace controller::response::examples
         const auto root = router.GetRoot();
 
         const auto async_group = root->Group("/api/async");
-        async_group->Route("/callback", [](const tyke::TykeResponse& resp)
+        async_group->Route("/callback", [](const tyke::Response& resp)
         {
             HandleAsyncCallback(resp);
         });
-        async_group->Route("/process", [](const tyke::TykeResponse& resp)
+        async_group->Route("/process", [](const tyke::Response& resp)
         {
             HandleAsyncCallback(resp);
         });
-        async_group->Route("/notification", [](const tyke::TykeResponse& resp)
+        async_group->Route("/notification", [](const tyke::Response& resp)
         {
             HandleAsyncNotification(resp);
         });
@@ -41,7 +41,7 @@ namespace controller::response::examples
         fmt::print("✓ 响应路由处理器注册完成\n");
     }
 
-    void LogResponse(const tyke::TykeResponse& response, const std::string& handler_name)
+    void LogResponse(const tyke::Response& response, const std::string& handler_name)
     {
         const auto now = std::chrono::system_clock::now();
         const auto time_t = std::chrono::system_clock::to_time_t(now);
@@ -77,7 +77,7 @@ namespace controller::response::examples
         fmt::print("========================================\n\n");
     }
 
-    void HandleAsyncCallback(const tyke::TykeResponse& response)
+    void HandleAsyncCallback(const tyke::Response& response)
     {
         LogResponse(response, "HandleAsyncCallback");
 
@@ -86,7 +86,7 @@ namespace controller::response::examples
         fmt::print("✓ 异步回调处理完成\n");
     }
 
-    void HandleAsyncNotification(const tyke::TykeResponse& response)
+    void HandleAsyncNotification(const tyke::Response& response)
     {
         LogResponse(response, "HandleAsyncNotification");
 

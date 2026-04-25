@@ -13,11 +13,11 @@
 
 #include "define/response_filter.h"
 #include "router_group.h"
-#include "tyke_response.h"
+#include "response.h"
 
 namespace tyke
 {
-    using ResponseHandlerFunc = std::function<void(const TykeResponse &)>;
+    using ResponseHandlerFunc = std::function<void(const Response &)>;
 
     using ResponseRouteEntry = typename RouterGroup<ResponseFilter, ResponseHandlerFunc>::RouteEntry;
 

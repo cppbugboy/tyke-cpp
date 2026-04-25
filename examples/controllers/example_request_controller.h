@@ -14,15 +14,15 @@
 namespace controller::request::examples
 {
     void RegisterMethod();
-    void HandleUserLogin(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+    void HandleUserLogin(const tyke::Request& request, tyke::Response& response,
                          const tyke::ContextPtr& context_ptr);
-    void HandleUserLogout(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+    void HandleUserLogout(const tyke::Request& request, tyke::Response& response,
                           const tyke::ContextPtr& context_ptr);
-    void HandleDataQuery(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+    void HandleDataQuery(const tyke::Request& request, tyke::Response& response,
                          const tyke::ContextPtr& context_ptr);
-    void HandleDataUpdate(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+    void HandleDataUpdate(const tyke::Request& request, tyke::Response& response,
                           const tyke::ContextPtr& context_ptr);
-    void HandleAsyncProcess(const tyke::TykeRequest& request, tyke::TykeResponse& response,
+    void HandleAsyncProcess(const tyke::Request& request, tyke::Response& response,
                             const tyke::ContextPtr& context_ptr);
 }
 
@@ -37,9 +37,9 @@ namespace controller::request::examples
 //     ExampleRequestController() = default;
 //     ~ExampleRequestController() override = default;
 //
-//     void HandleUserLogin(const tyke::TykeRequest& request, tyke::TykeResponse& response, std::shared_ptr<tyke::Context> context);
-//     void HandleUserLogout(const tyke::TykeRequest& request, tyke::TykeResponse& response, std::shared_ptr<tyke::Context> context);
-//     void HandleDataQuery(const tyke::TykeRequest& request, tyke::TykeResponse& response, std::shared_ptr<tyke::Context> context);
-//     void HandleDataUpdate(const tyke::TykeRequest& request, tyke::TykeResponse& response, std::shared_ptr<tyke::Context> context);
-//     void HandleAsyncProcess(const tyke::TykeRequest& request, tyke::TykeResponse& response, std::shared_ptr<tyke::Context> context);
+//     void HandleUserLogin(const tyke::Request& request, tyke::Response& response, std::shared_ptr<tyke::Context> context);
+//     void HandleUserLogout(const tyke::Request& request, tyke::Response& response, std::shared_ptr<tyke::Context> context);
+//     void HandleDataQuery(const tyke::Request& request, tyke::Response& response, std::shared_ptr<tyke::Context> context);
+//     void HandleDataUpdate(const tyke::Request& request, tyke::Response& response, std::shared_ptr<tyke::Context> context);
+//     void HandleAsyncProcess(const tyke::Request& request, tyke::Response& response, std::shared_ptr<tyke::Context> context);
 // };

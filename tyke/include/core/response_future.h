@@ -11,7 +11,7 @@
 #include <future>
 #include <string>
 
-#include "tyke_response.h"
+#include "response.h"
 
 namespace tyke
 {
@@ -19,14 +19,14 @@ namespace tyke
     {
     public:
         /// 构造 ResponseFuture，绑定消息 UUID 和响应通道。
-        ResponseFuture(std::string msg_uuid, std::future<TykeResponse> future);
+        ResponseFuture(std::string msg_uuid, std::future<Response> future);
 
-        TykeResponse GetResponse();
+        Response GetResponse();
 
-        TykeResponse GetResponse(uint32_t timeout_ms);
+        Response GetResponse(uint32_t timeout_ms);
 
     private:
         std::string msg_uuid_;
-        std::future<TykeResponse> future_;
+        std::future<Response> future_;
     };
 }

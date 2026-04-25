@@ -1,4 +1,4 @@
-#include "core/tyke_response.h"
+#include "core/response.h"
 
 #include "common/log_def.h"
 #include "common/tyke_utils.h"
@@ -7,9 +7,9 @@
 
 namespace tyke
 {
-    TykeResponse::TykeResponse() = default;
+    Response::Response() = default;
 
-    void TykeResponse::Reset()
+    void Response::Reset()
     {
         protocol_header_ = ProtocolHeader{};
         metadata_ = ResponseMetadata{};
@@ -19,28 +19,28 @@ namespace tyke
         send_data_handler_ = nullptr;
     }
 
-    const char* TykeResponse::GetMagic() const
+    const char* Response::GetMagic() const
     {
         return protocol_header_.magic;
     }
 
-    const std::string& TykeResponse::GetMsgUuid() const
+    const std::string& Response::GetMsgUuid() const
     {
         return metadata_.GetMsgUuid();
     }
 
-    TykeResponse& TykeResponse::SetRoute(const std::string_view route)
+    Response& Response::SetRoute(const std::string_view route)
     {
         metadata_.SetRoute(route);
         return *this;
     }
 
-    const std::string& TykeResponse::GetRoute() const
+    const std::string& Response::GetRoute() const
     {
         return metadata_.GetRoute();
     }
 
-    TykeResponse& TykeResponse::SetContent(const ContentType& content_type,
+    Response& Response::SetContent(const ContentType& content_type,
                                            const std::vector<uint8_t>& response_content)
     {
         metadata_.SetContentType(ContentTypeMap().at(content_type));
@@ -48,66 +48,66 @@ namespace tyke
         return *this;
     }
 
-    TykeResponse& TykeResponse::SetMessageType(const MessageType msg_type)
+    Response& Response::SetMessageType(const MessageType msg_type)
     {
         protocol_header_.msg_type = msg_type;
         return *this;
     }
 
-    MessageType TykeResponse::GetMessageType() const
+    MessageType Response::GetMessageType() const
     {
         return static_cast<MessageType>(protocol_header_.msg_type);
     }
 
-    TykeResponse& TykeResponse::SetModule(const std::string_view module)
+    Response& Response::SetModule(const std::string_view module)
     {
         metadata_.SetModule(module);
         return *this;
     }
 
-    const std::string& TykeResponse::GetModule() const
+    const std::string& Response::GetModule() const
     {
         return metadata_.GetModule();
     }
 
-    TykeResponse& TykeResponse::SetMsgUuid(const std::string_view msg_uuid)
+    Response& Response::SetMsgUuid(const std::string_view msg_uuid)
     {
         metadata_.SetMsgUuid(msg_uuid);
         return *this;
     }
 
-    void TykeResponse::GetContent(std::string& content_type,
+    void Response::GetContent(std::string& content_type,
                                   std::vector<uint8_t>& content) const
     {
         content_type = metadata_.GetContentType();
         content = content_;
     }
 
-    std::optional<bool> TykeResponse::AddMetadata(const std::string_view key,
+    std::optional<bool> Response::AddMetadata(const std::string_view key,
                                                   const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);
     }
 
-    std::optional<JsonValue> TykeResponse::GetMetadata(const std::string_view key) const
+    std::optional<JsonValue> Response::GetMetadata(const std::string_view key) const
     {
         return metadata_.GetMetadata(key);
     }
 
-    TykeResponse& TykeResponse::SetResult(const StatusCode status,
+    Response& Response::SetResult(const StatusCode status,
                                           const std::string_view reason)
     {
         metadata_.SetStatus(status).SetReason(reason);
         return *this;
     }
 
-    void TykeResponse::GetResult(StatusCode& status, std::string& reason) const
+    void Response::GetResult(StatusCode& status, std::string& reason) const
     {
         status = metadata_.GetStatus();
         reason = metadata_.GetReason();
     }
 
-    BoolResult TykeResponse::Send()
+    BoolResult Response::Send()
     {
         LOG_DEBUG("Send: route={}, msg_uuid={}", GetRoute(), GetMsgUuid());
 
@@ -146,7 +146,7 @@ namespace tyke
         return true;
     }
 
-    BoolResult TykeResponse::SendAsync()
+    BoolResult Response::SendAsync()
     {
         LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}",
                   GetRoute(), GetMsgUuid(), metadata_.GetAsyncUuid());
@@ -181,24 +181,24 @@ namespace tyke
         return true;
     }
 
-    TykeResponse& TykeResponse::SetAsyncUuid(const std::string_view target_uuid)
+    Response& Response::SetAsyncUuid(const std::string_view target_uuid)
     {
         metadata_.SetAsyncUuid(target_uuid);
         return *this;
     }
 
-    const std::string& TykeResponse::GetAsyncUuid() const
+    const std::string& Response::GetAsyncUuid() const
     {
         return metadata_.GetAsyncUuid();
     }
 
-    TykeResponse& TykeResponse::SetSendDataHandler(const SendDataHandler& send_data_handler)
+    Response& Response::SetSendDataHandler(const SendDataHandler& send_data_handler)
     {
         send_data_handler_ = send_data_handler;
         return *this;
     }
 
-    TykeResponse& TykeResponse::SetClientId(const ClientId client_id)
+    Response& Response::SetClientId(const ClientId client_id)
     {
         client_id_ = client_id;
         return *this;

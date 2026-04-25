@@ -16,7 +16,7 @@
 
 namespace tyke::dispatcher
 {
-    void DispatchRequest(const TykeRequest& request, TykeResponse& response, const ContextPtr& context_ptr)
+    void DispatchRequest(const Request& request, Response& response, const ContextPtr& context_ptr)
     {
         LOG_DEBUG("Dispatching request: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
 
@@ -56,7 +56,7 @@ namespace tyke::dispatcher
         LOG_INFO("Request dispatched: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
     }
 
-    void DispatchResponse(const TykeResponse& response)
+    void DispatchResponse(const Response& response)
     {
         LOG_DEBUG("Dispatching response: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
 

@@ -17,8 +17,8 @@
 #include "core/data_proc.h"
 #include "core/dispatcher.h"
 #include "core/request_stub.h"
-#include "core/tyke_request.h"
-#include "core/tyke_response.h"
+#include "core/request.h"
+#include "core/response.h"
 
 namespace tyke::data_handler
 {
@@ -56,7 +56,7 @@ namespace tyke::data_handler
             {
             case MessageType::kRequest:
                 {
-                    if (const auto tyke_request_ptr = TykeRequest::Acquire();
+                    if (const auto tyke_request_ptr = Request::Acquire();
                         DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
                     {
                         LOG_DEBUG("Processing sync request, route={}", tyke_request_ptr->GetRoute());
@@ -68,7 +68,7 @@ namespace tyke::data_handler
             case MessageType::kRequestAsyncFunc:
             case MessageType::kRequestAsyncFuture:
                 {
-                    if (const auto tyke_request_ptr = TykeRequest::Acquire();
+                    if (const auto tyke_request_ptr = Request::Acquire();
                         DataProc::DecodeRequest(data_vec, *tyke_request_ptr, used))
                     {
                         LOG_DEBUG("Processing async request, route={}, msg_type={}",
@@ -81,7 +81,7 @@ namespace tyke::data_handler
             case MessageType::kResponseAsyncFunc:
             case MessageType::kResponseAsyncFuture:
                 {
-                    if (const auto tyke_response_ptr = TykeResponse::Acquire();
+                    if (const auto tyke_response_ptr = Response::Acquire();
                         DataProc::DecodeResponse(data_vec, *tyke_response_ptr, used))
                     {
                         LOG_DEBUG("Processing async response, route={}, msg_uuid={}",
@@ -113,12 +113,12 @@ namespace tyke::data_handler
         }
     }
 
-    void RequestHandler(const TykeRequest& request, const ClientId client_id, const SendDataHandler& send_data_handler)
+    void RequestHandler(const Request& request, const ClientId client_id, const SendDataHandler& send_data_handler)
     {
         LOG_DEBUG("RequestHandler: client_id={}, route={}, msg_uuid={}",
                   client_id, request.GetRoute(), request.GetMsgUuid());
 
-        const auto response_ptr = TykeResponse::Acquire();
+        const auto response_ptr = Response::Acquire();
         response_ptr->SetClientId(client_id)
                     .SetMessageType(MessageType::kResponse)
                     .SetModule(request.GetModule())
@@ -151,12 +151,12 @@ namespace tyke::data_handler
         }
     }
 
-    void RequestHandlerAsync(const TykeRequest& request)
+    void RequestHandlerAsync(const Request& request)
     {
         LOG_DEBUG("RequestHandlerAsync: route={}, msg_uuid={}",
                   request.GetRoute(), request.GetMsgUuid());
 
-        const auto response_ptr = TykeResponse::Acquire();
+        const auto response_ptr = Response::Acquire();
         response_ptr->SetAsyncUuid(request.GetAsyncUuid())
                     .SetMessageType(MessageType::kResponseAsync)
                     .SetModule(request.GetModule())
@@ -200,7 +200,7 @@ namespace tyke::data_handler
         }
     }
 
-    void ResponseHandler(const TykeResponse& response)
+    void ResponseHandler(const Response& response)
     {
         LOG_DEBUG("ResponseHandler: route={}, msg_uuid={}, msg_type={}",
                   response.GetRoute(), response.GetMsgUuid(), static_cast<int>(response.GetMessageType()));

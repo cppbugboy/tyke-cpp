@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "tyke_request.h"
+#include "request.h"
 #include "response_metadata.h"
 #include "common/log_def.h"
 
@@ -21,17 +21,17 @@ namespace tyke
     public:
         DataProc() = delete;
         ~DataProc() = delete;
-        static void EncodeRequest(TykeRequest& request, std::vector<uint8_t>& data_vec);
+        static void EncodeRequest(Request& request, std::vector<uint8_t>& data_vec);
 
 
-        static std::optional<bool> DecodeRequest(const std::vector<uint8_t>& data_vec, TykeRequest& request,
+        static std::optional<bool> DecodeRequest(const std::vector<uint8_t>& data_vec, Request& request,
                                                  uint32_t& data_size);
 
 
-        static void EncodeResponse(TykeResponse& response, std::vector<uint8_t>& data_vec);
+        static void EncodeResponse(Response& response, std::vector<uint8_t>& data_vec);
 
 
-        static std::optional<bool> DecodeResponse(const std::vector<uint8_t>& data_vec, TykeResponse& response,
+        static std::optional<bool> DecodeResponse(const std::vector<uint8_t>& data_vec, Response& response,
                                                   uint32_t& data_size);
 
         static bool PeekHeader(const unsigned char* data, size_t size, ProtocolHeader& header);

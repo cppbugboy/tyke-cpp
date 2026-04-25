@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "core/tyke_response.h"
+#include "core/response.h"
 
 namespace tyke
 {
@@ -19,9 +19,9 @@ namespace tyke
         virtual ~ResponseFilter() = default;
 
 
-        virtual bool Before(const TykeResponse& response) = 0;
+        virtual bool Before(const Response& response) = 0;
 
 
-        virtual bool After(const TykeResponse& response) = 0;
+        virtual bool After(const Response& response) = 0;
     };
 }

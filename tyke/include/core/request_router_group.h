@@ -13,11 +13,11 @@
 
 #include "define/request_filter.h"
 #include "router_group.h"
-#include "tyke_request.h"
+#include "request.h"
 
 namespace tyke
 {
-    using RequestHandlerFunc = std::function<void(const TykeRequest &, TykeResponse &, const ContextPtr &)>;
+    using RequestHandlerFunc = std::function<void(const Request &, Response &, const ContextPtr &)>;
 
     using RequestRouteEntry = RouterGroup<RequestFilter, RequestHandlerFunc>::RouteEntry;
 

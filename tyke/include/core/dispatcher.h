@@ -9,11 +9,11 @@
 #pragma once
 
 #include "component/context.h"
-#include "core/tyke_request.h"
+#include "core/request.h"
 
 namespace tyke::dispatcher
 {
-    void DispatchRequest(const TykeRequest& request, TykeResponse& response, const ContextPtr& context_ptr);
+    void DispatchRequest(const Request& request, Response& response, const ContextPtr& context_ptr);
 
-    void DispatchResponse(const TykeResponse& response);
+    void DispatchResponse(const Response& response);
 }

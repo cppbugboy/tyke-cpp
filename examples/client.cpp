@@ -31,7 +31,7 @@ void SignalHandler(int signal)
     g_running = false;
 }
 
-void PrintRequestHeader(const std::string& title, const std::string& target_uuid, const tyke::TykeRequest& request)
+void PrintRequestHeader(const std::string& title, const std::string& target_uuid, const tyke::Request& request)
 {
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
@@ -65,7 +65,7 @@ void PrintRequestHeader(const std::string& title, const std::string& target_uuid
     }
 }
 
-void PrintSyncResponse(const tyke::TykeResponse& response)
+void PrintSyncResponse(const tyke::Response& response)
 {
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
@@ -99,7 +99,7 @@ void PrintSyncResponse(const tyke::TykeResponse& response)
     fmt::print("========================================\n");
 }
 
-void PrintAsyncResponse(const tyke::TykeResponse& response, const std::string& method_name)
+void PrintAsyncResponse(const tyke::Response& response, const std::string& method_name)
 {
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
@@ -140,7 +140,7 @@ void DemoSyncRequest()
 {
     fmt::print("\n>>> 1. 同步请求示例 (Send)\n");
 
-    auto request = tyke::TykeRequest::Acquire();
+    auto request = tyke::Request::Acquire();
     request->SetModule("user_service");
     request->SetRoute("/api/user/login");
 
@@ -157,7 +157,7 @@ void DemoSyncRequest()
 
     PrintRequestHeader("发送同步请求", kServerUuid, *request);
 
-    tyke::TykeResponse response;
+    tyke::Response response;
     auto result = request->Send(kServerUuid, response);
     if (result.has_value())
     {
@@ -173,7 +173,7 @@ void DemoSendAsync()
 {
     fmt::print("\n>>> 2. 异步请求示例 - SendAsync (即发即弃)\n");
 
-    auto request = tyke::TykeRequest::Acquire();
+    auto request = tyke::Request::Acquire();
     request->SetModule("data_service");
     request->SetRoute("/api/async/process");
     request->SetAsyncUuid(kClientListenerUuid);
@@ -203,7 +203,7 @@ void DemoSendAsyncWithFunc()
 {
     fmt::print("\n>>> 3. 异步请求示例 - SendAsyncWithFunc (回调函数)\n");
 
-    auto request = tyke::TykeRequest::Acquire();
+    auto request = tyke::Request::Acquire();
     request->SetModule("data_service");
     request->SetRoute("/api/async/process");
     request->SetAsyncUuid(kClientListenerUuid);
@@ -218,7 +218,7 @@ void DemoSendAsyncWithFunc()
 
     PrintRequestHeader("发送异步请求 (SendAsyncWithFunc)", kServerUuid, *request);
 
-    auto result = request->SendAsyncWithFunc(kServerUuid, [](const tyke::TykeResponse& response)
+    auto result = request->SendAsyncWithFunc(kServerUuid, [](const tyke::Response& response)
     {
         PrintAsyncResponse(response, "SendAsyncWithFunc 回调");
     });
@@ -237,7 +237,7 @@ void DemoSendAsyncWithFuture()
 {
     fmt::print("\n>>> 4. 异步请求示例 - SendAsyncWithFuture (Future/Promise)\n");
 
-    auto request = tyke::TykeRequest::Acquire();
+    auto request = tyke::Request::Acquire();
     request->SetModule("data_service");
     request->SetRoute("/api/async/process");
     request->SetAsyncUuid(kClientListenerUuid);

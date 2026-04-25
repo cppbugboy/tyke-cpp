@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include "core/tyke_framework.h"
-#include "core/tyke_request.h"
-#include "core/tyke_response.h"
+#include "core/framework.h"
+#include "core/request.h"
+#include "core/response.h"
 #include "component/singleton.h"
 #include "core/request_router.h"
 #include "define/request_controller.h"

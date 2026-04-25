@@ -5,14 +5,14 @@
  * @date 2026/04/20
  */
 
-#include "core/tyke_framework.h"
+#include "core/framework.h"
 
 #include "common/tyke_utils.h"
 #include "common/log_def.h"
 #include "component/thread_pool.h"
 #include "component/timing_wheel.h"
 #include "core/data_handler.h"
-#include "core/tyke_log.h"
+#include "core/log_config.h"
 
 namespace tyke
 {

@@ -6,22 +6,22 @@
  */
 
 #include "core/request_stub.h"
-#include "core/tyke_response.h"
+#include "core/response.h"
 #include "component/timing_wheel.h"
 #include "common/log_def.h"
 
 namespace tyke::stub
 {
-    void AddFuture(const std::string& uuid, std::promise<TykeResponse>& promise)
+    void AddFuture(const std::string& uuid, std::promise<Response>& promise)
     {
         std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
         uuid_future_map_.emplace(uuid, std::move(promise));
         LOG_DEBUG("Future entry added, uuid={}", uuid);
     }
 
-    void SetFuture(const TykeResponse& response)
+    void SetFuture(const Response& response)
     {
-        std::promise<TykeResponse> extracted_promise;
+        std::promise<Response> extracted_promise;
         bool found = false;
         {
             std::lock_guard<std::mutex> lock(uuid_future_map_mutex_);
@@ -52,16 +52,16 @@ namespace tyke::stub
         }
     }
 
-    void AddFunc(const std::string& msg_uuid, const std::function<void(const TykeResponse &)>& func)
+    void AddFunc(const std::string& msg_uuid, const std::function<void(const Response &)>& func)
     {
         std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);
         uuid_func_map_.emplace(msg_uuid, func);
         LOG_DEBUG("Callback entry added, uuid={}", msg_uuid);
     }
 
-    void ExecFunc(const TykeResponse& response)
+    void ExecFunc(const Response& response)
     {
-        std::function < void(const TykeResponse &) > extracted_func;
+        std::function < void(const Response &) > extracted_func;
         bool found = false;
         {
             std::lock_guard<std::mutex> lock(uuid_func_map_mutex_);

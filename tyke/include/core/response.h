@@ -22,14 +22,14 @@ namespace tyke
 {
     using SendDataHandler = std::function<bool(ClientId, const std::vector<uint8_t>&)>;
 
-    class TykeResponse
+    class Response
     {
         friend class DataProc;
         friend class RequestStub;
 
     public:
         // 使用 shared_ptr 配合自定义删除器实现池化回收
-        using Ptr = std::shared_ptr<TykeResponse>;
+        using Ptr = std::shared_ptr<Response>;
 
         /**
          * @brief 从对象池中获取一个响应对象。
@@ -37,7 +37,7 @@ namespace tyke
          */
         static Ptr Acquire()
         {
-            return Ptr(pool_.Acquire(), [](TykeResponse* p)
+            return Ptr(pool_.Acquire(), [](Response* p)
             {
                 p->Reset();
                 pool_.Release(p);
@@ -47,37 +47,37 @@ namespace tyke
         /** @brief 重置所有成员到默认状态。 */
         void Reset();
 
-        TykeResponse();
+        Response();
 
         [[nodiscard]] const char* GetMagic() const;
 
-        TykeResponse& SetMessageType(MessageType msg_type);
+        Response& SetMessageType(MessageType msg_type);
         [[nodiscard]] MessageType GetMessageType() const;
 
-        TykeResponse& SetModule(std::string_view module);
+        Response& SetModule(std::string_view module);
         [[nodiscard]] const std::string& GetModule() const;
 
-        TykeResponse& SetMsgUuid(std::string_view msg_uuid);
+        Response& SetMsgUuid(std::string_view msg_uuid);
         [[nodiscard]] const std::string& GetMsgUuid() const;
 
-        TykeResponse& SetRoute(std::string_view route);
+        Response& SetRoute(std::string_view route);
         [[nodiscard]] const std::string& GetRoute() const;
 
         void GetContent(std::string& content_type, std::vector<uint8_t>& content) const;
-        TykeResponse& SetContent(const ContentType& content_type,
+        Response& SetContent(const ContentType& content_type,
                                  const std::vector<uint8_t>& response_content);
 
         std::optional<bool> AddMetadata(std::string_view key, const JsonValue& value);
         [[nodiscard]] std::optional<JsonValue> GetMetadata(std::string_view key) const;
 
-        TykeResponse& SetResult(StatusCode status, std::string_view reason);
+        Response& SetResult(StatusCode status, std::string_view reason);
         void GetResult(StatusCode& status, std::string& reason) const;
 
-        TykeResponse& SetAsyncUuid(std::string_view target_uuid);
+        Response& SetAsyncUuid(std::string_view target_uuid);
         [[nodiscard]] const std::string& GetAsyncUuid() const;
 
-        TykeResponse& SetSendDataHandler(const SendDataHandler& send_data_handler);
-        TykeResponse& SetClientId(ClientId client_id);
+        Response& SetSendDataHandler(const SendDataHandler& send_data_handler);
+        Response& SetClientId(ClientId client_id);
 
         [[nodiscard]] BoolResult Send();
         [[nodiscard]] BoolResult SendAsync();
@@ -90,6 +90,6 @@ namespace tyke
         ClientId client_id_{};
         SendDataHandler send_data_handler_;
 
-        inline static ObjectPool<TykeResponse> pool_{1024}; // 全局共享对象池
+        inline static ObjectPool<Response> pool_{1024}; // 全局共享对象池
     };
 } // namespace tyke

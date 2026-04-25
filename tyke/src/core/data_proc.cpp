@@ -53,26 +53,26 @@ namespace tyke
         hdr.content_len = read_le32(data + 24);
     }
 
-    void DataProc::EncodeRequest(TykeRequest& request, std::vector<uint8_t>& data_vec)
+    void DataProc::EncodeRequest(Request& request, std::vector<uint8_t>& data_vec)
     {
         LOG_DEBUG("Encoding request, route={}", request.GetRoute());
         Encode(request, data_vec);
     }
 
-    std::optional<bool> DataProc::DecodeRequest(const std::vector<uint8_t>& data_vec, TykeRequest& request,
+    std::optional<bool> DataProc::DecodeRequest(const std::vector<uint8_t>& data_vec, Request& request,
                                                 uint32_t& data_size)
     {
         LOG_DEBUG("Decoding request, size={}", data_vec.size());
         return Decode(data_vec, request, data_size);
     }
 
-    void DataProc::EncodeResponse(TykeResponse& response, std::vector<uint8_t>& data_vec)
+    void DataProc::EncodeResponse(Response& response, std::vector<uint8_t>& data_vec)
     {
         LOG_DEBUG("Encoding response, route={}", response.GetRoute());
         Encode(response, data_vec);
     }
 
-    std::optional<bool> DataProc::DecodeResponse(const std::vector<uint8_t>& data_vec, TykeResponse& response,
+    std::optional<bool> DataProc::DecodeResponse(const std::vector<uint8_t>& data_vec, Response& response,
                                                  uint32_t& data_size)
     {
         LOG_DEBUG("Decoding response, size={}", data_vec.size());

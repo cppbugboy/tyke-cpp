@@ -5,7 +5,7 @@
  * @date 2026/04/19
  */
 
-#include "core/tyke_log.h"
+#include "core/log_config.h"
 
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>

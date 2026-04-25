@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "tyke_request.h"
+#include "request.h"
 
 namespace tyke::data_handler
 {
@@ -15,11 +15,11 @@ namespace tyke::data_handler
                                          const SendDataHandler& send_data_handler);
 
 
-    void RequestHandler(const TykeRequest& request, ClientId client_id, const SendDataHandler& send_data_handler);
+    void RequestHandler(const Request& request, ClientId client_id, const SendDataHandler& send_data_handler);
 
 
-    void RequestHandlerAsync(const TykeRequest& request);
+    void RequestHandlerAsync(const Request& request);
 
 
-    void ResponseHandler(const TykeResponse& response);
+    void ResponseHandler(const Response& response);
 }

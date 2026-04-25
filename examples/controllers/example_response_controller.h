@@ -14,6 +14,6 @@
 namespace controller::response::examples
 {
     void RegisterMethod();
-    void HandleAsyncCallback(const tyke::TykeResponse& response);
-    void HandleAsyncNotification(const tyke::TykeResponse& response);
+    void HandleAsyncCallback(const tyke::Response& response);
+    void HandleAsyncNotification(const tyke::Response& response);
 }
