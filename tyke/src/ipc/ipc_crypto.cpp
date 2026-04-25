@@ -1,8 +1,8 @@
 #include "ipc/ipc_crypto.h"
 
 #include <openssl/evp.h>
-#include <openssl/hmac.h>
 #include <openssl/kdf.h>
+#include <openssl/params.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
@@ -11,71 +11,60 @@
 
 namespace tyke::crypto
 {
-    static ByteVecResult HkdfExtract(const std::vector<uint8_t>& salt, const std::vector<uint8_t>& ikm)
+    struct EvpKdfDeleter
     {
-        std::vector<uint8_t> prk(SHA256_DIGEST_LENGTH);
-        unsigned int prk_len = 0;
-        if (HMAC(EVP_sha256(), salt.empty() ? nullptr : salt.data(), static_cast<int>(salt.size()),
-                 ikm.data(), static_cast<int>(ikm.size()), prk.data(), &prk_len) == nullptr)
+        void operator()(EVP_KDF* kdf) const
         {
-            LOG_ERROR("HMAC computation failed in HkdfExtract");
-            return nonstd::make_unexpected("HMAC computation failed in HkdfExtract");
+            EVP_KDF_free(kdf);
         }
-        return prk;
-    }
+    };
 
-    static ByteVecResult HkdfExpand(const std::vector<uint8_t>& prk, const std::vector<uint8_t>& info,
-                                    size_t length)
+    using EvpKdfPtr = std::unique_ptr<EVP_KDF, EvpKdfDeleter>;
+
+    struct EvpKdfCtxDeleter
     {
-        if (length > 255 * SHA256_DIGEST_LENGTH)
+        void operator()(EVP_KDF_CTX* ctx) const
         {
-            LOG_ERROR("HKDF expand requested length too large: {}", length);
-            return nonstd::make_unexpected("HKDF expand requested length too large");
+            EVP_KDF_CTX_free(ctx);
         }
+    };
 
-        std::vector<uint8_t> output;
-        output.reserve(length);
-        uint8_t counter = 1;
-        std::vector<uint8_t> prev;
-
-        while (output.size() < length)
-        {
-            std::vector<uint8_t> data;
-            data.reserve(prev.size() + info.size() + 1);
-            data.insert(data.end(), prev.begin(), prev.end());
-            data.insert(data.end(), info.begin(), info.end());
-            data.push_back(counter);
-
-            std::vector<uint8_t> t(SHA256_DIGEST_LENGTH);
-            unsigned int t_len = 0;
-            if (HMAC(EVP_sha256(), prk.data(), static_cast<int>(prk.size()), data.data(),
-                     static_cast<int>(data.size()), t.data(), &t_len) == nullptr)
-            {
-                LOG_ERROR("HMAC computation failed in HkdfExpand at counter {}", counter);
-                return nonstd::make_unexpected("HMAC computation failed in HkdfExpand");
-            }
-
-            size_t remaining = length - output.size();
-            if (remaining > t.size())
-            {
-                remaining = t.size();
-            }
-            output.insert(output.end(), t.begin(), t.begin() + remaining);
-            prev = std::move(t);
-            counter++;
-        }
-        return output;
-    }
+    using EvpKdfCtxPtr = std::unique_ptr<EVP_KDF_CTX, EvpKdfCtxDeleter>;
 
     static ByteVecResult HkdfDeriveKey(const std::vector<uint8_t>& salt, const std::vector<uint8_t>& ikm,
                                        const std::vector<uint8_t>& info, size_t length)
     {
-        auto prk_result = HkdfExtract(salt, ikm);
-        if (!prk_result)
+        EvpKdfPtr kdf(EVP_KDF_fetch(nullptr, "HKDF", nullptr));
+        if (!kdf)
         {
-            return nonstd::make_unexpected("HkdfExtract failed: " + prk_result.error());
+            LOG_ERROR("EVP_KDF_fetch for HKDF failed");
+            return nonstd::make_unexpected("EVP_KDF_fetch for HKDF failed");
         }
-        return HkdfExpand(prk_result.value(), info, length);
+
+        EvpKdfCtxPtr ctx(EVP_KDF_CTX_new(kdf.get()));
+        if (!ctx)
+        {
+            LOG_ERROR("EVP_KDF_CTX_new failed");
+            return nonstd::make_unexpected("EVP_KDF_CTX_new failed");
+        }
+
+        OSSL_PARAM params[] = {
+            OSSL_PARAM_construct_utf8_string("digest", const_cast<char*>("SHA256"), 0),
+            OSSL_PARAM_construct_octet_string("salt", const_cast<uint8_t*>(salt.data()), salt.size()),
+            OSSL_PARAM_construct_octet_string("key", const_cast<uint8_t*>(ikm.data()), ikm.size()),
+            OSSL_PARAM_construct_octet_string("info", const_cast<uint8_t*>(info.data()), info.size()),
+            OSSL_PARAM_END
+        };
+
+        std::vector<uint8_t> out(length);
+        if (EVP_KDF_derive(ctx.get(), out.data(), length, params) <= 0)
+        {
+            LOG_ERROR("EVP_KDF_derive failed");
+            return nonstd::make_unexpected("EVP_KDF_derive failed");
+        }
+
+        LOG_DEBUG("HKDF key derivation via EVP_KDF completed, length={}", length);
+        return out;
     }
 
     struct EvpCipherCtxDeleter
