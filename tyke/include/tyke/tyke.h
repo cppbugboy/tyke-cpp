@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "../core/request_controller.h"
+#include "../core/response_controller.h"
 #include "common/log_def.h"
 #include "component/singleton.h"
 #include "core/framework.h"
@@ -15,8 +17,6 @@
 #include "core/request_router.h"
 #include "core/response.h"
 #include "core/response_router.h"
-#include "define/request_controller.h"
 #include "define/request_filter.h"
-#include "define/response_controller.h"
 #include "define/response_filter.h"
 #include "ipc/connection_pool_factory.h"
