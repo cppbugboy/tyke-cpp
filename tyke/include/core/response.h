@@ -57,7 +57,6 @@ namespace tyke
 
         Response() = default;
 
-        // 启用默认拷贝/移动语义（state_ 通过 shared_ptr 共享，其他成员自然拷贝/移动）
         Response(const Response&) = default;
         Response& operator=(const Response&) = default;
         Response(Response&&) = default;

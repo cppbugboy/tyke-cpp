@@ -167,8 +167,10 @@ namespace tyke::stub
         }
         if (found)
         {
-            std::lock_guard<std::mutex> lock(uuid_func_expire_map_mutex_);
-            uuid_func_expire_map_.erase(response.GetMsgUuid());
+            {
+                std::lock_guard<std::mutex> lock(uuid_func_expire_map_mutex_);
+                uuid_func_expire_map_.erase(response.GetMsgUuid());
+            }
             LOG_DEBUG("Executing callback for response, uuid={}", response.GetMsgUuid());
             extracted_func(response);
         }

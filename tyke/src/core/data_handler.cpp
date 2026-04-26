@@ -168,6 +168,7 @@ namespace tyke::data_handler
             {
                 LOG_ERROR("Send response failed: {}", send_result.error());
             }
+            snd();
             return;
         }
         auto token = timer_ctx->RegisterCallback(
@@ -191,6 +192,7 @@ namespace tyke::data_handler
                 LOG_ERROR("Send response failed: {}", send_result.error());
             }
         }
+        snd();
     }
 
     void RequestHandlerAsync(const Request& request)
@@ -231,6 +233,7 @@ namespace tyke::data_handler
             {
                 LOG_ERROR("Send async response failed: {}", send_result.error());
             }
+            snd();
             return;
         }
         auto token = timer_ctx->RegisterCallback(
@@ -254,6 +257,7 @@ namespace tyke::data_handler
                 LOG_ERROR("Send async response failed: {}", send_result.error());
             }
         }
+        snd();
     }
 
     void ResponseHandler(const Response& response)

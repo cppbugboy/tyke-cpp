@@ -1,5 +1,6 @@
 #include "ipc/ipc_crypto.h"
 
+#include <openssl/core_names.h>
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
 #include <openssl/params.h>
@@ -157,6 +158,34 @@ namespace tyke::crypto
     struct EcdhKeyExchange::Impl
     {
         EvpPkeyPtr pkey;
+
+        ~Impl()
+        {
+            if (pkey)
+            {
+                size_t key_len = 0;
+                if (EVP_PKEY_get_octet_string_param(pkey.get(), OSSL_PKEY_PARAM_PUB_KEY,
+                                                     nullptr, 0, &key_len) && key_len > 0)
+                {
+                    std::vector<unsigned char> buf(key_len);
+                    if (EVP_PKEY_get_octet_string_param(pkey.get(), OSSL_PKEY_PARAM_PUB_KEY,
+                                                         buf.data(), buf.size(), &key_len))
+                    {
+                        OPENSSL_cleanse(buf.data(), buf.size());
+                    }
+                }
+                if (EVP_PKEY_get_octet_string_param(pkey.get(), OSSL_PKEY_PARAM_PRIV_KEY,
+                                                     nullptr, 0, &key_len) && key_len > 0)
+                {
+                    std::vector<unsigned char> buf(key_len);
+                    if (EVP_PKEY_get_octet_string_param(pkey.get(), OSSL_PKEY_PARAM_PRIV_KEY,
+                                                         buf.data(), buf.size(), &key_len))
+                    {
+                        OPENSSL_cleanse(buf.data(), buf.size());
+                    }
+                }
+            }
+        }
     };
 
     EcdhKeyExchange::EcdhKeyExchange() : impl_(new Impl())

@@ -48,12 +48,7 @@ namespace tyke
     void CancelContext::Init(ContextPtr parent)
     {
         parent_ = std::move(parent);
-        if (parent_&& parent_
-
-        
-        ->
-        IsDone()
-        )
+        if (parent_ && parent_->IsDone())
         {
             Cancel(parent_->Err());
         }
@@ -150,12 +145,7 @@ namespace tyke
 
         // 与父上下文的截止时间比较，取较早者
         auto effective_deadline = deadline;
-        if (parent_&& parent_
-
-        
-        ->
-        Deadline().has_value()
-        )
+        if (parent_ && parent_->Deadline().has_value())
         {
             if (const auto parent_deadline = parent_->Deadline().value(); parent_deadline < effective_deadline)
             {
