@@ -1,10 +1,3 @@
-/**
- * @file ipc_platform_linux.cpp
- * @brief Linux平台IPC实现。基于Unix域套接字和epoll的IPC服务端实现。
- * @author Nick
- * @date 2026/04/19
- */
-
 #ifndef _WIN32
 #include <atomic>
 #include <cerrno>
@@ -61,24 +54,59 @@ namespace tyke
                 Close();
                 return nonstd::make_unexpected(std::string("connect failed for: ") + std::string(server_name));
             }
-            return DoHandshake();
+            auto handshake_result = DoHandshake();
+            if (!handshake_result)
+            {
+                Close();
+                return handshake_result;
+            }
+            return true;
         }
 
         BoolResult WriteEncrypted(const void* data, const size_t size, uint32_t) override
         {
-            const std::vector<uint8_t> pt(static_cast<const uint8_t*>(data), static_cast<const uint8_t*>(data) + size);
-            auto encrypt_result = cipher_.Encrypt(pt);
-            if (!encrypt_result)
-                return nonstd::make_unexpected("encrypt failed: " + encrypt_result.error());
-            const auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
-            return WriteExact(frame.data(), frame.size());
+            if (size <= crypto::kFragmentChunkSize)
+            {
+                const std::vector<uint8_t> pt(static_cast<const uint8_t*>(data),
+                                              static_cast<const uint8_t*>(data) + size);
+                auto encrypt_result = cipher_.Encrypt(pt);
+                if (!encrypt_result)
+                    return nonstd::make_unexpected("encrypt failed: " + encrypt_result.error());
+                const auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
+                return WriteExact(frame.data(), frame.size());
+            }
+
+            const auto* ptr = static_cast<const uint8_t*>(data);
+            size_t remaining = size;
+            size_t offset = 0;
+            while (remaining > 0)
+            {
+                const size_t chunk_size = std::min(remaining, static_cast<size_t>(crypto::kFragmentChunkSize));
+                std::vector<uint8_t> fragment_payload;
+                crypto::FrameParser::EncodeLe32(static_cast<uint32_t>(size), fragment_payload);
+                crypto::FrameParser::EncodeLe32(static_cast<uint32_t>(offset), fragment_payload);
+                std::vector<uint8_t> chunk(ptr, ptr + chunk_size);
+                auto encrypt_result = cipher_.Encrypt(chunk);
+                if (!encrypt_result)
+                    return nonstd::make_unexpected("encrypt fragment failed: " + encrypt_result.error());
+                fragment_payload.insert(fragment_payload.end(), encrypt_result.value().begin(),
+                                        encrypt_result.value().end());
+                auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgDataFragment, fragment_payload);
+                auto write_result = WriteExact(frame.data(), frame.size());
+                if (!write_result)
+                    return write_result;
+                ptr += chunk_size;
+                offset += chunk_size;
+                remaining -= chunk_size;
+            }
+            return true;
         }
 
         BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t) override
         {
             std::vector<uint8_t> raw_buf;
             std::vector<uint8_t> plain_buf;
-            uint8_t chunk[4096];
+            uint8_t chunk[131072];
             while (true)
             {
                 const ssize_t n = recv(fd_, chunk, sizeof(chunk), MSG_NOSIGNAL);
@@ -102,6 +130,19 @@ namespace tyke
                             return nonstd::make_unexpected("decrypt failed: " + decrypt_result.error());
                         plain_buf.insert(plain_buf.end(), decrypt_result.value().begin(), decrypt_result.value().end());
                     }
+                    else if (type == crypto::kMsgDataFragment)
+                    {
+                        auto reassemble_result = ReassembleFragment(payload);
+                        if (!reassemble_result)
+                            return nonstd::make_unexpected("fragment failed: " + reassemble_result.error());
+                        if (reassemble_result.value())
+                        {
+                            plain_buf.insert(plain_buf.end(), reassembly_buf_.begin(), reassembly_buf_.end());
+                            reassembly_buf_.clear();
+                            reassembly_total_ = 0;
+                            reassembly_received_ = 0;
+                        }
+                    }
                 }
                 if (!plain_buf.empty())
                 {
@@ -120,6 +161,9 @@ namespace tyke
                 close(fd_);
                 fd_ = -1;
             }
+            reassembly_buf_.clear();
+            reassembly_total_ = 0;
+            reassembly_received_ = 0;
         }
 
         bool IsValid() const override
@@ -141,6 +185,30 @@ namespace tyke
                 remaining -= sent;
             }
             return true;
+        }
+
+        BoolResult ReassembleFragment(const std::vector<uint8_t>& payload)
+        {
+            if (payload.size() < crypto::kFragmentHeaderSize)
+                return nonstd::make_unexpected("fragment payload too small");
+            const uint32_t total_size = crypto::FrameParser::DecodeLe32(payload.data());
+            const uint32_t offset = crypto::FrameParser::DecodeLe32(payload.data() + 4);
+            std::vector<uint8_t> encrypted_chunk(payload.begin() + crypto::kFragmentHeaderSize, payload.end());
+            auto decrypt_result = cipher_.Decrypt(encrypted_chunk);
+            if (!decrypt_result)
+                return nonstd::make_unexpected("decrypt fragment failed: " + decrypt_result.error());
+            if (offset == 0)
+            {
+                reassembly_buf_.resize(total_size);
+                reassembly_total_ = total_size;
+                reassembly_received_ = 0;
+            }
+            if (static_cast<size_t>(offset) + decrypt_result.value().size() > reassembly_total_)
+                return nonstd::make_unexpected("fragment offset overflow");
+            std::memcpy(reassembly_buf_.data() + offset, decrypt_result.value().data(),
+                        decrypt_result.value().size());
+            reassembly_received_ += static_cast<uint32_t>(decrypt_result.value().size());
+            return reassembly_received_ == reassembly_total_;
         }
 
         BoolResult DoHandshake()
@@ -188,6 +256,9 @@ namespace tyke
 
         int fd_ = -1;
         crypto::AesGcmCipher cipher_;
+        std::vector<uint8_t> reassembly_buf_;
+        uint32_t reassembly_total_ = 0;
+        uint32_t reassembly_received_ = 0;
     };
 
     constexpr int kMaxEvents = 100;
@@ -210,6 +281,9 @@ namespace tyke
             std::vector<uint8_t> pending_writes;
             std::atomic<bool> writing{false};
             std::mutex write_mutex;
+            std::vector<uint8_t> reassembly_buf;
+            uint32_t reassembly_total = 0;
+            uint32_t reassembly_received = 0;
 
             explicit ClientContext(int f) : fd(f), state(STATE_WAIT_HELLO), writing(false)
             {
@@ -304,14 +378,43 @@ namespace tyke
                     return nonstd::make_unexpected("client not found: " + std::to_string(id));
                 ctx = it->second;
             }
-            auto encrypt_result = ctx->cipher.Encrypt(data);
-            if (!encrypt_result)
-                return nonstd::make_unexpected("encrypt failed for client " + std::to_string(id) + ": " +
-                    encrypt_result.error());
-            auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
 
+            if (data.size() <= crypto::kFragmentChunkSize)
+            {
+                auto encrypt_result = ctx->cipher.Encrypt(data);
+                if (!encrypt_result)
+                    return nonstd::make_unexpected("encrypt failed for client " + std::to_string(id) + ": " +
+                        encrypt_result.error());
+                auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
+                std::lock_guard<std::mutex> lock(ctx->write_mutex);
+                ctx->pending_writes.insert(ctx->pending_writes.end(), frame.begin(), frame.end());
+                if (!ctx->writing)
+                {
+                    StartWrite(ctx);
+                }
+                return true;
+            }
+
+            size_t offset = 0;
+            size_t remaining = data.size();
             std::lock_guard<std::mutex> lock(ctx->write_mutex);
-            ctx->pending_writes.insert(ctx->pending_writes.end(), frame.begin(), frame.end());
+            while (remaining > 0)
+            {
+                const size_t chunk_size = std::min(remaining, static_cast<size_t>(crypto::kFragmentChunkSize));
+                std::vector<uint8_t> fragment_payload;
+                crypto::FrameParser::EncodeLe32(static_cast<uint32_t>(data.size()), fragment_payload);
+                crypto::FrameParser::EncodeLe32(static_cast<uint32_t>(offset), fragment_payload);
+                std::vector<uint8_t> chunk(data.begin() + offset, data.begin() + offset + chunk_size);
+                auto encrypt_result = ctx->cipher.Encrypt(chunk);
+                if (!encrypt_result)
+                    return nonstd::make_unexpected("encrypt fragment failed for client " + std::to_string(id));
+                fragment_payload.insert(fragment_payload.end(), encrypt_result.value().begin(),
+                                        encrypt_result.value().end());
+                auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgDataFragment, fragment_payload);
+                ctx->pending_writes.insert(ctx->pending_writes.end(), frame.begin(), frame.end());
+                offset += chunk_size;
+                remaining -= chunk_size;
+            }
             if (!ctx->writing)
             {
                 StartWrite(ctx);
@@ -376,7 +479,7 @@ namespace tyke
                         }
                         if (events[i].events & EPOLLIN)
                         {
-                            uint8_t buf[4096];
+                            uint8_t buf[131072];
                             while (true)
                             {
                                 if (const ssize_t len = recv(fd, buf, sizeof(buf), MSG_NOSIGNAL); len > 0)
@@ -443,32 +546,90 @@ namespace tyke
                 }
                 else if (ctx->state == STATE_ESTABLISHED)
                 {
-                    if (type != crypto::kMsgData)
-                        return false;
-                    auto decrypt_result = ctx->cipher.Decrypt(payload);
-                    if (!decrypt_result)
-                        return false;
+                    if (type == crypto::kMsgData)
+                    {
+                        auto decrypt_result = ctx->cipher.Decrypt(payload);
+                        if (!decrypt_result)
+                            return false;
 
-                    auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(decrypt_result.value()));
-                    auto client_id = static_cast<ClientId>(ctx->fd);
-                    auto callback = callback_;
+                        auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(decrypt_result.value()));
+                        auto client_id = static_cast<ClientId>(ctx->fd);
+                        auto callback = callback_;
 
-                    GetGlobalThreadPool().Enqueue(
-                        [callback, client_id, data_copy, this]()
-                        {
-                            auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
+                        GetGlobalThreadPool().Enqueue(
+                            [callback, client_id, data_copy, this]()
                             {
-                                const auto result = SendToClient(id, buf);
-                                return result.has_value();
-                            };
-                            if (callback)
-                            {
-                                if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
+                                auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                                 {
-                                    CloseClient(client_id);
+                                    const auto result = SendToClient(id, buf);
+                                    return result.has_value();
+                                };
+                                if (callback)
+                                {
+                                    if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
+                                    {
+                                        CloseClient(client_id);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                    }
+                    else if (type == crypto::kMsgDataFragment)
+                    {
+                        if (payload.size() < crypto::kFragmentHeaderSize)
+                            return false;
+                        const uint32_t total_size = crypto::FrameParser::DecodeLe32(payload.data());
+                        const uint32_t offset = crypto::FrameParser::DecodeLe32(payload.data() + 4);
+                        std::vector<uint8_t> encrypted_chunk(payload.begin() + crypto::kFragmentHeaderSize,
+                                                             payload.end());
+                        auto decrypt_result = ctx->cipher.Decrypt(encrypted_chunk);
+                        if (!decrypt_result)
+                            return false;
+
+                        if (offset == 0)
+                        {
+                            ctx->reassembly_buf.resize(total_size);
+                            ctx->reassembly_total = total_size;
+                            ctx->reassembly_received = 0;
+                        }
+
+                        if (static_cast<size_t>(offset) + decrypt_result.value().size() > ctx->reassembly_total)
+                            return false;
+
+                        std::memcpy(ctx->reassembly_buf.data() + offset, decrypt_result.value().data(),
+                                    decrypt_result.value().size());
+                        ctx->reassembly_received += static_cast<uint32_t>(decrypt_result.value().size());
+
+                        if (ctx->reassembly_received == ctx->reassembly_total)
+                        {
+                            auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(ctx->reassembly_buf));
+                            ctx->reassembly_buf.clear();
+                            ctx->reassembly_total = 0;
+                            ctx->reassembly_received = 0;
+                            auto client_id = static_cast<ClientId>(ctx->fd);
+                            auto callback = callback_;
+
+                            GetGlobalThreadPool().Enqueue(
+                                [callback, client_id, data_copy, this]()
+                                {
+                                    auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
+                                    {
+                                        const auto result = SendToClient(id, buf);
+                                        return result.has_value();
+                                    };
+                                    if (callback)
+                                    {
+                                        if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
+                                        {
+                                            CloseClient(client_id);
+                                        }
+                                    }
+                                });
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
             }
             return true;

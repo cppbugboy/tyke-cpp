@@ -22,7 +22,13 @@ namespace tyke::crypto
 
     constexpr uint8_t kMsgData = 0x03;
 
+    constexpr uint8_t kMsgDataFragment = 0x04;
+
     constexpr uint32_t kMaxFramePayloadLen = 16 * 1024 * 1024;
+
+    constexpr uint32_t kFragmentChunkSize = 64 * 1024;
+
+    constexpr uint32_t kFragmentHeaderSize = 8;
 
 
     class FrameParser
@@ -32,6 +38,10 @@ namespace tyke::crypto
 
 
         static BoolResult ExtractFrame(std::vector<uint8_t>& buffer, uint8_t& type, std::vector<uint8_t>& payload);
+
+        static void EncodeLe32(uint32_t val, std::vector<uint8_t>& out);
+
+        static uint32_t DecodeLe32(const uint8_t* data);
     };
 
 

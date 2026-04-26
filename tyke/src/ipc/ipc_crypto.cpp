@@ -97,7 +97,7 @@ namespace tyke::crypto
 
     using EvpPkeyCtxPtr = std::unique_ptr<EVP_PKEY_CTX, EvpPkeyCtxDeleter>;
 
-    static void EncodeLe32(const uint32_t val, std::vector<uint8_t>& out)
+    static void EncodeLe32Impl(const uint32_t val, std::vector<uint8_t>& out)
     {
         out.push_back(static_cast<uint8_t>(val & 0xFF));
         out.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
@@ -105,17 +105,27 @@ namespace tyke::crypto
         out.push_back(static_cast<uint8_t>((val >> 24) & 0xFF));
     }
 
-    static uint32_t DecodeLe32(const uint8_t* data)
+    static uint32_t DecodeLe32Impl(const uint8_t* data)
     {
         return static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8) |
-            (static_cast<uint32_t>(data[2]) << 16) | static_cast<uint32_t>(data[3]);
+            (static_cast<uint32_t>(data[2]) << 16) | (static_cast<uint32_t>(data[3]) << 24);
+    }
+
+    void FrameParser::EncodeLe32(const uint32_t val, std::vector<uint8_t>& out)
+    {
+        EncodeLe32Impl(val, out);
+    }
+
+    uint32_t FrameParser::DecodeLe32(const uint8_t* data)
+    {
+        return DecodeLe32Impl(data);
     }
 
     std::vector<uint8_t> FrameParser::BuildFrame(const uint8_t type, const std::vector<uint8_t>& payload)
     {
         std::vector<uint8_t> frame;
         const uint32_t total_len = 1 + static_cast<uint32_t>(payload.size());
-        EncodeLe32(total_len, frame);
+        EncodeLe32Impl(total_len, frame);
         frame.push_back(type);
         frame.insert(frame.end(), payload.begin(), payload.end());
         return frame;
@@ -126,7 +136,7 @@ namespace tyke::crypto
         if (buffer.size() < 5)
             return nonstd::make_unexpected("buffer too small for frame header");
 
-        const uint32_t total_len = DecodeLe32(buffer.data());
+        const uint32_t total_len = DecodeLe32Impl(buffer.data());
         if (total_len > kMaxFramePayloadLen)
         {
             LOG_ERROR("Frame payload too large: {} > {}, discarding buffer", total_len, kMaxFramePayloadLen);
