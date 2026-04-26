@@ -1,6 +1,6 @@
 /**
  * @file thread_pool.cpp
- * @brief 高性能线程池实现，集成moodycamel::ConcurrentQueue。
+ * @brief 高性能优先级线程池实现，支持高/中/低三级任务优先级调度。
  */
 
 #include "component/thread_pool.h"
@@ -11,7 +11,7 @@
 
 namespace tyke
 {
-    ThreadPool::ThreadPool() : queue_(4096)
+    ThreadPool::ThreadPool()
     {
     }
 
@@ -56,7 +56,6 @@ namespace tyke
         }
 
         stop_.store(false, std::memory_order_release);
-        queue_ = moodycamel::BlockingConcurrentQueue<TaskWrapper>(config_.initial_queue_capacity);
 
         StartWorkers(config_.initial_workers);
 
@@ -65,8 +64,8 @@ namespace tyke
             StartScalingLoop();
         }
 
-        LOG_INFO("ThreadPool initialized with {} workers, queue capacity {}", config_.initial_workers,
-                 config_.initial_queue_capacity);
+        LOG_INFO("ThreadPool initialized with {} workers, queue capacity {}, priority queues: High/Medium/Low",
+                 config_.initial_workers, config_.initial_queue_capacity);
     }
 
     void ThreadPool::StartWorkers(size_t count)
@@ -79,21 +78,54 @@ namespace tyke
 
     void ThreadPool::WorkerLoop()
     {
-        TaskWrapper wrapper;
         while (!stop_.load(std::memory_order_acquire))
         {
-            idle_workers_.fetch_add(1, std::memory_order_relaxed);
+            TaskWrapper wrapper;
+            bool got_task = false;
 
-            bool got = queue_.wait_dequeue_timed(wrapper, std::chrono::milliseconds(100));
-
-            idle_workers_.fetch_sub(1, std::memory_order_relaxed);
-
-            if (!got)
             {
+                std::unique_lock<std::mutex> lock(queue_mutex_);
+
+                idle_workers_.fetch_add(1, std::memory_order_relaxed);
+
+                queue_cv_.wait_for(lock, std::chrono::milliseconds(100),
+                    [this]()
+                    {
+                        return stop_.load(std::memory_order_acquire) ||
+                               !high_queue_.empty() ||
+                               !medium_queue_.empty() ||
+                               !low_queue_.empty();
+                    });
+
+                idle_workers_.fetch_sub(1, std::memory_order_relaxed);
+
                 if (stop_.load(std::memory_order_acquire))
                 {
                     break;
                 }
+
+                if (!high_queue_.empty())
+                {
+                    wrapper = std::move(high_queue_.front());
+                    high_queue_.pop();
+                    got_task = true;
+                }
+                else if (!medium_queue_.empty())
+                {
+                    wrapper = std::move(medium_queue_.front());
+                    medium_queue_.pop();
+                    got_task = true;
+                }
+                else if (!low_queue_.empty())
+                {
+                    wrapper = std::move(low_queue_.front());
+                    low_queue_.pop();
+                    got_task = true;
+                }
+            }
+
+            if (!got_task)
+            {
                 continue;
             }
 
@@ -209,6 +241,11 @@ namespace tyke
 
         LOG_INFO("ThreadPool stopping, wait_for_tasks={}", wait_for_tasks);
 
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            queue_cv_.notify_all();
+        }
+
         if (scale_thread_.joinable())
         {
             scale_thread_.join();
@@ -222,11 +259,26 @@ namespace tyke
             }
         }
 
-        TaskWrapper dummy;
-        while (queue_.try_dequeue(dummy))
         {
-            queue_size_.fetch_sub(1, std::memory_order_relaxed);
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            while (!high_queue_.empty())
+            {
+                high_queue_.pop();
+                queue_size_.fetch_sub(1, std::memory_order_relaxed);
+            }
+            while (!medium_queue_.empty())
+            {
+                medium_queue_.pop();
+                queue_size_.fetch_sub(1, std::memory_order_relaxed);
+            }
+            while (!low_queue_.empty())
+            {
+                low_queue_.pop();
+                queue_size_.fetch_sub(1, std::memory_order_relaxed);
+            }
         }
+
+        queue_cv_.notify_all();
 
         for (auto &worker : workers_)
         {
@@ -241,6 +293,60 @@ namespace tyke
                  metrics_.total_tasks_completed, metrics_.total_tasks_dropped);
     }
 
+    std::queue<ThreadPool::TaskWrapper> &ThreadPool::GetQueue(TaskPriority priority)
+    {
+        switch (priority)
+        {
+        case TaskPriority::High:
+            return high_queue_;
+        case TaskPriority::Medium:
+            return medium_queue_;
+        case TaskPriority::Low:
+            return low_queue_;
+        default:
+            return medium_queue_;
+        }
+    }
+
+    const std::queue<ThreadPool::TaskWrapper> &ThreadPool::GetQueue(TaskPriority priority) const
+    {
+        switch (priority)
+        {
+        case TaskPriority::High:
+            return high_queue_;
+        case TaskPriority::Medium:
+            return medium_queue_;
+        case TaskPriority::Low:
+            return low_queue_;
+        default:
+            return medium_queue_;
+        }
+    }
+
+    int32_t ThreadPool::TotalQueueSize() const
+    {
+        return static_cast<int32_t>(high_queue_.size() + medium_queue_.size() + low_queue_.size());
+    }
+
+    size_t ThreadPool::QueueSizeByPriority(TaskPriority priority) const
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        return GetQueue(priority).size();
+    }
+
+    TaskPriority ThreadPool::GetTaskPriority(const std::string &priority_name) const
+    {
+        if (priority_name == "high" || priority_name == "High" || priority_name == "HIGH")
+        {
+            return TaskPriority::High;
+        }
+        if (priority_name == "low" || priority_name == "Low" || priority_name == "LOW")
+        {
+            return TaskPriority::Low;
+        }
+        return TaskPriority::Medium;
+    }
+
     ThreadPoolMetrics ThreadPool::GetMetrics() const
     {
         std::lock_guard<std::mutex> lock(metrics_mutex_);
@@ -248,6 +354,14 @@ namespace tyke
         m.current_queue_size = queue_size_.load(std::memory_order_relaxed);
         m.current_active_workers = active_tasks_.load(std::memory_order_relaxed);
         m.current_idle_workers = idle_workers_.load(std::memory_order_relaxed);
+
+        {
+            std::lock_guard<std::mutex> qlock(queue_mutex_);
+            m.high_queue_size = static_cast<int32_t>(high_queue_.size());
+            m.medium_queue_size = static_cast<int32_t>(medium_queue_.size());
+            m.low_queue_size = static_cast<int32_t>(low_queue_.size());
+        }
+
         return m;
     }
 

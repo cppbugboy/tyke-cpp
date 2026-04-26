@@ -1,31 +1,41 @@
 /**
  * @file thread_pool.h
- * @brief 高性能线程池（C++17），集成moodycamel::ConcurrentQueue。
+ * @brief 高性能优先级线程池（C++17），支持高/中/低三级任务优先级调度。
  *
  * 特性：
- * - 使用无锁并发队列，高性能多生产者多消费者
+ * - 三分离优先级队列（High/Medium/Low），严格按优先级调度
+ * - 高优先级任务始终优先于中/低优先级任务获取线程资源
+ * - 使用互斥锁+条件变量保证线程安全的优先级调度
  * - 支持动态线程数调整
  * - 支持优雅降级策略
- * - 完善的指标统计
+ * - 完善的指标统计，含各优先级队列状态监控
  */
 
 #pragma once
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <future>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <queue>
 #include <thread>
 #include <tuple>
 #include <type_traits>
 #include <vector>
-#include <blockingconcurrentqueue.h>
 
 namespace tyke
 {
+    enum class TaskPriority : int
+    {
+        Low = 0,
+        Medium = 1,
+        High = 2
+    };
+
     struct ThreadPoolMetrics
     {
         uint64_t total_tasks_submitted = 0;
@@ -33,6 +43,9 @@ namespace tyke
         uint64_t total_tasks_dropped = 0;
         uint64_t total_tasks_timeout = 0;
         int32_t current_queue_size = 0;
+        int32_t high_queue_size = 0;
+        int32_t medium_queue_size = 0;
+        int32_t low_queue_size = 0;
         int32_t current_active_workers = 0;
         int32_t current_idle_workers = 0;
         int32_t peak_queue_size = 0;
@@ -87,6 +100,13 @@ namespace tyke
         template <class F, class... Args>
         auto Enqueue(F &&f, Args &&...args) -> std::optional<std::future<std::invoke_result_t<F, Args...>>>
         {
+            return EnqueueWithPriority(TaskPriority::Medium, std::forward<F>(f), std::forward<Args>(args)...);
+        }
+
+        template <class F, class... Args>
+        auto EnqueueWithPriority(TaskPriority priority, F &&f, Args &&...args)
+            -> std::optional<std::future<std::invoke_result_t<F, Args...>>>
+        {
             if (stop_.load(std::memory_order_acquire))
             {
                 RecordTaskDropped();
@@ -109,13 +129,21 @@ namespace tyke
                 (*task)();
             };
             wrapper.enqueue_time = std::chrono::steady_clock::now();
+            wrapper.priority = priority;
 
-            if (!queue_.try_enqueue(wrapper))
             {
-                RecordQueueFull();
-                return std::nullopt;
+                std::lock_guard<std::mutex> lock(queue_mutex_);
+
+                if (TotalQueueSize() >= static_cast<int32_t>(config_.initial_queue_capacity))
+                {
+                    RecordQueueFull();
+                    return std::nullopt;
+                }
+
+                GetQueue(priority).push(std::move(wrapper));
             }
 
+            queue_cv_.notify_one();
             RecordTaskSubmitted();
             return result;
         }
@@ -152,8 +180,10 @@ namespace tyke
         size_t WorkerCount() const { return workers_.size(); }
         size_t ActiveTaskCount() const { return static_cast<size_t>(active_tasks_.load()); }
         size_t QueueSize() const { return static_cast<size_t>(queue_size_.load()); }
+        size_t QueueSizeByPriority(TaskPriority priority) const;
         bool IsRunning() const { return !stop_.load(std::memory_order_acquire); }
         ThreadPoolMetrics GetMetrics() const;
+        TaskPriority GetTaskPriority(const std::string &priority_name) const;
 
         void SetPanicHandler(std::function<void(const std::string &)> handler) { panic_handler_ = std::move(handler); }
 
@@ -162,6 +192,7 @@ namespace tyke
         {
             std::function<void()> task;
             std::chrono::steady_clock::time_point enqueue_time;
+            TaskPriority priority = TaskPriority::Medium;
         };
 
         void StartWorkers(size_t count);
@@ -176,7 +207,16 @@ namespace tyke
         void RecordQueueFull();
         void UpdatePeakMetrics();
 
-        moodycamel::BlockingConcurrentQueue<TaskWrapper> queue_;
+        std::queue<TaskWrapper> &GetQueue(TaskPriority priority);
+        const std::queue<TaskWrapper> &GetQueue(TaskPriority priority) const;
+        int32_t TotalQueueSize() const;
+
+        std::queue<TaskWrapper> high_queue_;
+        std::queue<TaskWrapper> medium_queue_;
+        std::queue<TaskWrapper> low_queue_;
+        mutable std::mutex queue_mutex_;
+        std::condition_variable queue_cv_;
+
         std::vector<std::thread> workers_;
         std::atomic<bool> stop_{false};
         std::atomic<int32_t> active_tasks_{0};
