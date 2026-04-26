@@ -21,5 +21,5 @@ namespace tyke::data_handler
     void RequestHandlerAsync(const Request& request);
 
 
-    void ResponseHandler(const Response& response);
+    void ResponseHandler(Response response);
 } // namespace tyke::data_handler

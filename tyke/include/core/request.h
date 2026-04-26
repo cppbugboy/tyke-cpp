@@ -36,11 +36,15 @@ namespace tyke
          */
         static Ptr Acquire()
         {
-            return Ptr(pool_.Acquire(),
-                       [](Request* p)
+            auto& pool = GetPool();
+            return Ptr(pool.Acquire(),
+                       [&pool](Request* p)
                        {
-                           p->Reset();
-                           pool_.Release(p);
+                           if (p)
+                           {
+                               p->Reset();
+                               pool.Release(p);
+                           }
                        });
         }
 
@@ -87,6 +91,10 @@ namespace tyke
         RequestMetadata metadata_;
         std::vector<uint8_t> content_;
 
-        inline static ObjectPool<Request> pool_{1024}; // 全局共享对象池
+        static ObjectPool<Request>& GetPool()
+        {
+            static ObjectPool<Request> pool{1024};
+            return pool;
+        }
     };
 } // namespace tyke

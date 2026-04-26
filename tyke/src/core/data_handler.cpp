@@ -106,7 +106,7 @@ namespace tyke::data_handler
                     {
                         LOG_DEBUG("Processing async response, route={}, msg_uuid={}", tyke_response_ptr->GetRoute(),
                                   tyke_response_ptr->GetMsgUuid());
-                        ResponseHandler(*tyke_response_ptr);
+                        ResponseHandler(std::move(*tyke_response_ptr));
                     }
                     else
                     {
@@ -260,7 +260,7 @@ namespace tyke::data_handler
         snd();
     }
 
-    void ResponseHandler(const Response& response)
+    void ResponseHandler(Response response)
     {
         LOG_DEBUG("ResponseHandler: route={}, msg_uuid={}, msg_type={}", response.GetRoute(), response.GetMsgUuid(),
                   static_cast<int>(response.GetMessageType()));
@@ -277,7 +277,7 @@ namespace tyke::data_handler
             break;
         case MessageType::kResponseAsyncFuture:
             // 设置Future结果
-            stub::SetFuture(response);
+            stub::SetFuture(std::move(response));
             break;
         default:
             LOG_WARN("Unknown response type: {}", static_cast<int>(response.GetMessageType()));

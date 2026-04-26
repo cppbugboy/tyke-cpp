@@ -44,7 +44,7 @@ namespace tyke::stub
         LOG_DEBUG("Future entry added, uuid={}, timeout={}ms", uuid, timeout_ms);
     }
 
-    void SetFuture(const Response& response)
+    void SetFuture(Response response)
     {
         std::promise<Response> extracted_promise;
         bool found = false;

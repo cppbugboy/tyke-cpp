@@ -138,9 +138,15 @@ namespace tyke::crypto
             return nonstd::make_unexpected("buffer too small for frame header");
 
         const uint32_t total_len = DecodeLe32Impl(buffer.data());
-        if (total_len > kMaxFramePayloadLen)
+        if (total_len < 5)
         {
-            LOG_ERROR("Frame payload too large: {} > {}, discarding buffer", total_len, kMaxFramePayloadLen);
+            LOG_ERROR("Invalid frame: total_len too small: {} < 5, discarding buffer", total_len);
+            buffer.clear();
+            return nonstd::make_unexpected("invalid frame: total_len too small");
+        }
+        if (total_len > kMaxFramePayloadLen + 1)
+        {
+            LOG_ERROR("Frame payload too large: {} > {}, discarding buffer", total_len, kMaxFramePayloadLen + 1);
             buffer.clear();
             return nonstd::make_unexpected("frame payload too large");
         }
@@ -248,6 +254,28 @@ namespace tyke::crypto
         {
             LOG_ERROR("Failed to parse peer public key DER");
             return nonstd::make_unexpected("failed to parse peer public key DER");
+        }
+
+        if (EVP_PKEY_base_id(peer_pkey.get()) != EVP_PKEY_EC)
+        {
+            LOG_ERROR("Peer public key is not an EC key");
+            return nonstd::make_unexpected("peer public key is not an EC key");
+        }
+        {
+            char curve_name[64] = {0};
+            size_t curve_name_len = sizeof(curve_name);
+            if (EVP_PKEY_get_group_name(peer_pkey.get(), curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
+                curve_name_len == 0)
+            {
+                LOG_ERROR("Failed to get EC group name from peer public key");
+                return nonstd::make_unexpected("failed to get EC group name from peer public key");
+            }
+            if (strcmp(curve_name, "prime256v1") != 0 && strcmp(curve_name, "P-256") != 0 &&
+                strcmp(curve_name, "secp256r1") != 0)
+            {
+                LOG_ERROR("Peer EC key is not P-256 curve, got: {}", curve_name);
+                return nonstd::make_unexpected("peer EC key is not P-256 curve: " + std::string(curve_name));
+            }
         }
 
         const EvpPkeyCtxPtr ctx(EVP_PKEY_CTX_new(impl_->pkey.get(), nullptr));
@@ -363,6 +391,11 @@ namespace tyke::crypto
             return nonstd::make_unexpected("RAND_bytes for IV prefix failed");
         }
         const uint64_t counter = impl_->iv_counter.fetch_add(1, std::memory_order_relaxed);
+        if (counter == 0)
+        {
+            LOG_ERROR("AES-GCM IV counter overflow: key must be rotated");
+            return nonstd::make_unexpected("IV counter overflow: key must be rotated");
+        }
         iv[4] = static_cast<uint8_t>((counter >> 56) & 0xFF);
         iv[5] = static_cast<uint8_t>((counter >> 48) & 0xFF);
         iv[6] = static_cast<uint8_t>((counter >> 40) & 0xFF);

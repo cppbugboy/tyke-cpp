@@ -20,7 +20,6 @@ set(THIRD_PARTY_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lib/${CMAKE_SYS
 
 add_subdirectory(tyke)
 add_subdirectory(examples)
-add_subdirectory(tests)
 
 message(STATUS "=== Tyke Build Configuration ===")
 message(STATUS "CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")

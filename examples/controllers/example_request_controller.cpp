@@ -90,7 +90,7 @@ namespace controller::request::examples
                 nlohmann::json response_data = {
                     {"success", true},
                     {"user_id", "user_12345"},
-                    {"token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"},
+                    {"token", "<GENERATED_TOKEN_PLACEHOLDER>"},
                     {"expires_in", 3600}
                 };
                 std::vector<uint8_t> response_bytes = nlohmann::json::to_msgpack(response_data);

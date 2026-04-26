@@ -20,7 +20,7 @@ namespace tyke::stub
     void AddFuture(const std::string& uuid, std::promise<Response>& promise,
                    uint32_t timeout_ms = kDefaultStubTimeoutMs);
 
-    void SetFuture(const Response& response);
+    void SetFuture(Response response);
 
     void DeleteFuture(const std::string& uuid);
 

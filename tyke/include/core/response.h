@@ -44,11 +44,15 @@ namespace tyke
          */
         static Ptr Acquire()
         {
-            return Ptr(pool_.Acquire(),
-                       [](Response* p)
+            auto& pool = GetPool();
+            return Ptr(pool.Acquire(),
+                       [&pool](Response* p)
                        {
-                           p->Reset();
-                           pool_.Release(p);
+                           if (p)
+                           {
+                               p->Reset();
+                               pool.Release(p);
+                           }
                        });
         }
 
@@ -57,8 +61,8 @@ namespace tyke
 
         Response() = default;
 
-        Response(const Response&) = default;
-        Response& operator=(const Response&) = default;
+        Response(const Response&) = delete;
+        Response& operator=(const Response&) = delete;
         Response(Response&&) = default;
         Response& operator=(Response&&) = default;
 
@@ -103,6 +107,10 @@ namespace tyke
         ClientId client_id_{};
         SendDataHandler send_data_handler_;
 
-        inline static ObjectPool<Response> pool_{1024}; // 全局共享对象池
+        static ObjectPool<Response>& GetPool()
+        {
+            static ObjectPool<Response> pool{1024};
+            return pool;
+        }
     };
 } // namespace tyke

@@ -24,7 +24,7 @@
  * });
  *
  * // 提交默认优先级任务（Medium）
- * pool.Enqueue([]() { /* do something *\/ });
+ * pool.Enqueue([]() { // do something });
  *
  * // 优雅停止
  * pool.Stop(true);
@@ -588,8 +588,6 @@ namespace tyke
      * @code
      * auto& pool = tyke::GetGlobalThreadPool();
      * pool.Init(4);
-     * pool.Enqueue([]() { /* ... *\/ });
-     * @endcode
      */
     ThreadPool& GetGlobalThreadPool();
 } // namespace tyke

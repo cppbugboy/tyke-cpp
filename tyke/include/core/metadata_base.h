@@ -179,6 +179,18 @@ namespace tyke
             }
         }
 
+        void Clear()
+        {
+            module_.clear();
+            async_uuid_.clear();
+            msg_uuid_.clear();
+            route_.clear();
+            content_type_.clear();
+            timestamp_.clear();
+            timeout_ = 0;
+            headers_map_.clear();
+        }
+
     protected:
         std::string module_;
         std::string async_uuid_;

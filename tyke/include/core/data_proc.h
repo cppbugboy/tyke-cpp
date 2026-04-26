@@ -139,6 +139,8 @@ namespace tyke
                     return false;
                 }
 
+                msg.metadata_.Clear();
+
                 if (meta_len > 0)
                 {
                     std::string meta_str(reinterpret_cast<const char*>(data_vec.data() + header_size), meta_len);
