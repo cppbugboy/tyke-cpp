@@ -390,11 +390,11 @@ namespace tyke::crypto
             LOG_ERROR("RAND_bytes for IV prefix failed");
             return nonstd::make_unexpected("RAND_bytes for IV prefix failed");
         }
-        const uint64_t counter = impl_->iv_counter.fetch_add(1, std::memory_order_relaxed);
+        uint64_t counter = impl_->iv_counter.fetch_add(1, std::memory_order_relaxed);
         if (counter == 0)
         {
-            LOG_ERROR("AES-GCM IV counter overflow: key must be rotated");
-            return nonstd::make_unexpected("IV counter overflow: key must be rotated");
+            counter = 1;
+            impl_->iv_counter.store(2, std::memory_order_relaxed);
         }
         iv[4] = static_cast<uint8_t>((counter >> 56) & 0xFF);
         iv[5] = static_cast<uint8_t>((counter >> 48) & 0xFF);
