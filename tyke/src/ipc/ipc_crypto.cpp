@@ -165,21 +165,21 @@ namespace tyke::crypto
             {
                 size_t key_len = 0;
                 if (EVP_PKEY_get_octet_string_param(pkey.get(), OSSL_PKEY_PARAM_PUB_KEY,
-                                                     nullptr, 0, &key_len) && key_len > 0)
+                                                    nullptr, 0, &key_len) && key_len > 0)
                 {
                     std::vector<unsigned char> buf(key_len);
                     if (EVP_PKEY_get_octet_string_param(pkey.get(), OSSL_PKEY_PARAM_PUB_KEY,
-                                                         buf.data(), buf.size(), &key_len))
+                                                        buf.data(), buf.size(), &key_len))
                     {
                         OPENSSL_cleanse(buf.data(), buf.size());
                     }
                 }
                 if (EVP_PKEY_get_octet_string_param(pkey.get(), OSSL_PKEY_PARAM_PRIV_KEY,
-                                                     nullptr, 0, &key_len) && key_len > 0)
+                                                    nullptr, 0, &key_len) && key_len > 0)
                 {
                     std::vector<unsigned char> buf(key_len);
                     if (EVP_PKEY_get_octet_string_param(pkey.get(), OSSL_PKEY_PARAM_PRIV_KEY,
-                                                         buf.data(), buf.size(), &key_len))
+                                                        buf.data(), buf.size(), &key_len))
                     {
                         OPENSSL_cleanse(buf.data(), buf.size());
                     }
