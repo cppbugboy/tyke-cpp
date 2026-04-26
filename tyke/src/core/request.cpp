@@ -167,7 +167,7 @@ namespace tyke
         stub::AddFuture(metadata_.GetMsgUuid(), promise, timeout_ms);
 
         LOG_DEBUG("Future registered, msg_uuid={}", GetMsgUuid());
-        return std::move(future);
+        return future;
     }
 
     std::optional<bool> Request::AddMetadata(const std::string_view key, const JsonValue& value)
