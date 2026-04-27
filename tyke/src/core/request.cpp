@@ -170,6 +170,17 @@ namespace tyke
         return future;
     }
 
+    Request& Request::SetContext(const std::shared_ptr<Context>& context)
+    {
+        context_ = context;
+        return *this;
+    }
+
+    std::shared_ptr<Context> Request::GetContext() const
+    {
+        return context_;
+    }
+
     std::optional<bool> Request::AddMetadata(const std::string_view key, const JsonValue& value)
     {
         return metadata_.AddMetadata(key, value);

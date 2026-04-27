@@ -19,6 +19,7 @@
 #include "ipc/ipc_def.h"
 #include "request_metadata.h"
 #include "response.h"
+#include "component/context.h"
 
 namespace tyke
 {
@@ -83,6 +84,9 @@ namespace tyke
         [[nodiscard]] nonstd::expected<std::future<Response>, std::string>
         SendAsyncWithFuture(const std::string& send_uuid, uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
+        Request& SetContext(const std::shared_ptr<Context>& context);
+        [[nodiscard]] std::shared_ptr<Context> GetContext() const;
+
     private:
         BoolResult EncodeAndSend(const std::string& send_uuid, MessageType msg_type,
                                  uint32_t timeout_ms = kIpcDefaultTimeoutMs);
@@ -90,6 +94,7 @@ namespace tyke
         ProtocolHeader protocol_header_;
         RequestMetadata metadata_;
         std::vector<uint8_t> content_;
+        std::shared_ptr<Context> context_;
 
         static ObjectPool<Request>& GetPool()
         {

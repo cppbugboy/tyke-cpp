@@ -143,7 +143,7 @@ namespace tyke::data_handler
         }
     }
 
-    void RequestHandler(const Request& request, const ClientId client_id, const SendDataHandler& send_data_handler)
+    void RequestHandler(Request& request, const ClientId client_id, const SendDataHandler& send_data_handler)
     {
         LOG_DEBUG("RequestHandler: client_id={}, route={}, msg_uuid={}", client_id, request.GetRoute(),
                   request.GetMsgUuid());
@@ -181,8 +181,9 @@ namespace tyke::data_handler
                 }
             });
         timer_ctx->ActivateTimer();
+        request.SetContext(timer_ctx);
 
-        dispatcher::DispatchRequest(request, *response_ptr, fst);
+        dispatcher::DispatchRequest(request, *response_ptr);
 
         if (!response_ptr->IsSent())
         {
@@ -195,7 +196,7 @@ namespace tyke::data_handler
         snd();
     }
 
-    void RequestHandlerAsync(const Request& request)
+    void RequestHandlerAsync(Request& request)
     {
         LOG_DEBUG("RequestHandlerAsync: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
 
@@ -246,8 +247,9 @@ namespace tyke::data_handler
                 }
             });
         timer_ctx->ActivateTimer();
+        request.SetContext(timer_ctx);
 
-        dispatcher::DispatchRequest(request, *response_ptr, fst);
+        dispatcher::DispatchRequest(request, *response_ptr);
 
         if (!response_ptr->IsSent())
         {

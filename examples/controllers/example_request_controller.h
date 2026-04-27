@@ -14,16 +14,11 @@
 namespace controller::request::examples
 {
     void RegisterMethod();
-    void HandleUserLogin(const tyke::Request& request, tyke::Response& response,
-                         const tyke::ContextPtr& context_ptr);
-    void HandleUserLogout(const tyke::Request& request, tyke::Response& response,
-                          const tyke::ContextPtr& context_ptr);
-    void HandleDataQuery(const tyke::Request& request, tyke::Response& response,
-                         const tyke::ContextPtr& context_ptr);
-    void HandleDataUpdate(const tyke::Request& request, tyke::Response& response,
-                          const tyke::ContextPtr& context_ptr);
-    void HandleAsyncProcess(const tyke::Request& request, tyke::Response& response,
-                            const tyke::ContextPtr& context_ptr);
+    void HandleUserLogin(const tyke::Request& request, tyke::Response& response);
+    void HandleUserLogout(const tyke::Request& request, tyke::Response& response);
+    void HandleDataQuery(const tyke::Request& request, tyke::Response& response);
+    void HandleDataUpdate(const tyke::Request& request, tyke::Response& response);
+    void HandleAsyncProcess(const tyke::Request& request, tyke::Response& response);
 }
 
 // class ExampleRequestController : public tyke::RequestController, public tyke::Singleton<ExampleRequestController>

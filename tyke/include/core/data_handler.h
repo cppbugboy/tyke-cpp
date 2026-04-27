@@ -15,10 +15,10 @@ namespace tyke::data_handler
                                          const SendDataHandler& send_data_handler);
 
 
-    void RequestHandler(const Request& request, ClientId client_id, const SendDataHandler& send_data_handler);
+    void RequestHandler(Request& request, ClientId client_id, const SendDataHandler& send_data_handler);
 
 
-    void RequestHandlerAsync(const Request& request);
+    void RequestHandlerAsync(Request& request);
 
 
     void ResponseHandler(Response response);

@@ -13,7 +13,7 @@
 
 namespace tyke::dispatcher
 {
-    void DispatchRequest(const Request& request, Response& response, const ContextPtr& context_ptr);
+    void DispatchRequest(const Request& request, Response& response);
 
     void DispatchResponse(const Response& response);
 } // namespace tyke::dispatcher

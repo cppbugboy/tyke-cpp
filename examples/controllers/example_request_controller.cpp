@@ -27,41 +27,35 @@ namespace controller::request::examples
         const auto root = router.GetRoot();
 
         auto user_group = root->Group("/api/user");
-        user_group->Route("/login", [](const tyke::Request& req, tyke::Response& resp,
-                                       const std::shared_ptr<tyke::Context>& context)
+        user_group->Route("/login", [](const tyke::Request& req, tyke::Response& resp)
         {
-            HandleUserLogin(req, resp, context);
+            HandleUserLogin(req, resp);
         });
-        user_group->Route("/logout", [](const tyke::Request& req, tyke::Response& resp,
-                                        const std::shared_ptr<tyke::Context>& context)
+        user_group->Route("/logout", [](const tyke::Request& req, tyke::Response& resp)
         {
-            HandleUserLogout(req, resp, context);
+            HandleUserLogout(req, resp);
         });
 
         auto data_group = root->Group("/api/data");
-        data_group->Route("/query", [](const tyke::Request& req, tyke::Response& resp,
-                                       const std::shared_ptr<tyke::Context>& context)
+        data_group->Route("/query", [](const tyke::Request& req, tyke::Response& resp)
         {
-            HandleDataQuery(req, resp, context);
+            HandleDataQuery(req, resp);
         });
-        data_group->Route("/update", [](const tyke::Request& req, tyke::Response& resp,
-                                        const std::shared_ptr<tyke::Context>& context)
+        data_group->Route("/update", [](const tyke::Request& req, tyke::Response& resp)
         {
-            HandleDataUpdate(req, resp, context);
+            HandleDataUpdate(req, resp);
         });
 
         auto async_group = root->Group("/api/async");
-        async_group->Route("/process", [](const tyke::Request& req, tyke::Response& resp,
-                                          const std::shared_ptr<tyke::Context>& context)
+        async_group->Route("/process", [](const tyke::Request& req, tyke::Response& resp)
         {
-            HandleAsyncProcess(req, resp, context);
+            HandleAsyncProcess(req, resp);
         });
 
         fmt::print("✓ 请求路由处理器注册完成\n");
     }
 
-    void HandleUserLogin(const tyke::Request& request, tyke::Response& response,
-                         const tyke::ContextPtr& context_ptr)
+    void HandleUserLogin(const tyke::Request& request, tyke::Response& response)
     {
         std::string content_type;
         std::vector<uint8_t> content;
@@ -114,8 +108,7 @@ namespace controller::request::examples
         response.SetMsgUuid(request.GetMsgUuid());
     }
 
-    void HandleUserLogout(const tyke::Request& request, tyke::Response& response,
-                          const tyke::ContextPtr& context_ptr)
+    void HandleUserLogout(const tyke::Request& request, tyke::Response& response)
     {
         nlohmann::json response_data = {
             {"success", true},
@@ -130,8 +123,7 @@ namespace controller::request::examples
         response.SetMsgUuid(request.GetMsgUuid());
     }
 
-    void HandleDataQuery(const tyke::Request& request, tyke::Response& response,
-                         const tyke::ContextPtr& context_ptr)
+    void HandleDataQuery(const tyke::Request& request, tyke::Response& response)
     {
         nlohmann::json response_data = {
             {"success", true},
@@ -153,9 +145,9 @@ namespace controller::request::examples
         response.SetMsgUuid(request.GetMsgUuid());
     }
 
-    void HandleDataUpdate(const tyke::Request& request, tyke::Response& response,
-                          const tyke::ContextPtr& context_ptr)
+    void HandleDataUpdate(const tyke::Request& request, tyke::Response& response)
     {
+        const auto context = request.GetContext();
         std::string content_type;
         std::vector<uint8_t> content;
         request.GetContent(content_type, content);
@@ -198,8 +190,7 @@ namespace controller::request::examples
         response.SetMsgUuid(request.GetMsgUuid());
     }
 
-    void HandleAsyncProcess(const tyke::Request& request, tyke::Response& response,
-                            const tyke::ContextPtr& context_ptr)
+    void HandleAsyncProcess(const tyke::Request& request, tyke::Response& response)
     {
         auto now = std::chrono::system_clock::now();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
