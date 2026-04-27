@@ -24,18 +24,10 @@ namespace controller::response::examples
         auto router = tyke::Framework::GetResponseRouter();
         const auto root = router.GetRoot();
 
-        const auto async_group = root->Group("/api/async");
-        async_group->Route("/callback", [](const tyke::Response& resp)
+        const auto async_group = root->AddSubGroup("/api/async");
+        async_group->AddRouteHandler("/process", [](const tyke::Response& resp)
         {
             HandleAsyncCallback(resp);
-        });
-        async_group->Route("/process", [](const tyke::Response& resp)
-        {
-            HandleAsyncCallback(resp);
-        });
-        async_group->Route("/notification", [](const tyke::Response& resp)
-        {
-            HandleAsyncNotification(resp);
         });
 
         fmt::print("✓ 响应路由处理器注册完成\n");

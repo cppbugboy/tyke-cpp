@@ -26,28 +26,8 @@ namespace controller::request::examples
         auto router = tyke::Framework::GetRequestRouter();
         const auto root = router.GetRoot();
 
-        auto user_group = root->Group("/api/user");
-        user_group->Route("/login", [](const tyke::Request& req, tyke::Response& resp)
-        {
-            HandleUserLogin(req, resp);
-        });
-        user_group->Route("/logout", [](const tyke::Request& req, tyke::Response& resp)
-        {
-            HandleUserLogout(req, resp);
-        });
-
-        auto data_group = root->Group("/api/data");
-        data_group->Route("/query", [](const tyke::Request& req, tyke::Response& resp)
-        {
-            HandleDataQuery(req, resp);
-        });
-        data_group->Route("/update", [](const tyke::Request& req, tyke::Response& resp)
-        {
-            HandleDataUpdate(req, resp);
-        });
-
-        auto async_group = root->Group("/api/async");
-        async_group->Route("/process", [](const tyke::Request& req, tyke::Response& resp)
+        auto async_group = root->AddSubGroup("/api/async");
+        async_group->AddRouteHandler("/process", [](const tyke::Request& req, tyke::Response& resp)
         {
             HandleAsyncProcess(req, resp);
         });
