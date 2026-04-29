@@ -22,8 +22,8 @@
 #include "tyke/tyke.h"
 #include "controllers/example_response_controller.h"
 
-static const std::string kServerUuid = "tyke_server_example";
-static const std::string kClientListenerUuid = "tyke_client_listener_cpp";
+static const std::string kServerUuid = "1879b1d8-8ab0-4542-8421-8d845eca6587";
+static const std::string kClientListenerUuid = "8b077afb-7287-4aeb-a39d-b7e0c327e30d";
 
 static std::atomic<bool> g_running{true};
 

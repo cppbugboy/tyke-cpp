@@ -42,14 +42,14 @@ int main()
     framework.SetThreadPoolCount(4);
     framework.SetLogConfig("./tyke_server.log", "debug", 1024, 5);
 
-    auto result = framework.Start("tyke_server_example");
+    auto result = framework.Start("1879b1d8-8ab0-4542-8421-8d845eca6587");
     if (!result.has_value())
     {
         fmt::print("服务端启动失败: {}\n", result.error());
         return 1;
     }
 
-    fmt::print("服务端已启动，监听UUID: tyke_server_example\n");
+    fmt::print("服务端已启动，监听UUID: 1879b1d8-8ab0-4542-8421-8d845eca6587\n");
     fmt::print("按 Ctrl+C 停止服务端...\n\n");
 
     while (g_running)
