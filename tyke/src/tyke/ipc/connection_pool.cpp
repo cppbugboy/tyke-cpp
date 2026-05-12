@@ -45,7 +45,7 @@ namespace tyke
             }
 
             LOG_WARN("Idle connection invalid, destroying, server={}", server_uuid_);
-            delete conn_uptr.release();
+            conn_uptr.reset();
             total_connections_.fetch_sub(1, std::memory_order_relaxed);
             lock.lock();
         }
@@ -79,7 +79,7 @@ namespace tyke
                 {
                     return PooledConnection(conn_uptr.release(), ConnectionDeleter{this});
                 }
-                delete conn_uptr.release();
+                conn_uptr.reset();
                 total_connections_.fetch_sub(1, std::memory_order_relaxed);
             }
         }
@@ -100,9 +100,10 @@ namespace tyke
 
         std::lock_guard<std::mutex> lock(mutex_);
 
+        std::unique_ptr<IpcConnection> guard(conn);
+
         if (stopped_.load(std::memory_order_acquire))
         {
-            delete conn;
             total_connections_.fetch_sub(1, std::memory_order_relaxed);
             return;
         }
@@ -110,12 +111,11 @@ namespace tyke
         if (should_reconnect || !conn->IsValid())
         {
             LOG_WARN("Releasing broken connection, reconnecting, server={}", server_uuid_);
-            delete conn;
             total_connections_.fetch_sub(1, std::memory_order_relaxed);
         }
         else
         {
-            connections_vec_.emplace_back(conn);
+            connections_vec_.emplace_back(guard.release());
             LOG_DEBUG("Released connection to pool, server={}", server_uuid_);
         }
 

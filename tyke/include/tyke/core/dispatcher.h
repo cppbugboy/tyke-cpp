@@ -14,5 +14,5 @@ namespace tyke::dispatcher
 {
     void DispatchRequest(const Request& request, Response& response);
 
-    void DispatchResponse(const Response& response);
+    void DispatchResponse(Response& response);
 } // namespace tyke::dispatcher

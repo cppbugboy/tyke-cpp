@@ -15,6 +15,9 @@
 
 namespace tyke
 {
+    // 原子计数器，为每个客户端生成唯一 ID，避免将 HANDLE 强制转换为 ClientId 的未定义行为
+    static std::atomic<ClientId> g_next_client_id{1};
+
     class ClientConnectionImplWin : public IClientConnectionImpl
     {
     public:
@@ -334,6 +337,7 @@ namespace tyke
             OVERLAPPED read_ov{};
             OVERLAPPED write_ov{};
             HANDLE pipe;
+            ClientId client_id = 0;
             ClientState state;
             crypto::EcdhKeyExchange ecdh;
             crypto::AesGcmCipher cipher;
@@ -348,7 +352,7 @@ namespace tyke
             uint32_t reassembly_received = 0;
 
             ClientContext()
-                : pipe(INVALID_HANDLE_VALUE), state(STATE_WAIT_HELLO), connected(false), writing(false), raw_read_buf{}
+                : pipe(INVALID_HANDLE_VALUE), client_id(0), state(STATE_WAIT_HELLO), connected(false), writing(false), raw_read_buf{}
             {
                 memset(&read_ov, 0, sizeof(read_ov));
                 memset(&write_ov, 0, sizeof(write_ov));
@@ -490,14 +494,14 @@ namespace tyke
                 const BOOL ok = GetQueuedCompletionStatus(iocp_, &bytes, &key, &ov, INFINITE);
                 if (!running_)
                     break;
-                auto* ctx_raw = reinterpret_cast<ClientContext*>(key);
-                if (!ctx_raw)
+                const auto client_id = static_cast<ClientId>(key);
+                if (client_id == 0)
                     continue;
 
                 std::shared_ptr<ClientContext> ctx;
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
-                    auto it = clients_.find(reinterpret_cast<ClientId>(ctx_raw->pipe));
+                    auto it = clients_.find(client_id);
                     if (it == clients_.end())
                         continue;
                     ctx = it->second;
@@ -524,7 +528,7 @@ namespace tyke
                 if (!ctx->connected)
                 {
                     ctx->connected = true;
-                    LOG_INFO("Client connected, pipe={}", reinterpret_cast<uintptr_t>(ctx->pipe));
+                    LOG_INFO("Client connected, client_id={}", ctx->client_id);
                     if (auto result = CreateListeningPipe(); !result)
                     {
                         LOG_WARN("CreateListeningPipe failed: {}", result.error());
@@ -538,16 +542,16 @@ namespace tyke
                         ctx->raw_recv_buf.insert(ctx->raw_recv_buf.end(), ctx->raw_read_buf, ctx->raw_read_buf + bytes);
                         if (!ProcessFrames(ctx))
                         {
-                            LOG_WARN("ProcessFrames failed, closing client, pipe={}",
-                                     reinterpret_cast<uintptr_t>(ctx->pipe));
+                            LOG_WARN("ProcessFrames failed, closing client, client_id={}",
+                                     ctx->client_id);
                             CloseClient(ctx);
                             continue;
                         }
                     }
                     else
                     {
-                        LOG_INFO("Read completion with 0 bytes (client disconnected), pipe={}",
-                                 reinterpret_cast<uintptr_t>(ctx->pipe));
+                        LOG_INFO("Read completion with 0 bytes (client disconnected), client_id={}",
+                                 ctx->client_id);
                         CloseClient(ctx);
                     }
                 }
@@ -582,20 +586,21 @@ namespace tyke
                 return nonstd::make_unexpected("CreateNamedPipe failed");
             const auto ctx = std::make_shared<ClientContext>();
             ctx->pipe = pipe;
-            if (!CreateIoCompletionPort(pipe, iocp_, reinterpret_cast<ULONG_PTR>(ctx.get()), 0))
+            ctx->client_id = g_next_client_id.fetch_add(1, std::memory_order_relaxed);
+            if (!CreateIoCompletionPort(pipe, iocp_, static_cast<ULONG_PTR>(ctx->client_id), 0))
             {
                 CloseHandle(pipe);
                 return nonstd::make_unexpected("CreateIoCompletionPort for pipe failed");
             }
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                clients_[reinterpret_cast<ClientId>(pipe)] = ctx;
+                clients_[ctx->client_id] = ctx;
             }
             if (const BOOL pending = ConnectNamedPipe(pipe, &ctx->read_ov); !pending)
             {
                 if (const DWORD err = GetLastError(); err == ERROR_PIPE_CONNECTED)
                 {
-                    PostQueuedCompletionStatus(iocp_, 0, reinterpret_cast<ULONG_PTR>(ctx.get()), &ctx->read_ov);
+                    PostQueuedCompletionStatus(iocp_, 0, static_cast<ULONG_PTR>(ctx->client_id), &ctx->read_ov);
                 }
                 else if (err != ERROR_IO_PENDING)
                 {
@@ -621,7 +626,7 @@ namespace tyke
                     return;
                 if (err == ERROR_OPERATION_ABORTED || err == ERROR_INVALID_HANDLE)
                     return;
-                LOG_WARN("PostRead ReadFile failed, pipe={}, err={}", reinterpret_cast<uintptr_t>(ctx->pipe), err);
+                LOG_WARN("PostRead ReadFile failed, client_id={}, err={}", ctx->client_id, err);
                 CloseClient(ctx);
             }
         }
@@ -680,12 +685,12 @@ namespace tyke
                             return false;
                         }
 
+                        const auto captured_client_id = ctx->client_id;
                         auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(decrypt_result.value()));
-                        auto client_id = reinterpret_cast<ClientId>(ctx->pipe);
                         auto callback = callback_;
 
                         auto enqueue_result = GetGlobalThreadPool().Enqueue(
-                            [callback, client_id, data_copy, this]()
+                            [callback, captured_client_id, data_copy, this]()
                             {
                                 auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                                 {
@@ -694,15 +699,15 @@ namespace tyke
                                 };
                                 if (callback)
                                 {
-                                    if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
+                                    if (const auto optional = callback(captured_client_id, *data_copy, cb_send); !optional)
                                     {
-                                        CloseClient(client_id);
+                                        CloseClient(captured_client_id);
                                     }
                                 }
                             });
                         if (!enqueue_result)
                         {
-                            LOG_WARN("Thread pool stopped, cannot process data for client_id={}", client_id);
+                            LOG_WARN("Thread pool stopped, cannot process data for client_id={}", captured_client_id);
                         }
                     }
                     else if (type == crypto::kMsgDataFragment)
@@ -744,15 +749,15 @@ namespace tyke
 
                         if (ctx->reassembly_received == ctx->reassembly_total)
                         {
+                            const auto captured_client_id = ctx->client_id;
                             auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(ctx->reassembly_buf));
                             ctx->reassembly_buf.clear();
                             ctx->reassembly_total = 0;
                             ctx->reassembly_received = 0;
-                            auto client_id = reinterpret_cast<ClientId>(ctx->pipe);
                             auto callback = callback_;
 
                             auto enqueue_result = GetGlobalThreadPool().Enqueue(
-                                [callback, client_id, data_copy, this]()
+                                [callback, captured_client_id, data_copy, this]()
                                 {
                                     auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                                     {
@@ -761,15 +766,15 @@ namespace tyke
                                     };
                                     if (callback)
                                     {
-                                        if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
+                                        if (const auto optional = callback(captured_client_id, *data_copy, cb_send); !optional)
                                         {
-                                            CloseClient(client_id);
+                                            CloseClient(captured_client_id);
                                         }
                                     }
                                 });
                             if (!enqueue_result)
                             {
-                                LOG_WARN("Thread pool stopped, cannot process data for client_id={}", client_id);
+                                LOG_WARN("Thread pool stopped, cannot process data for client_id={}", captured_client_id);
                             }
                         }
                     }
@@ -806,10 +811,10 @@ namespace tyke
 
         void CloseClient(const std::shared_ptr<ClientContext>& ctx)
         {
-            LOG_INFO("CloseClient(shared_ptr), pipe={}, connected={}", reinterpret_cast<uintptr_t>(ctx->pipe),
+            LOG_INFO("CloseClient(shared_ptr), client_id={}, connected={}", ctx->client_id,
                      ctx->connected);
             std::lock_guard<std::mutex> lock(mutex_);
-            const auto it = clients_.find(reinterpret_cast<ClientId>(ctx->pipe));
+            const auto it = clients_.find(ctx->client_id);
             if (it == clients_.end())
                 return;
             clients_.erase(it);

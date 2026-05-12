@@ -56,13 +56,24 @@ namespace tyke::dispatcher
         LOG_INFO("Request dispatched: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
     }
 
-    void DispatchResponse(const Response& response)
+    void DispatchResponse(Response& response)
     {
         LOG_DEBUG("Dispatching response: route={}, msg_uuid={}", response.GetRoute(), response.GetMsgUuid());
 
         const auto route_entry = GetGlobalResponseRouter().GetRouteEntry(response.GetRoute());
         if (route_entry == nullptr)
         {
+            // 尝试 stub fallback（与 Go 版本行为一致）
+            if (response.GetMessageType() == MessageType::kResponseAsyncFunc)
+            {
+                stub::ExecFunc(response);
+                return;
+            }
+            if (response.GetMessageType() == MessageType::kResponseAsyncFuture)
+            {
+                stub::SetFuture(std::move(response));
+                return;
+            }
             LOG_WARN("Response dropped: no route and no stub handler found: route={}, msg_uuid={}", response.GetRoute(),
                      response.GetMsgUuid());
             return;

@@ -9,7 +9,7 @@ namespace tyke
 {
     void Response::Reset()
     {
-        state_ = std::make_shared<ResponseState>();
+        state_->is_send.store(false, std::memory_order_release);
         protocol_header_ = ProtocolHeader{};
         metadata_ = ResponseMetadata{};
         content_.clear();

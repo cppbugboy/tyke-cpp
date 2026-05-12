@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <climits>
+
 #include "tyke/common/log_def.h"
 #include "request.h"
 #include "response_metadata.h"
@@ -52,6 +54,14 @@ namespace tyke
                 constexpr size_t header_size = sizeof(ProtocolHeader);
                 const size_t meta_size = metadata_string.size();
                 const size_t content_size = msg.content_.size();
+
+                // 防御性检查：确保长度可以安全存入 uint32_t
+                if (meta_size > static_cast<size_t>(UINT32_MAX) || content_size > static_cast<size_t>(UINT32_MAX))
+                {
+                    LOG_ERROR("Metadata or content too large for uint32_t: meta={}, content={}", meta_size, content_size);
+                    throw std::runtime_error("Data too large for protocol");
+                }
+
                 const size_t total_size = header_size + meta_size + content_size;
 
                 if (data_vec.capacity() < total_size)
@@ -129,6 +139,13 @@ namespace tyke
                 if (cont_len > kMaxContentLen)
                 {
                     LOG_ERROR("Content length exceeds limit: {} > {}", cont_len, kMaxContentLen);
+                    return false;
+                }
+
+                // 防御性检查：防止 meta_len + cont_len 整数溢出
+                if (static_cast<uint64_t>(meta_len) + static_cast<uint64_t>(cont_len) > static_cast<uint64_t>(UINT32_MAX))
+                {
+                    LOG_ERROR("Metadata + content length overflow: {} + {}", meta_len, cont_len);
                     return false;
                 }
 
