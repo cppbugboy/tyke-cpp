@@ -25,7 +25,7 @@ namespace tyke
         virtual BoolResult Connect(std::string_view server_name, uint32_t timeout_ms, uint32_t rw_timeout_ms) = 0;
 
 
-        virtual BoolResult WriteEncrypted(const void* data, size_t size, uint32_t timeout_ms) = 0;
+        virtual BoolResult Write(const void* data, size_t size, uint32_t timeout_ms) = 0;
 
 
         virtual BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms) = 0;
@@ -57,5 +57,7 @@ namespace tyke
     std::unique_ptr<IClientConnectionImpl> CreateClientConnectionImpl();
 
 
-    std::unique_ptr<IServerImpl> CreateServerImpl();
+    // 返回 shared_ptr 以支持 ServerImpl 在异步回调中通过 shared_from_this 延长生命周期，
+    // 避免 Shutdown 后回调访问已释放对象（use-after-free）。
+    std::shared_ptr<IServerImpl> CreateServerImpl();
 } // namespace tyke

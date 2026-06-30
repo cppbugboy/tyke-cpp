@@ -29,13 +29,13 @@ namespace tyke
         return true;
     }
 
-    BoolResult IpcConnection::WriteEncrypted(const void* data, size_t size, uint32_t timeout_ms)
+    BoolResult IpcConnection::Write(const void* data, size_t size, uint32_t timeout_ms)
     {
-        LOG_DEBUG("WriteEncrypted: size={}, timeout={}ms", size, timeout_ms);
-        if (auto result = impl_->WriteEncrypted(data, size, timeout_ms); !result)
+        LOG_DEBUG("Write: size={}, timeout={}ms", size, timeout_ms);
+        if (auto result = impl_->Write(data, size, timeout_ms); !result)
         {
-            LOG_ERROR("WriteEncrypted failed: {}", result.error());
-            return nonstd::make_unexpected("write encrypted failed: " + result.error());
+            LOG_ERROR("Write failed: {}", result.error());
+            return nonstd::make_unexpected("write failed: " + result.error());
         }
         return true;
     }
@@ -77,7 +77,7 @@ namespace tyke
 
         auto& conn = *conn_result.value();
 
-        if (auto write_result = conn.WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
+        if (auto write_result = conn.Write(request.data(), request.size(), timeout_ms); !write_result)
         {
             LOG_ERROR("IpcClient::Send write failed: {}", write_result.error());
             conn_result.value().release();
@@ -112,13 +112,19 @@ namespace tyke
 
         auto& conn = *conn_result.value();
 
-        if (auto write_result = conn.WriteEncrypted(request.data(), request.size(), timeout_ms); !write_result)
+        if (auto write_result = conn.Write(request.data(), request.size(), timeout_ms); !write_result)
         {
             LOG_ERROR("IpcClient::SendAsync write failed: {}", write_result.error());
             conn_result.value().release();
             pool->Release(&conn, true);
-            return nonstd::make_unexpected("send async: write encrypted failed");
+            return nonstd::make_unexpected("send async: write failed");
         }
+
+        // 成功路径显式归还连接以复用（与 Go 侧 IPCClientSendAsync 行为对齐）。
+        // SendAsync 语义为"即发即弃"，异步响应由高层 stub/ResponseRouter 机制处理，
+        // 连接可安全复用。
+        conn_result.value().release();
+        pool->Release(&conn, false);
 
         LOG_DEBUG("IpcClient::SendAsync completed successfully");
         return true;

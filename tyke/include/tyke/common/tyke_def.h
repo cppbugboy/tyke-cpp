@@ -22,9 +22,6 @@ namespace tyke
     constexpr uint32_t kDefaultThreadPoolSize = 4;
     constexpr uint32_t kProtocolHeaderSize = 28;
 
-    constexpr uint32_t kAesGcmIvLen = 12;
-    constexpr uint32_t kAesGcmTagLen = 16;
-    constexpr uint32_t kAes256KeyLen = 32;
     constexpr uint32_t kDefaultStubTimeoutMs = 30000;
 
     enum class StatusCode

@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-Tyke 是一个高性能、跨平台的本地进程间通信（IPC）框架，提供安全加密的双向通信能力。本文档详细阐述 C++ 实现的架构设计、核心数据结构和关键算法。
+Tyke 是一个高性能、跨平台的本地进程间通信（IPC）框架，提供高性能的双向通信能力。本文档详细阐述 C++ 实现的架构设计、核心数据结构和关键算法。
 
 ## 2. 系统架构
 
@@ -19,7 +19,7 @@ Tyke 是一个高性能、跨平台的本地进程间通信（IPC）框架，提
 │  │ IpcServer   │  │ IpcConnection│  │ ConnectionPool      │ │
 │  └─────────────┘  └──────────────┘  └─────────────────────┘ │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │              Crypto (ECDH + AES-GCM)                    ││
+│  │              Frame Parser (Build/Extract Frame)         ││
 │  └─────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────┤
 │                    Platform Layer                            │
@@ -49,14 +49,12 @@ Tyke 是一个高性能、跨平台的本地进程间通信（IPC）框架，提
 │ Frame Format                                               │
 ├──────────┬─────────────┬───────────────────────────────────┤
 │ 4 bytes  │ 1 byte      │ N bytes                           │
-│ total_len│ frame_type  │ payload                           │
+│ total_len│ frame_type  │ payload (plaintext)               │
 │ (LE)     │             │                                   │
 ├──────────┼─────────────┼───────────────────────────────────┤
 │ 帧类型   │ 值          │ 说明                              │
 ├──────────┼─────────────┼───────────────────────────────────┤
-│ HandshakeInit │ 0x01   │ 客户端ECDH公钥 (SPKI DER)         │
-│ HandshakeResp │ 0x02   │ 服务端ECDH公钥 (SPKI DER)         │
-│ Data          │ 0x03   │ AES-GCM加密数据                   │
+│ Data          │ 0x03   │ 明文数据                          │
 │ DataFragment  │ 0x04   │ 分片数据 (大消息)                 │
 └──────────┴─────────────┴───────────────────────────────────┘
 ```
@@ -68,25 +66,12 @@ Tyke 是一个高性能、跨平台的本地进程间通信（IPC）框架，提
 │ Fragment Payload Format                                     │
 ├──────────┬──────────┬───────────────────────────────────────┤
 │ 4 bytes  │ 4 bytes  │ N bytes                               │
-│ total_sz │ offset   │ encrypted_chunk                       │
-│ (LE)     │ (LE)     │                                       │
+│ total_sz │ offset   │ chunk                                 │
+│ (LE)     │ (LE)     │ (plaintext)                           │
 └──────────┴──────────┴───────────────────────────────────────┘
 ```
 
-### 3.3 加密数据格式
-
-```
-┌────────────────────────────────────────────────────────────┐
-│ Encrypted Data Format                                       │
-├──────────┬─────────────────┬──────────────┐                │
-│ 12 bytes │ N bytes         │ 16 bytes     │                │
-│ IV       │ Ciphertext      │ Auth Tag     │                │
-└──────────┴─────────────────┴──────────────┘                │
-
-IV 结构: [4B 随机前缀][8B 大端计数器]
-```
-
-### 3.4 应用层协议头
+### 3.3 应用层协议头
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -100,50 +85,7 @@ IV 结构: [4B 随机前缀][8B 大端计数器]
 
 ## 4. 关键算法
 
-### 4.1 ECDH 密钥交换
-
-```cpp
-// 1. 双方各自生成ECDH密钥对 (P-256)
-EcdhKeyExchange alice, bob;
-alice.GenerateKey();  // OpenSSL EVP_PKEY_Q_keygen
-bob.GenerateKey();
-
-// 2. 交换公钥 (X.509 SPKI DER格式)
-auto alice_pub = alice.GetPublicKeyDer();  // i2d_PUBKEY
-auto bob_pub = bob.GetPublicKeyDer();
-
-// 3. 计算共享密钥
-auto alice_secret = alice.ComputeSharedSecret(bob_pub);  // EVP_PKEY_derive
-auto bob_secret = bob.ComputeSharedSecret(alice_pub);
-// alice_secret == bob_secret (32字节)
-```
-
-### 4.2 HKDF 密钥派生
-
-```cpp
-// 从ECDH共享密钥派生AES-256密钥
-// HKDF-SHA256(salt="tyke-v1-hkdf-salt", info="tyke-v1-aes256-key")
-key = HKDF-Extract(salt, shared_secret)  // PRK = HMAC-SHA256(salt, IKM)
-key = HKDF-Expand(PRK, info, 32)         // OKM = HMAC-SHA256(PRK, info || counter)
-```
-
-### 4.3 AES-GCM 加密
-
-```cpp
-// IV生成: [4B随机][8B大端计数器]
-// 每次加密递增计数器，确保IV唯一性
-std::vector<uint8_t> iv(12);
-RAND_bytes(iv.data(), 4);  // 随机前缀
-counter = be64(counter + 1);  // 大端计数器
-
-// AES-GCM加密
-EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), ...);
-EVP_EncryptUpdate(ctx, out, &len, in, in_len);
-EVP_EncryptFinal_ex(ctx, out + len, &len);
-EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag);
-```
-
-### 4.4 大消息分片
+### 4.1 大消息分片
 
 ```cpp
 // 分片参数
@@ -152,8 +94,8 @@ constexpr uint32_t kFragmentChunkSize = 64 * 1024;  // 64KB
 // 发送端分片
 for (offset = 0; offset < total_size; offset += chunk_size) {
     chunk_size = min(remaining, kFragmentChunkSize);
-    encrypted_chunk = AES_GCM_Encrypt(data + offset, chunk_size);
-    fragment_payload = EncodeLe32(total_size) + EncodeLe32(offset) + encrypted_chunk;
+    chunk = data + offset;  // 明文 chunk
+    fragment_payload = EncodeLe32(total_size) + EncodeLe32(offset) + chunk;
     SendFrame(kMsgDataFragment, fragment_payload);
 }
 
@@ -161,8 +103,8 @@ for (offset = 0; offset < total_size; offset += chunk_size) {
 if (offset == 0) {
     reassembly_buffer.resize(total_size);
 }
-memcpy(reassembly_buffer.data() + offset, decrypted_chunk.data(), decrypted_chunk.size());
-received += decrypted_chunk.size();
+memcpy(reassembly_buffer.data() + offset, chunk.data(), chunk.size());
+received += chunk.size();
 if (received == total_size) {
     // 完整消息已接收
     OnCompleteMessage(reassembly_buffer);
@@ -262,7 +204,7 @@ class ConnectionPool {
 ├─────────────────────────────────────────────────────────────┤
 │  Main Thread      │  Read Thread (optional)                 │
 │  - Connect        │  - ReadLoop for async receive           │
-│  - WriteEncrypted │  - Invoke user callback                 │
+│  - Write          │  - Invoke user callback                 │
 │  - Close          │                                         │
 └───────────────────┴─────────────────────────────────────────┘
 ```
@@ -281,27 +223,14 @@ class ConnectionPool {
 - Linux: epoll 边缘触发模式
 - 增大管道/套接字缓冲区至 256KB
 
-### 8.3 加密优化
-
-- 复用 EVP_CTX 上下文，避免重复初始化
-- 批量加密减少函数调用开销
-- IV 计数器避免随机数生成
-
 ## 9. 安全考虑
 
-### 9.1 密钥安全
+### 9.1 通信安全
 
-- ECDH 使用 P-256 曲线，提供 128 位安全强度
-- 密钥材料使用 `OPENSSL_cleanse` 安全清零
-- 每个连接使用独立的会话密钥
-
-### 9.2 通信安全
-
-- AES-GCM 提供认证加密，防止篡改
-- IV 唯一性保证，防止重放攻击
+- 明文传输，适用于可信本地 IPC 场景
 - 帧长度限制 (16MB)，防止内存耗尽
 
-### 9.3 平台安全
+### 9.2 平台安全
 
 - Windows: 命名管道默认安全描述符
 - Linux: abstract namespace 避免文件系统权限问题
@@ -341,19 +270,20 @@ using ByteVecResult = Result<std::vector<uint8_t>>;
 class IClientConnectionImpl {
 public:
     virtual BoolResult Connect(std::string_view server_name, uint32_t timeout_ms) = 0;
-    virtual BoolResult WriteEncrypted(const void* data, size_t size, uint32_t timeout_ms) = 0;
+    virtual BoolResult Write(const void* data, size_t size, uint32_t timeout_ms) = 0;
     virtual BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms) = 0;
     virtual void Close() = 0;
     virtual bool IsValid() const = 0;
 };
 ```
 
-### 11.2 新加密算法
+### 11.2 帧解析扩展
 
-修改 `ipc_crypto.cpp` 中的密钥派生和加密逻辑。
+修改 `ipc_frame.cpp` / `ipc_frame.h` 中的帧构建与解析逻辑（如需新增帧类型或调整分片策略）。
 
 ## 12. 版本历史
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | 1.0 | 2026-04-26 | 初始版本，支持 Windows/Linux 跨平台 IPC |
+| 1.1 | 2026-06-29 | 移除加密层（ECDH/AES-GCM/OpenSSL），数据改为明文传输；删除握手帧；`WriteEncrypted` 重命名为 `Write`；`ipc_crypto.*` 替换为 `ipc_frame.*` |

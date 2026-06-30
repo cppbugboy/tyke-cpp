@@ -14,7 +14,7 @@
 #include "tyke/common/log_def.h"
 #include "tyke/common/tyke_utils.h"
 #include "tyke/component/thread_pool.h"
-#include "tyke/ipc/ipc_crypto.h"
+#include "tyke/ipc/ipc_frame.h"
 #include "tyke/ipc/ipc_internal_platform.h"
 
 namespace tyke
@@ -54,25 +54,24 @@ namespace tyke
                 Close();
                 return nonstd::make_unexpected(std::string("connect failed for: ") + std::string(server_name));
             }
-            auto handshake_result = DoHandshake();
-            if (!handshake_result)
-            {
-                Close();
-                return handshake_result;
-            }
             return true;
         }
 
-        BoolResult WriteEncrypted(const void* data, const size_t size, uint32_t) override
+        BoolResult Write(const void* data, const size_t size, uint32_t) override
         {
-            if (size <= crypto::kFragmentChunkSize)
+            bool expected = false;
+            if (!in_use_.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+                return nonstd::make_unexpected("connection busy: concurrent operation detected");
+            struct ScopedRelease
+            {
+                std::atomic<bool>& flag;
+                ~ScopedRelease() { flag.store(false, std::memory_order_release); }
+            } guard{in_use_};
+            if (size <= frame::kFragmentChunkSize)
             {
                 const std::vector<uint8_t> pt(static_cast<const uint8_t*>(data),
                                               static_cast<const uint8_t*>(data) + size);
-                auto encrypt_result = cipher_.Encrypt(pt);
-                if (!encrypt_result)
-                    return nonstd::make_unexpected("encrypt failed: " + encrypt_result.error());
-                const auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
+                const auto frame = frame::FrameParser::BuildFrame(frame::kMsgData, pt);
                 return WriteExact(frame.data(), frame.size());
             }
 
@@ -81,17 +80,13 @@ namespace tyke
             size_t offset = 0;
             while (remaining > 0)
             {
-                const size_t chunk_size = std::min(remaining, static_cast<size_t>(crypto::kFragmentChunkSize));
+                const size_t chunk_size = std::min(remaining, static_cast<size_t>(frame::kFragmentChunkSize));
                 std::vector<uint8_t> fragment_payload;
-                crypto::FrameParser::EncodeLe32(static_cast<uint32_t>(size), fragment_payload);
-                crypto::FrameParser::EncodeLe32(static_cast<uint32_t>(offset), fragment_payload);
+                frame::FrameParser::EncodeLe32(static_cast<uint32_t>(size), fragment_payload);
+                frame::FrameParser::EncodeLe32(static_cast<uint32_t>(offset), fragment_payload);
                 std::vector<uint8_t> chunk(ptr, ptr + chunk_size);
-                auto encrypt_result = cipher_.Encrypt(chunk);
-                if (!encrypt_result)
-                    return nonstd::make_unexpected("encrypt fragment failed: " + encrypt_result.error());
-                fragment_payload.insert(fragment_payload.end(), encrypt_result.value().begin(),
-                                        encrypt_result.value().end());
-                auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgDataFragment, fragment_payload);
+                fragment_payload.insert(fragment_payload.end(), chunk.begin(), chunk.end());
+                auto frame = frame::FrameParser::BuildFrame(frame::kMsgDataFragment, fragment_payload);
                 auto write_result = WriteExact(frame.data(), frame.size());
                 if (!write_result)
                     return write_result;
@@ -104,6 +99,14 @@ namespace tyke
 
         BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t) override
         {
+            bool expected = false;
+            if (!in_use_.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+                return nonstd::make_unexpected("connection busy: concurrent operation detected");
+            struct ScopedRelease
+            {
+                std::atomic<bool>& flag;
+                ~ScopedRelease() { flag.store(false, std::memory_order_release); }
+            } guard{in_use_};
             std::vector<uint8_t> raw_buf;
             std::vector<uint8_t> plain_buf;
             uint8_t chunk[131072];
@@ -121,16 +124,13 @@ namespace tyke
                 raw_buf.insert(raw_buf.end(), chunk, chunk + n);
                 uint8_t type = 0;
                 std::vector<uint8_t> payload;
-                while (crypto::FrameParser::ExtractFrame(raw_buf, type, payload))
+                while (frame::FrameParser::ExtractFrame(raw_buf, type, payload))
                 {
-                    if (type == crypto::kMsgData)
+                    if (type == frame::kMsgData)
                     {
-                        auto decrypt_result = cipher_.Decrypt(payload);
-                        if (!decrypt_result)
-                            return nonstd::make_unexpected("decrypt failed: " + decrypt_result.error());
-                        plain_buf.insert(plain_buf.end(), decrypt_result.value().begin(), decrypt_result.value().end());
+                        plain_buf.insert(plain_buf.end(), payload.begin(), payload.end());
                     }
-                    else if (type == crypto::kMsgDataFragment)
+                    else if (type == frame::kMsgDataFragment)
                     {
                         auto reassemble_result = ReassembleFragment(payload);
                         if (!reassemble_result)
@@ -148,6 +148,9 @@ namespace tyke
                 {
                     if (callback(plain_buf))
                         return true;
+                    // 回调返回 false 表示继续读取，必须清空已交付的数据，
+                    // 否则下一轮 callback 会收到累积的重复数据（与 Go 实现对齐）
+                    plain_buf.clear();
                 }
             }
             return nonstd::make_unexpected("read loop: connection closed");
@@ -168,7 +171,7 @@ namespace tyke
 
         bool IsValid() const override
         {
-            return fd_ >= 0 && cipher_.IsInitialized();
+            return fd_ >= 0;
         }
 
     private:
@@ -179,8 +182,14 @@ namespace tyke
             while (remaining > 0)
             {
                 const ssize_t sent = send(fd_, ptr, remaining, MSG_NOSIGNAL);
-                if (sent <= 0)
+                if (sent < 0)
+                {
+                    if (errno == EINTR)
+                        continue;
                     return nonstd::make_unexpected("send failed with errno " + std::to_string(errno));
+                }
+                if (sent == 0)
+                    return nonstd::make_unexpected("send returned 0");
                 ptr += sent;
                 remaining -= sent;
             }
@@ -189,94 +198,43 @@ namespace tyke
 
         BoolResult ReassembleFragment(const std::vector<uint8_t>& payload)
         {
-            if (payload.size() < crypto::kFragmentHeaderSize)
+            if (payload.size() < frame::kFragmentHeaderSize)
                 return nonstd::make_unexpected("fragment payload too small");
-            const uint32_t total_size = crypto::FrameParser::DecodeLe32(payload.data());
-            const uint32_t offset = crypto::FrameParser::DecodeLe32(payload.data() + 4);
-            std::vector<uint8_t> encrypted_chunk(payload.begin() + crypto::kFragmentHeaderSize, payload.end());
-            auto decrypt_result = cipher_.Decrypt(encrypted_chunk);
-            if (!decrypt_result)
-                return nonstd::make_unexpected("decrypt fragment failed: " + decrypt_result.error());
+            const uint32_t total_size = frame::FrameParser::DecodeLe32(payload.data());
+            const uint32_t offset = frame::FrameParser::DecodeLe32(payload.data() + 4);
+            const std::vector<uint8_t> chunk(payload.begin() + frame::kFragmentHeaderSize, payload.end());
+            if (total_size == 0 || total_size > frame::kMaxMessageSize)
+                return nonstd::make_unexpected("fragment total_size out of range");
+            if (offset > total_size)
+                return nonstd::make_unexpected("fragment offset > total_size");
             if (offset == 0)
             {
                 reassembly_buf_.resize(total_size);
                 reassembly_total_ = total_size;
                 reassembly_received_ = 0;
             }
-            if (static_cast<size_t>(offset) + decrypt_result.value().size() > reassembly_total_)
+            if (static_cast<size_t>(offset) + chunk.size() > reassembly_total_)
                 return nonstd::make_unexpected("fragment offset overflow");
-            std::memcpy(reassembly_buf_.data() + offset, decrypt_result.value().data(),
-                        decrypt_result.value().size());
-            reassembly_received_ += static_cast<uint32_t>(decrypt_result.value().size());
+            std::memcpy(reassembly_buf_.data() + offset, chunk.data(), chunk.size());
+            reassembly_received_ += static_cast<uint32_t>(chunk.size());
             return reassembly_received_ == reassembly_total_;
         }
 
-        BoolResult DoHandshake()
-        {
-            crypto::EcdhKeyExchange ecdh;
-            if (auto gen_result = ecdh.GenerateKey(); !gen_result)
-                return nonstd::make_unexpected("handshake: key generation failed: " + gen_result.error());
-            auto pub_der_result = ecdh.GetPublicKeyDer();
-            if (!pub_der_result)
-                return nonstd::make_unexpected("handshake: get public key failed: " + pub_der_result.error());
-            auto init_frame = crypto::FrameParser::BuildFrame(crypto::kMsgHandshakeInit, pub_der_result.value());
-            if (auto write_result = WriteExact(init_frame.data(), init_frame.size()); !write_result)
-                return nonstd::make_unexpected("handshake: write init frame failed: " + write_result.error());
-
-            std::vector<uint8_t> raw_buf;
-            uint8_t chunk[1024];
-            uint8_t type = 0;
-            std::vector<uint8_t> payload;
-            while (true)
-            {
-                ssize_t n = recv(fd_, chunk, sizeof(chunk), MSG_NOSIGNAL);
-                if (n <= 0)
-                {
-                    if (errno == EINTR)
-                        continue;
-                    return nonstd::make_unexpected("handshake: recv failed");
-                }
-                raw_buf.insert(raw_buf.end(), chunk, chunk + n);
-                if (auto extract_result = crypto::FrameParser::ExtractFrame(raw_buf, type, payload))
-                {
-                    if (type == crypto::kMsgHandshakeResp)
-                    {
-                        auto secret_result = ecdh.ComputeSharedSecret(payload);
-                        if (!secret_result)
-                            return nonstd::make_unexpected("handshake: compute shared secret failed: " +
-                                secret_result.error());
-                        if (auto init_result = cipher_.Init(secret_result.value()); !init_result)
-                            return nonstd::make_unexpected("handshake: cipher init failed: " + init_result.error());
-                        return true;
-                    }
-                    return nonstd::make_unexpected("handshake: unexpected frame type");
-                }
-            }
-        }
-
         int fd_ = -1;
-        crypto::AesGcmCipher cipher_;
         std::vector<uint8_t> reassembly_buf_;
         uint32_t reassembly_total_ = 0;
         uint32_t reassembly_received_ = 0;
+        // CAS 守卫：防止同一连接被多线程并发收发，破坏内部缓冲区状态。
+        std::atomic<bool> in_use_{false};
     };
 
     constexpr int kMaxEvents = 100;
 
-    class ServerImplLinux : public IServerImpl
+    class ServerImplLinux : public IServerImpl, public std::enable_shared_from_this<ServerImplLinux>
     {
-        enum ClientState
-        {
-            STATE_WAIT_HELLO,
-            STATE_ESTABLISHED
-        };
-
         struct ClientContext
         {
             int fd;
-            ClientState state;
-            crypto::EcdhKeyExchange ecdh;
-            crypto::AesGcmCipher cipher;
             std::vector<uint8_t> raw_recv_buf;
             std::vector<uint8_t> pending_writes;
             std::atomic<bool> writing{false};
@@ -285,7 +243,7 @@ namespace tyke
             uint32_t reassembly_total = 0;
             uint32_t reassembly_received = 0;
 
-            explicit ClientContext(int f) : fd(f), state(STATE_WAIT_HELLO), writing(false)
+            explicit ClientContext(int f) : fd(f), writing(false)
             {
             }
         };
@@ -379,18 +337,15 @@ namespace tyke
                 ctx = it->second;
             }
 
-            if (data.size() <= crypto::kFragmentChunkSize)
+            if (data.size() <= frame::kFragmentChunkSize)
             {
-                auto encrypt_result = ctx->cipher.Encrypt(data);
-                if (!encrypt_result)
-                    return nonstd::make_unexpected("encrypt failed for client " + std::to_string(id) + ": " +
-                        encrypt_result.error());
-                auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgData, encrypt_result.value());
+                auto frame = frame::FrameParser::BuildFrame(frame::kMsgData, data);
                 std::lock_guard<std::mutex> lock(ctx->write_mutex);
                 ctx->pending_writes.insert(ctx->pending_writes.end(), frame.begin(), frame.end());
                 if (!ctx->writing)
                 {
-                    StartWrite(ctx);
+                    if (!StartWrite(ctx))
+                        return nonstd::make_unexpected("SendToClient: StartWrite failed");
                 }
                 return true;
             }
@@ -400,24 +355,21 @@ namespace tyke
             std::lock_guard<std::mutex> lock(ctx->write_mutex);
             while (remaining > 0)
             {
-                const size_t chunk_size = std::min(remaining, static_cast<size_t>(crypto::kFragmentChunkSize));
+                const size_t chunk_size = std::min(remaining, static_cast<size_t>(frame::kFragmentChunkSize));
                 std::vector<uint8_t> fragment_payload;
-                crypto::FrameParser::EncodeLe32(static_cast<uint32_t>(data.size()), fragment_payload);
-                crypto::FrameParser::EncodeLe32(static_cast<uint32_t>(offset), fragment_payload);
+                frame::FrameParser::EncodeLe32(static_cast<uint32_t>(data.size()), fragment_payload);
+                frame::FrameParser::EncodeLe32(static_cast<uint32_t>(offset), fragment_payload);
                 std::vector<uint8_t> chunk(data.begin() + offset, data.begin() + offset + chunk_size);
-                auto encrypt_result = ctx->cipher.Encrypt(chunk);
-                if (!encrypt_result)
-                    return nonstd::make_unexpected("encrypt fragment failed for client " + std::to_string(id));
-                fragment_payload.insert(fragment_payload.end(), encrypt_result.value().begin(),
-                                        encrypt_result.value().end());
-                auto frame = crypto::FrameParser::BuildFrame(crypto::kMsgDataFragment, fragment_payload);
+                fragment_payload.insert(fragment_payload.end(), chunk.begin(), chunk.end());
+                auto frame = frame::FrameParser::BuildFrame(frame::kMsgDataFragment, fragment_payload);
                 ctx->pending_writes.insert(ctx->pending_writes.end(), frame.begin(), frame.end());
                 offset += chunk_size;
                 remaining -= chunk_size;
             }
             if (!ctx->writing)
             {
-                StartWrite(ctx);
+                if (!StartWrite(ctx))
+                    return nonstd::make_unexpected("SendToClient: StartWrite failed");
             }
             return true;
         }
@@ -520,116 +472,93 @@ namespace tyke
         {
             uint8_t type = 0;
             std::vector<uint8_t> payload;
-            while (crypto::FrameParser::ExtractFrame(ctx->raw_recv_buf, type, payload))
+            while (frame::FrameParser::ExtractFrame(ctx->raw_recv_buf, type, payload))
             {
-                if (ctx->state == STATE_WAIT_HELLO)
+                if (type == frame::kMsgData)
                 {
-                    if (type != crypto::kMsgHandshakeInit)
-                        return false;
-                    if (auto gen_result = ctx->ecdh.GenerateKey(); !gen_result)
-                        return false;
-                    auto secret_result = ctx->ecdh.ComputeSharedSecret(payload);
-                    if (!secret_result)
-                        return false;
-                    if (auto init_result = ctx->cipher.Init(secret_result.value()); !init_result)
-                        return false;
-                    auto pub_der_result = ctx->ecdh.GetPublicKeyDer();
-                    if (!pub_der_result)
-                        return false;
-                    auto resp = crypto::FrameParser::BuildFrame(crypto::kMsgHandshakeResp, pub_der_result.value());
+                    auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(payload));
+                    auto client_id = static_cast<ClientId>(ctx->fd);
+                    auto callback = callback_;
+                    auto self = shared_from_this();
 
-                    std::lock_guard<std::mutex> lock(ctx->write_mutex);
-                    ctx->pending_writes.insert(ctx->pending_writes.end(), resp.begin(), resp.end());
-                    if (!ctx->writing)
-                        StartWrite(ctx);
-                    ctx->state = STATE_ESTABLISHED;
+                    GetGlobalThreadPool().Enqueue(
+                        [callback, client_id, data_copy, self]()
+                        {
+                            if (!self->running_.load())
+                                return;
+                            auto cb_send = [self](const ClientId id, const std::vector<uint8_t>& buf) -> bool
+                            {
+                                const auto result = self->SendToClient(id, buf);
+                                return result.has_value();
+                            };
+                            if (callback)
+                            {
+                                if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
+                                {
+                                    self->CloseClient(client_id);
+                                }
+                            }
+                        });
                 }
-                else if (ctx->state == STATE_ESTABLISHED)
+                else if (type == frame::kMsgDataFragment)
                 {
-                    if (type == crypto::kMsgData)
-                    {
-                        auto decrypt_result = ctx->cipher.Decrypt(payload);
-                        if (!decrypt_result)
-                            return false;
+                    if (payload.size() < frame::kFragmentHeaderSize)
+                        return false;
+                    const uint32_t total_size = frame::FrameParser::DecodeLe32(payload.data());
+                    const uint32_t offset = frame::FrameParser::DecodeLe32(payload.data() + 4);
+                    std::vector<uint8_t> chunk(payload.begin() + frame::kFragmentHeaderSize, payload.end());
 
-                        auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(decrypt_result.value()));
+                    if (total_size == 0 || total_size > frame::kMaxMessageSize)
+                        return false;
+                    if (offset > total_size)
+                        return false;
+
+                    if (offset == 0)
+                    {
+                        ctx->reassembly_buf.resize(total_size);
+                        ctx->reassembly_total = total_size;
+                        ctx->reassembly_received = 0;
+                    }
+
+                    if (static_cast<size_t>(offset) + chunk.size() > ctx->reassembly_total)
+                        return false;
+
+                    std::memcpy(ctx->reassembly_buf.data() + offset, chunk.data(), chunk.size());
+                    ctx->reassembly_received += static_cast<uint32_t>(chunk.size());
+
+                    if (ctx->reassembly_received == ctx->reassembly_total)
+                    {
+                        auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(ctx->reassembly_buf));
+                        ctx->reassembly_buf.clear();
+                        ctx->reassembly_total = 0;
+                        ctx->reassembly_received = 0;
                         auto client_id = static_cast<ClientId>(ctx->fd);
                         auto callback = callback_;
+                        auto self = shared_from_this();
 
                         GetGlobalThreadPool().Enqueue(
-                            [callback, client_id, data_copy, this]()
+                            [callback, client_id, data_copy, self]()
                             {
-                                auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
+                                if (!self->running_.load())
+                                    return;
+                                auto cb_send = [self](const ClientId id, const std::vector<uint8_t>& buf) -> bool
                                 {
-                                    const auto result = SendToClient(id, buf);
+                                    const auto result = self->SendToClient(id, buf);
                                     return result.has_value();
                                 };
                                 if (callback)
                                 {
                                     if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
                                     {
-                                        CloseClient(client_id);
+                                        self->CloseClient(client_id);
                                     }
                                 }
                             });
                     }
-                    else if (type == crypto::kMsgDataFragment)
-                    {
-                        if (payload.size() < crypto::kFragmentHeaderSize)
-                            return false;
-                        const uint32_t total_size = crypto::FrameParser::DecodeLe32(payload.data());
-                        const uint32_t offset = crypto::FrameParser::DecodeLe32(payload.data() + 4);
-                        std::vector<uint8_t> encrypted_chunk(payload.begin() + crypto::kFragmentHeaderSize,
-                                                             payload.end());
-                        auto decrypt_result = ctx->cipher.Decrypt(encrypted_chunk);
-                        if (!decrypt_result)
-                            return false;
-
-                        if (offset == 0)
-                        {
-                            ctx->reassembly_buf.resize(total_size);
-                            ctx->reassembly_total = total_size;
-                            ctx->reassembly_received = 0;
-                        }
-
-                        if (static_cast<size_t>(offset) + decrypt_result.value().size() > ctx->reassembly_total)
-                            return false;
-
-                        std::memcpy(ctx->reassembly_buf.data() + offset, decrypt_result.value().data(),
-                                    decrypt_result.value().size());
-                        ctx->reassembly_received += static_cast<uint32_t>(decrypt_result.value().size());
-
-                        if (ctx->reassembly_received == ctx->reassembly_total)
-                        {
-                            auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(ctx->reassembly_buf));
-                            ctx->reassembly_buf.clear();
-                            ctx->reassembly_total = 0;
-                            ctx->reassembly_received = 0;
-                            auto client_id = static_cast<ClientId>(ctx->fd);
-                            auto callback = callback_;
-
-                            GetGlobalThreadPool().Enqueue(
-                                [callback, client_id, data_copy, this]()
-                                {
-                                    auto cb_send = [this](const ClientId id, const std::vector<uint8_t>& buf) -> bool
-                                    {
-                                        const auto result = SendToClient(id, buf);
-                                        return result.has_value();
-                                    };
-                                    if (callback)
-                                    {
-                                        if (const auto optional = callback(client_id, *data_copy, cb_send); !optional)
-                                        {
-                                            CloseClient(client_id);
-                                        }
-                                    }
-                                });
-                        }
-                    }
-                    else
-                    {
-                        return false;
-                    }
+                }
+                else
+                {
+                    return false;
                 }
             }
             return true;
@@ -644,7 +573,10 @@ namespace tyke
             if (sent < 0)
             {
                 if (errno != EAGAIN && errno != EWOULDBLOCK)
+                {
+                    ctx->writing = false;
                     return false;
+                }
                 sent = 0;
             }
             ctx->pending_writes.erase(ctx->pending_writes.begin(), ctx->pending_writes.begin() + sent);
@@ -659,10 +591,12 @@ namespace tyke
 
         void CloseClient(const int fd)
         {
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                clients_.erase(fd);
+            }
             epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, nullptr);
             close(fd);
-            std::lock_guard<std::mutex> lock(mutex_);
-            clients_.erase(fd);
         }
 
         std::string server_name_;
@@ -679,9 +613,9 @@ namespace tyke
         return std::unique_ptr<IClientConnectionImpl>(new ClientConnectionImplLinux());
     }
 
-    std::unique_ptr<IServerImpl> CreateServerImpl()
+    std::shared_ptr<IServerImpl> CreateServerImpl()
     {
-        return std::unique_ptr<IServerImpl>(new ServerImplLinux());
+        return std::shared_ptr<ServerImplLinux>(new ServerImplLinux());
     }
 } // namespace tyke
 #endif

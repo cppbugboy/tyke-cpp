@@ -33,10 +33,6 @@ if (BUILD_BOTH_LIBS)
                 PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/third_party/lib/${CMAKE_SYSTEM_NAME}>
         )
 
-        target_link_libraries(${TARGET}
-                PUBLIC crypto
-        )
-
         if (MSVC)
             target_compile_options(${TARGET} PRIVATE /utf-8 /W4)
             if (CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -96,10 +92,6 @@ else ()
 
     target_link_directories(tyke
             PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/third_party/lib/${CMAKE_SYSTEM_NAME}>
-    )
-
-    target_link_libraries(tyke
-            PUBLIC crypto
     )
 
     if (MSVC)

@@ -7,7 +7,7 @@
  * @details
  * 本模块提供高性能的本地进程间通信(IPC)服务端实现，主要特性包括：
  * - 跨平台支持：Windows使用命名管道，Linux使用Unix域套接字
- * - 安全通信：ECDH密钥交换 + AES-256-GCM加密
+ * - 明文通信：数据以明文形式收发，无加密开销
  * - 高并发：Windows使用IOCP，Linux使用epoll
  * - 大消息支持：应用层分片机制，支持最大16MB消息
  *
@@ -97,13 +97,13 @@ namespace tyke
          *
          * @return BoolResult 成功返回true，失败返回错误信息
          *
-         * @note 数据会自动进行AES-GCM加密后发送。
+         * @note 数据以明文形式发送。
          * @note 大于64KB的数据会自动分片发送。
          */
         [[nodiscard]] BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) const;
 
     private:
-        std::unique_ptr<class IServerImpl> impl_;
+        std::shared_ptr<class IServerImpl> impl_;
     };
 
     /**

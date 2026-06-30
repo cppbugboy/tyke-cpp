@@ -1,13 +1,12 @@
 /**
  * @file ipc_client.h
- * @brief IPC客户端声明。提供同步/异步发送接口，支持ECDH+AES-GCM加密通信。
+ * @brief IPC客户端声明。提供同步/异步发送接口，支持明文传输通信。
  * @author Nick
  * @date 2026/04/19
  *
  * @details
  * 本模块提供IPC客户端功能，主要特性包括：
- * - 自动握手：连接时自动完成ECDH密钥交换
- * - 透明加密：数据自动进行AES-256-GCM加密
+ * - 明文传输：数据以明文形式收发，无加密开销
  * - 大消息支持：自动分片发送和重组接收
  * - 连接池：支持连接复用，提高性能
  *
@@ -17,7 +16,7 @@
  * tyke::IpcConnection conn;
  * auto result = conn.Connect("my_service", 3000);
  * if (result.has_value()) {
- *     conn.WriteEncrypted(data.data(), data.size(), 3000);
+ *     conn.Write(data.data(), data.size(), 3000);
  *     conn.ReadLoop([](const std::vector<uint8_t>& data) -> bool {
  *         // 处理响应
  *         return false;  // 返回true停止读取
@@ -47,10 +46,14 @@ namespace tyke
 {
     /**
      * @class IpcConnection
-     * @brief IPC连接类，代表一个与服务端的加密连接。
+     * @brief IPC连接类，代表一个与服务端的连接。
      *
      * 该类提供完整的连接生命周期管理，包括连接建立、数据收发和连接关闭。
-     * 每个连接在建立时会自动完成ECDH密钥交换，后续通信使用AES-GCM加密。
+     * 连接建立后直接收发明文数据。
+     *
+     * @warning 线程安全：IpcConnection 实例**非线程安全**。同一连接不可被多个线程
+     *          并发调用 Write/ReadLoop/Connect/Close。如需双工收发，
+     *          请为读、写分别创建独立的 IpcConnection 实例。
      */
     class IpcConnection
     {
@@ -74,14 +77,13 @@ namespace tyke
          *
          * @return BoolResult 成功返回true，失败返回错误信息
          *
-         * @note 连接过程中会自动完成ECDH密钥交换。
          * @note 可以在Close()后重新调用Connect()重连。
          */
         [[nodiscard]] BoolResult Connect(std::string_view server_name, uint32_t timeout_ms = kIpcDefaultTimeoutMs,
                                          uint32_t rw_timeout_ms = kIpcDefaultTimeoutMs);
 
         /**
-         * @brief 发送加密数据到服务端。
+         * @brief 发送数据到服务端。
          *
          * @param data 数据指针
          * @param size 数据大小（字节）
@@ -89,12 +91,13 @@ namespace tyke
          *
          * @return BoolResult 成功返回true，失败返回错误信息
          *
-         * @note 数据会自动进行AES-GCM加密。
+         * @note 数据以明文形式发送。
          * @note 大于64KB的数据会自动分片发送。
          * @note 该方法只发送数据，不等待响应。
+         * @note 不可与同一实例的其他收发方法并发调用。
          */
-        [[nodiscard]] BoolResult WriteEncrypted(const void* data, size_t size,
-                                                uint32_t timeout_ms = kIpcDefaultTimeoutMs);
+        [[nodiscard]] BoolResult Write(const void* data, size_t size,
+                                       uint32_t timeout_ms = kIpcDefaultTimeoutMs);
 
         /**
          * @brief 启动读取循环，接收服务端数据。
@@ -106,8 +109,8 @@ namespace tyke
          * @return BoolResult 成功返回true，失败返回错误信息
          *
          * @note 该方法会阻塞当前线程，直到回调返回true或发生错误。
-         * @note 接收到的数据会自动进行AES-GCM解密。
          * @note 分片消息会自动重组后调用回调。
+         * @note 不可与同一实例的其他收发方法并发调用。
          */
         [[nodiscard]] BoolResult ReadLoop(const ClientRecvDataCallback& callback,
                                           uint32_t timeout_ms = kIpcDefaultTimeoutMs);

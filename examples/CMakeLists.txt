@@ -47,7 +47,6 @@ if (MSVC)
     set(WIN_DLL_FILES
             mimalloc-secure.dll
             mimalloc-redirect.dll
-            libcrypto-3-x64.dll
     )
 
     # ---------- 为每个可执行目标复制所有 DLL ----------
