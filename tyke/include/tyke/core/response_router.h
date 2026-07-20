@@ -12,6 +12,7 @@
 
 namespace tyke
 {
+    /** @brief 响应路由器。管理响应路由表，支持分组路由和过滤器链。 */
     class ResponseRouter : public RouterBase<ResponseRouterGroup>
     {
         friend class RouterBase<ResponseRouterGroup>;
@@ -24,6 +25,7 @@ namespace tyke
         ~ResponseRouter() = default;
     };
 
+    /** @brief 获取全局响应路由器单例。 */
     inline ResponseRouter& GetGlobalResponseRouter()
     {
         static ResponseRouter instance;

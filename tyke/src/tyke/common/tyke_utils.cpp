@@ -1,6 +1,6 @@
 /**
  * @file tyke_utils.cpp
- * @brief 工具函数实现。提供UUID生成、时间戳生成、临时目录获取等通用工具函数的实现。
+ * @brief 工具函数实现。提供 UUID 生成（v4 格式）、时间戳生成、临时目录获取、UUID/服务名校验。
  * @author Nick
  * @date 2026/04/19
  */
@@ -25,6 +25,14 @@
 
 namespace tyke::utils
 {
+    /**
+     * @brief 生成符合 RFC 4122 v4 格式的 UUID 字符串。
+     *
+     * 格式：xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+     * 使用 thread_local mt19937 生成器避免每次调用创建 random_device 的开销。
+     *
+     * @return 36 字符 UUID 字符串（含连字符）
+     */
     std::string GenerateUUID()
     {
         // thread_local static generator avoids the cost of creating random_device+mt19937
@@ -65,6 +73,13 @@ namespace tyke::utils
         return ss.str();
     }
 
+    /**
+     * @brief 生成当前时间戳字符串。
+     *
+     * 格式：YYYY-MM-DD HH:MM:SS.mmm
+     *
+     * @return 时间戳字符串
+     */
     std::string GenerateTimestamp()
     {
         const auto now = std::chrono::system_clock::now();
@@ -86,6 +101,14 @@ namespace tyke::utils
         return oss.str();
     }
 
+    /**
+     * @brief 校验 UUID 格式是否合法。
+     *
+     * 要求 36 字符长度，连字符在第 8/13/18/23 位，其余为十六进制字符。
+     *
+     * @param uuid 待校验的字符串
+     * @return true 格式合法，false 格式非法
+     */
     bool IsValidUUID(std::string_view uuid)
     {
         if (uuid.size() != 36)
@@ -107,6 +130,7 @@ namespace tyke::utils
         return true;
     }
 
+    /** @brief 获取系统临时目录路径。失败时返回空字符串并记录警告。 */
     std::string GetTempDir()
     {
         std::error_code ec;
@@ -121,6 +145,14 @@ namespace tyke::utils
         return temp_dir;
     }
 
+    /**
+     * @brief 校验 IPC 服务名称是否合法。
+     *
+     * 要求：非空、长度 <= 64、仅含字母数字下划线连字符。
+     *
+     * @param name 服务名称
+     * @return true 合法，false 非法
+     */
     bool IsValidServerName(std::string_view name)
     {
         if (name.empty() || name.size() > 64)

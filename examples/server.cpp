@@ -21,12 +21,27 @@
 
 static std::atomic<bool> g_running{true};
 
+/**
+ * @brief 处理终止信号（SIGINT、SIGTERM），以优雅地关闭服务端。
+ *
+ * 将全局运行标志设为 false，使主循环退出并触发框架关闭序列。
+ *
+ * @param signal 接收到的信号编号。
+ */
 void SignalHandler(int signal)
 {
     g_running = false;
     fmt::print("\n收到信号 {}，正在关闭服务端...\n", signal);
 }
 
+/**
+ * @brief Tyke 示例服务端的入口点。
+ *
+ * 使用线程池和日志初始化 Tyke 框架，启动绑定到固定 UUID 的 IPC 服务端，
+ * 并持续运行直到收到终止信号。
+ *
+ * @return 正常关闭返回 0，框架启动失败返回 1。
+ */
 int main()
 {
     printf("Using mimalloc version: %d\n", mi_version());

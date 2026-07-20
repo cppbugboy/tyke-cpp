@@ -1,3 +1,14 @@
+/**
+ * @file ipc_platform_win.cpp
+ * @brief Windows 平台 IPC 实现。基于命名管道 (Named Pipe) + IOCP 完成端口模型的客户端和服务端。
+ *
+ * 客户端 (ClientConnectionImplWin)：OVERLAPPED 异步 I/O，CAS 防并发，支持大消息分片/重组。
+ * 服务端 (ServerImplWin)：IOCP 工作线程池，每客户端独立读缓冲区，数据通过全局线程池异步回调。
+ *
+ * @author Nick
+ * @date 2026/04/19
+ */
+
 #ifdef _WIN32
 #include "tyke/common/log_def.h"
 #include "tyke/common/tyke_utils.h"
@@ -31,6 +42,7 @@ namespace tyke
             ClientConnectionImplWin::Close();
         }
 
+        /** @brief 连接到命名管道服务端。打开 \\.\pipe\<name>，设置 OVERLAPPED 和字节读取模式。 */
         BoolResult Connect(std::string_view server_name, const uint32_t timeout_ms, uint32_t rw_timeout_ms) override
         {
             LOG_INFO("ipc client connecting to: {}", server_name);
@@ -63,6 +75,7 @@ namespace tyke
             return true;
         }
 
+        /** @brief 通过命名管道写入数据。超过 kFragmentChunkSize 时自动分片发送。使用 CAS 防并发。 */
         BoolResult Write(const void* data, const size_t size, const uint32_t timeout_ms) override
         {
             bool expected = false;
@@ -103,6 +116,7 @@ namespace tyke
             return true;
         }
 
+        /** @brief 从命名管道循环读取。持续提取帧、处理分片重组，通过回调交付完整消息。使用 CAS 防并发。 */
         BoolResult ReadLoop(const ClientRecvDataCallback& callback, const uint32_t timeout_ms) override
         {
             bool expected = false;
@@ -186,6 +200,7 @@ namespace tyke
             return nonstd::make_unexpected("read loop: connection closed");
         }
 
+        /** @brief 关闭客户端连接：取消 pending I/O、关闭管道和事件句柄、清空重组缓冲区。 */
         void Close() override
         {
             LOG_INFO("ipc client closing connection");
@@ -314,6 +329,7 @@ namespace tyke
         {
         }
 
+        /** @brief 启动 IOCP 服务端：创建完成端口、预创建命名管道实例、启动工作线程池。 */
         BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) override
         {
             LOG_INFO("ipc server starting on: {}", server_name);
@@ -425,9 +441,8 @@ namespace tyke
                 DWORD bytes = 0;
                 ULONG_PTR key = 0;
                 OVERLAPPED* ov = nullptr;
-                // Use a finite timeout (100 ms) so that the worker thread never blocks
-                // indefinitely when Stop() races with completion processing. Each iteration
-                // re-checks running_, guaranteeing prompt shutdown.
+                // 使用有限超时（100 ms），避免 Stop() 与完成处理竞态时工作线程无限阻塞。
+                // 每次迭代重新检查 running_，保证及时关闭。
                 const BOOL ok = GetQueuedCompletionStatus(iocp_, &bytes, &key, &ov, 100);
                 if (!running_)
                     break;

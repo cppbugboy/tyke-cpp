@@ -24,19 +24,22 @@ namespace tyke
 
     constexpr uint32_t kDefaultStubTimeoutMs = 30000;
 
+    /**
+     * @brief 状态码枚举，描述操作或请求的处理结果
+     */
     enum class StatusCode
     {
-        kNone = 0,
-        kSuccess, // 成功
-        kFailure, // 失败
-        kTimeout, // 超时
-        kMetadataError, // 元数据错误
-        kContentError, // 内容错误
-        kRouteError, // 路由错误
-        kModuleError, // 模块不支持
-        kInternalError, // 内部错误
-        kUnavailable, // 服务不可用
-        kUnknownError, // 未知错误
+        kNone = 0, ///< 无状态（初始值）
+        kSuccess, ///< 操作成功
+        kFailure, ///< 操作失败（通用错误）
+        kTimeout, ///< 操作超时
+        kMetadataError, ///< 元数据解析错误
+        kContentError, ///< 内容数据错误
+        kRouteError, ///< 路由未找到
+        kModuleError, ///< 模块不支持
+        kInternalError, ///< 内部错误
+        kUnavailable, ///< 服务不可用
+        kUnknownError, ///< 未知错误
     };
 
     /**
@@ -45,13 +48,13 @@ namespace tyke
     constexpr char kProtocolMagic[4] = {'T', 'Y', 'K', 'E'};
 
     /**
-     * @brief 内容类型枚举，定义支持的数据编码格式
+     * @brief 内容类型枚举，定义请求/响应数据的编码格式
      */
     enum class ContentType
     {
-        kText,
-        kJson,
-        kBinary,
+        kText, ///< 纯文本
+        kJson, ///< JSON格式
+        kBinary, ///< 二进制数据
     };
 
     /**
@@ -75,23 +78,23 @@ namespace tyke
     using ByteVecResult = nonstd::expected<std::vector<uint8_t>, std::string>;
 
     /**
-     * @brief 消息类型枚举，区分同步/异步请求与响应
+     * @brief 消息类型枚举，区分同步/异步请求与响应的通信模式
      */
     enum class MessageType : uint32_t
     {
-        kNone = 0,
-        kRequest = 1,
-        kRequestAsync = 2,
-        kRequestAsyncFunc = 3,
-        kRequestAsyncFuture = 4,
-        kResponse = 5,
-        kResponseAsync = 6,
-        kResponseAsyncFunc = 7,
-        kResponseAsyncFuture = 8,
+        kNone = 0, ///< 未指定类型
+        kRequest = 1, ///< 同步请求
+        kRequestAsync = 2, ///< 异步请求（回调模式）
+        kRequestAsyncFunc = 3, ///< 异步请求（函数模式）
+        kRequestAsyncFuture = 4, ///< 异步请求（Future模式）
+        kResponse = 5, ///< 同步响应
+        kResponseAsync = 6, ///< 异步响应（回调模式）
+        kResponseAsyncFunc = 7, ///< 异步响应（函数模式）
+        kResponseAsyncFuture = 8, ///< 异步响应（Future模式）
     };
 
     /**
-     * @brief IPC通信协议头结构
+     * @brief IPC通信协议头结构（28字节固定长度，按1字节对齐）
      *
      * 每个数据包的固定头部，包含协议标识、消息类型和负载长度信息。
      * 数据包格式: [ProtocolHeader][Metadata JSON][Content Binary]
@@ -99,11 +102,11 @@ namespace tyke
 #pragma pack(push, 1)
     struct ProtocolHeader
     {
-        char magic[4] = {'T', 'Y', 'K', 'E'};
-        MessageType msg_type = MessageType::kNone;
-        uint32_t reserved[3] = {0};
-        uint32_t metadata_len = 0;
-        uint32_t content_len = 0;
+        char magic[4] = {'T', 'Y', 'K', 'E'}; ///< 协议魔数 "TYKE"，用于校验合法数据包
+        MessageType msg_type = MessageType::kNone; ///< 消息类型（同步/异步请求或响应）
+        uint32_t reserved[3] = {0}; ///< 保留字段（未来扩展用）
+        uint32_t metadata_len = 0; ///< 元数据JSON段的字节长度
+        uint32_t content_len = 0; ///< 内容二进制段的字节长度
     };
 #pragma pack(pop)
 

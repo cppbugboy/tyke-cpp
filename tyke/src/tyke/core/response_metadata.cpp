@@ -1,6 +1,6 @@
 /**
  * @file response_metadata.cpp
- * @brief 响应元数据实现。
+ * @brief 响应元数据实现。包含状态码/原因管理、JSON 序列化及 key 集合定义。
  * @author Nick
  * @date 2026/04/19
  */
@@ -31,6 +31,7 @@ namespace tyke
         return *this;
     }
 
+    /** @brief 将 ResponseMetadata 序列化为 JSON 对象（包含 status/reason 额外字段）。 */
     void to_json(nlohmann::json& j, const ResponseMetadata& t)
     {
         j = nlohmann::json{
@@ -46,6 +47,7 @@ namespace tyke
         };
     }
 
+    /** @brief 从 JSON 对象反序列化为 ResponseMetadata。 */
     void from_json(const nlohmann::json& j, ResponseMetadata& t)
     {
         t.module_ = j.value("module", std::string{});
@@ -59,6 +61,7 @@ namespace tyke
         t.timeout_ = j.value("timeout", uint64_t{});
     }
 
+    /** @brief 返回 ResponseMetadata JSON 序列化涉及的 key 集合。 */
     const std::unordered_set<std::string>& ResponseMetadata::JsonKeySet()
     {
         static const std::unordered_set<std::string> set = {

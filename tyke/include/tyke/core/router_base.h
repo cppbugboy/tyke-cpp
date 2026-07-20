@@ -22,6 +22,11 @@
 
 namespace tyke
 {
+    /** @brief 路由器模板基类 (CRTP模式)。
+     * @tparam RouterGroupType 路由分组类型（RequestRouterGroup 或 ResponseRouterGroup）。
+     *
+     * 管理路由表（全局 flat map）和根分组树。路由匹配为 O(1) 哈希查找。
+     */
     template <typename RouterGroupType>
     class RouterBase
     {
@@ -36,11 +41,17 @@ namespace tyke
 
         ~RouterBase() = default;
 
+        /** @brief 获取根路由分组，用于构建分组树。 */
         std::shared_ptr<RouterGroupType> GetRoot()
         {
             return root_group_;
         }
 
+        /** @brief 按完整路径查找路由条目。
+         * @param path 路由完整路径。
+         * @return 指向 RouteEntry 的指针，未找到返回 nullptr。
+         * @note 使用 C++17 if-init-statement 优化查找。
+         */
         RouteEntry* GetRouteEntry(std::string_view path)
         {
             if (auto it = route_table_.find(std::string(path)); it != route_table_.end())

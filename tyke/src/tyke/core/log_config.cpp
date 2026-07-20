@@ -1,6 +1,6 @@
 /**
- * @file tyke_log.cpp
- * @brief 日志管理器实现。基于spdlog的日志系统，支持文件日志和日志级别配置。
+ * @file log_config.cpp
+ * @brief 日志管理器实现。基于 spdlog 的日志系统，支持文件日志（rotating_file_sink）和日志级别配置。
  * @author Nick
  * @date 2026/04/19
  */
@@ -16,11 +16,24 @@
 
 namespace tyke
 {
+    /** @brief 检查日志系统是否已初始化（tyke_logger_ 非空）。 */
     bool LogConfig::IsInitialized() const
     {
         return tyke_logger_ != nullptr;
     }
 
+    /**
+     * @brief 初始化日志系统。
+     *
+     * 创建控制台彩色输出 sink 和文件滚动输出 sink，注册为 spdlog 默认 logger。
+     * 若已初始化则仅更新日志级别。
+     *
+     * @param log_path 日志文件路径
+     * @param log_level 日志级别字符串（trace/debug/info/warn/error/critical）
+     * @param file_size_mb 单个日志文件最大大小（MB）
+     * @param file_count 保留的日志文件数量
+     * @return 成功返回 true，失败返回错误信息。
+     */
     BoolResult LogConfig::Init(const std::string& log_path, const std::string& log_level, uint32_t file_size_mb,
                                uint32_t file_count)
     {
@@ -57,6 +70,12 @@ namespace tyke
         }
     }
 
+    /**
+     * @brief 动态设置日志级别。
+     *
+     * 仅对已初始化的 logger 生效；未初始化时静默返回。
+     * 未识别的级别字符串默认为 info。
+     */
     void LogConfig::SetLogLevel(const std::string& log_level) const
     {
         if (!tyke_logger_)
@@ -77,6 +96,7 @@ namespace tyke
         LOG_DEBUG("Log level set to: {}", log_level);
     }
 
+    /** @brief 停止日志系统：flush 缓冲区并调用 spdlog::shutdown。 */
     void LogConfig::Stop() const
     {
         if (tyke_logger_)

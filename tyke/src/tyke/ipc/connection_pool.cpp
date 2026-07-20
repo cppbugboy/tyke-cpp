@@ -1,9 +1,24 @@
+/**
+ * @file connection_pool.cpp
+ * @brief IPC 连接池实现。管理到指定服务端的连接复用，支持最大连接数限制、空闲连接复用、健康检查和优雅关闭。
+ *
+ * 核心流程：
+ * - Acquire：从 idle 队列取连接 -> 创建新连接（不超过 max） -> 阻塞等待归还
+ * - Release：归还健康连接到 idle 队列，或标记重连/销毁
+ *
+ * 使用 CAS 原子操作和条件变量实现线程安全。
+ *
+ * @author Nick
+ * @date 2026/04/20
+ */
+
 #include "tyke/ipc/connection_pool.h"
 
 #include "tyke/common/log_def.h"
 
 namespace tyke
 {
+    /** @brief PooledConnection 自定义删除器：归还连接到池而非销毁。 */
     void ConnectionDeleter::operator()(IpcConnection* conn) const
     {
         if (pool && conn)
@@ -12,17 +27,31 @@ namespace tyke
         }
     }
 
+    /** @brief 构造连接池。 */
     ConnectionPool::ConnectionPool(const std::string_view server_uuid, const ConnectionPoolConfig& config)
         : server_uuid_(server_uuid), config_(config)
     {
         LOG_INFO("Connection pool created, server={}", server_uuid_);
     }
 
+    /** @brief 析构时停止池。 */
     ConnectionPool::~ConnectionPool()
     {
         Stop();
     }
 
+    /**
+     * @brief 从池中获取一个连接。
+     *
+     * 获取顺序：
+     * 1. 从 idle 队列取连接（若有效则返回，无效则销毁）
+     * 2. 若未达最大连接数，创建新连接
+     * 3. 若已达上限，阻塞等待（最长 acquire_timeout_ms）直到有连接归还
+     *
+     * @return PooledConnection（RAII 包装，析构时自动归还）或错误。
+     *
+     * @note 在锁内递增 total_connections_ 预留配额，避免"检查-创建" TOCTOU 竞态。
+     */
     TResult<PooledConnection> ConnectionPool::Acquire()
     {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -34,7 +63,7 @@ namespace tyke
 
         while (true)
         {
-            // 1. 尝试从 idle 队列获取（idle 连接已计入 total_connections_，无需递增）
+            // 1. 尝试从 idle 队列获取（idle 连接已计入 total_connections_）
             while (!connections_vec_.empty())
             {
                 auto conn_uptr = std::move(connections_vec_.back());
@@ -53,8 +82,7 @@ namespace tyke
                 lock.lock();
             }
 
-            // 2. 检查是否可创建新连接。
-            //    关键：在锁内递增 total_connections_ 预留配额，避免"检查-创建"竞态导致超限。
+            // 2. 检查是否可创建新连接（锁内递增预留配额）
             if (config_.max_connections == 0 ||
                 total_connections_.load(std::memory_order_relaxed) < config_.max_connections)
             {
@@ -90,10 +118,15 @@ namespace tyke
             {
                 return nonstd::make_unexpected("connection pool is stopped");
             }
-            // 循环回到步骤 1 重新评估 idle / max
         }
     }
 
+    /**
+     * @brief 归还连接到池。
+     *
+     * @param conn 连接指针（接管所有权）
+     * @param should_reconnect 若为 true 或连接无效，销毁连接而非归还到 idle 队列
+     */
     void ConnectionPool::Release(IpcConnection* conn, bool should_reconnect)
     {
         if (!conn)
@@ -128,6 +161,7 @@ namespace tyke
         return server_uuid_;
     }
 
+    /** @brief 停止连接池：唤醒所有等待者，关闭并清空所有连接。 */
     void ConnectionPool::Stop()
     {
         if (stopped_.exchange(true, std::memory_order_acq_rel))
@@ -144,10 +178,14 @@ namespace tyke
         total_connections_.store(0, std::memory_order_relaxed);
     }
 
+    /**
+     * @brief 创建并连接到服务端的新连接。
+     *
+     * @note total_connections_ 的递增已由 Acquire 在锁内完成（预留配额），此处不重复递增。
+     * @return 成功返回连接裸指针（调用方接管所有权），失败返回 nullptr。
+     */
     IpcConnection* ConnectionPool::CreateConnection()
     {
-        // 注意：total_connections_ 的递增已由 Acquire 在锁内完成（预留配额），
-        // 此处不再递增，避免与 Acquire 的配额预留重复计数。
         auto conn = std::make_unique<IpcConnection>();
         if (auto result = conn->Connect(server_uuid_, config_.connect_timeout_ms, config_.rw_timeout_ms); !result)
         {

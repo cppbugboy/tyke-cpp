@@ -1,3 +1,10 @@
+/**
+ * @file response.cpp
+ * @brief 响应消息实现，包含响应的构造、编码发送（同步/异步）、防重复发送保护以及元数据管理。
+ * @author Nick
+ * @date 2026/04/19
+ */
+
 #include "tyke/core/response.h"
 
 #include "tyke/common/log_def.h"
@@ -7,6 +14,7 @@
 
 namespace tyke
 {
+    /** @brief 重置响应对象至初始状态，处理移动后 state_ 为空的防御情况，并重置防重复发送标记。 */
     void Response::Reset()
     {
         // 防御移动后 state_ 为 nullptr 的情况：std::move(*ptr) 移出后
@@ -118,6 +126,15 @@ namespace tyke
         reason = metadata_.GetReason();
     }
 
+    /**
+     * @brief 发送同步响应到请求方。
+     *
+     * 通过 send_data_handler_ 回调将编码后的响应数据写入连接。
+     * 使用 CAS 原子操作确保响应只能发送一次，防止重复发送。
+     *
+     * @note 发送前检查 send_data_handler_ 是否设置；编码或发送失败时会将 is_send 标记恢复为 false。
+     * @return 成功返回 true，失败返回错误信息。
+     */
     BoolResult Response::Send()
     {
         LOG_DEBUG("Send: route={}, msg_uuid={}", GetRoute(), GetMsgUuid());
@@ -161,6 +178,15 @@ namespace tyke
         return true;
     }
 
+    /**
+     * @brief 发送异步响应到请求方的 async_uuid 地址。
+     *
+     * 与 Send() 不同，此方法通过 IpcClient::SendAsync 发送独立帧而非使用 send_data_handler_ 回调，
+     * 适用于异步请求-响应模式中服务端向发起方的响应。
+     *
+     * @note 同样使用 CAS 防止重复发送。
+     * @return 成功返回 true，失败返回错误信息。
+     */
     BoolResult Response::SendAsync()
     {
         LOG_DEBUG("SendAsync: route={}, msg_uuid={}, async_uuid={}", GetRoute(), GetMsgUuid(),
@@ -221,6 +247,7 @@ namespace tyke
         return *this;
     }
 
+    /** @brief 检查响应是否已发送（原子读取 is_send 标记）。 */
     bool Response::IsSent() const
     {
         return state_->is_send.load(std::memory_order_acquire);

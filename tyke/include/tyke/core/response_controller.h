@@ -14,5 +14,6 @@
 
 namespace tyke
 {
+    /** @brief 响应控制器类型别名。等价于 ControllerBase，语义上用于响应路由注册。 */
     using ResponseController = ControllerBase;
 }

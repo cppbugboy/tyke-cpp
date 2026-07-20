@@ -17,6 +17,17 @@ namespace controller::response::examples
 {
     RESPONSE_CONTROLLER_REGISTER(examples, RegisterMethod)
 
+    /**
+     * @brief 向框架的 ResponseRouter 注册所有异步响应路由处理器。
+     *
+     * 在 /api/async 下设置三个路由：
+     * - /process：通用异步响应处理
+     * - /callback：回调特定的响应处理
+     * - /notification：通知特定的响应处理
+     *
+     * /api/async 子组中的所有路由根据需要分发到 HandleAsyncCallback
+     * 或 HandleAsyncNotification。
+     */
     void RegisterMethod()
     {
         fmt::print("注册响应路由处理器...\n");
@@ -41,6 +52,15 @@ namespace controller::response::examples
         fmt::print("✓ 响应路由处理器注册完成\n");
     }
 
+    /**
+     * @brief 将异步响应的详细信息记录到控制台。
+     *
+     * 提取并格式化状态码、原因、消息 UUID、模块、路由
+     * 以及任何 JSON 内容，以用于诊断显示。
+     *
+     * @param response     要记录的响应。
+     * @param handler_name 标识哪个处理器调用了此日志记录器的标签。
+     */
     void LogResponse(const tyke::Response& response, const std::string& handler_name)
     {
         const auto now = std::chrono::system_clock::now();
@@ -77,6 +97,13 @@ namespace controller::response::examples
         fmt::print("========================================\n\n");
     }
 
+    /**
+     * @brief 处理异步回调响应。
+     *
+     * 记录响应详细信息，并模拟由服务端异步回复触发的业务逻辑执行。
+     *
+     * @param response 从服务端收到的异步响应。
+     */
     void HandleAsyncCallback(const tyke::Response& response)
     {
         LogResponse(response, "HandleAsyncCallback");
@@ -86,6 +113,13 @@ namespace controller::response::examples
         fmt::print("✓ 异步回调处理完成\n");
     }
 
+    /**
+     * @brief 处理异步通知响应。
+     *
+     * 记录响应详细信息，并模拟由服务端发送的通知触发的本地状态更新。
+     *
+     * @param response 从服务端收到的异步响应。
+     */
     void HandleAsyncNotification(const tyke::Response& response)
     {
         LogResponse(response, "HandleAsyncNotification");

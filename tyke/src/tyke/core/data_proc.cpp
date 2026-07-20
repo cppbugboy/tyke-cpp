@@ -1,6 +1,16 @@
 /**
  * @file data_proc.cpp
- * @brief 数据编解码实现，包含协议序列化和反序列化。
+ * @brief 数据编解码实现，包含协议头序列化、请求/响应编码与解码。
+ *
+ * 协议格式（小端序）：
+ * - 4 字节魔数 "TYKE"
+ * - 4 字节消息类型
+ * - 12 字节保留字段
+ * - 4 字节元数据长度
+ * - 4 字节内容长度
+ * - [metadata_len] 字节 JSON 元数据
+ * - [content_len] 字节二进制内容
+ *
  * @author Nick
  * @date 2026/04/20
  */
@@ -16,6 +26,7 @@
 
 namespace tyke
 {
+    /** @brief 以小端序写入 32 位无符号整数到缓冲区。 */
     static void write_le32(unsigned char* buf, const uint32_t val)
     {
         buf[0] = static_cast<unsigned char>(val & 0xFF);
@@ -24,12 +35,14 @@ namespace tyke
         buf[3] = static_cast<unsigned char>((val >> 24) & 0xFF);
     }
 
+    /** @brief 从小端序缓冲区读取 32 位无符号整数。 */
     static uint32_t read_le32(const unsigned char* buf)
     {
         return static_cast<uint32_t>(buf[0]) | (static_cast<uint32_t>(buf[1]) << 8) |
             (static_cast<uint32_t>(buf[2]) << 16) | (static_cast<uint32_t>(buf[3]) << 24);
     }
 
+    /** @brief 将 ProtocolHeader 序列化为 28 字节二进制头。 */
     static void serialize_header(const ProtocolHeader& hdr, unsigned char* out)
     {
         std::memcpy(out, hdr.magic, 4);
@@ -40,6 +53,7 @@ namespace tyke
         write_le32(out + 24, hdr.content_len);
     }
 
+    /** @brief 从二进制数据反序列化 ProtocolHeader。 */
     static void deserialize_header(const unsigned char* data, ProtocolHeader& hdr)
     {
         std::memcpy(hdr.magic, data, 4);
@@ -51,12 +65,14 @@ namespace tyke
         hdr.content_len = read_le32(data + 24);
     }
 
+    /** @brief 将 Request 对象编码为完整的协议帧并写入 data_vec。 */
     void DataProc::EncodeRequest(Request& request, std::vector<uint8_t>& data_vec)
     {
         LOG_DEBUG("Encoding request, route={}", request.GetRoute());
         Encode(request, data_vec);
     }
 
+    /** @brief 从二进制数据解码 Request 对象。返回 nullopt 表示数据不完整或损坏。 */
     std::optional<bool> DataProc::DecodeRequest(const std::vector<uint8_t>& data_vec, Request& request,
                                                 uint32_t& data_size)
     {
@@ -64,12 +80,14 @@ namespace tyke
         return Decode(data_vec, request, data_size);
     }
 
+    /** @brief 将 Response 对象编码为完整的协议帧并写入 data_vec。 */
     void DataProc::EncodeResponse(Response& response, std::vector<uint8_t>& data_vec)
     {
         LOG_DEBUG("Encoding response, route={}", response.GetRoute());
         Encode(response, data_vec);
     }
 
+    /** @brief 从二进制数据解码 Response 对象。返回 nullopt 表示数据不完整或损坏。 */
     std::optional<bool> DataProc::DecodeResponse(const std::vector<uint8_t>& data_vec, Response& response,
                                                  uint32_t& data_size)
     {
@@ -77,6 +95,14 @@ namespace tyke
         return Decode(data_vec, response, data_size);
     }
 
+    /**
+     * @brief 从原始数据中提取协议头，不消费数据。
+     *
+     * @param data 原始数据指针
+     * @param size 数据大小
+     * @param header [out] 输出的协议头
+     * @return true 提取成功（数据足够大），false 数据不足 sizeof(ProtocolHeader)。
+     */
     bool DataProc::PeekHeader(const unsigned char* data, const size_t size, ProtocolHeader& header)
     {
         if (constexpr size_t header_size = sizeof(ProtocolHeader); size < header_size)

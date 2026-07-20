@@ -14,5 +14,6 @@
 
 namespace tyke
 {
+    /** @brief 请求控制器类型别名。等价于 ControllerBase，语义上用于请求路由注册。 */
     using RequestController = ControllerBase;
 }

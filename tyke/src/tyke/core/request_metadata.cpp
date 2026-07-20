@@ -1,6 +1,6 @@
 /**
  * @file request_metadata.cpp
- * @brief 请求元数据实现。
+ * @brief 请求元数据实现。提供 to_json/from_json 序列化及 JSON key 集合定义。
  * @author Nick
  * @date 2026/04/19
  */
@@ -9,6 +9,7 @@
 
 namespace tyke
 {
+    /** @brief 将 RequestMetadata 序列化为 JSON 对象。 */
     void to_json(nlohmann::json& j, const RequestMetadata& t)
     {
         j = nlohmann::json{
@@ -18,6 +19,7 @@ namespace tyke
         };
     }
 
+    /** @brief 从 JSON 对象反序列化为 RequestMetadata。 */
     void from_json(const nlohmann::json& j, RequestMetadata& t)
     {
         t.module_ = j.value("module", std::string{});
@@ -29,6 +31,7 @@ namespace tyke
         t.timeout_ = j.value("timeout", uint64_t{});
     }
 
+    /** @brief 返回 RequestMetadata JSON 序列化涉及的 key 集合（用于差异比对等场景）。 */
     const std::unordered_set<std::string>& RequestMetadata::JsonKeySet()
     {
         static const std::unordered_set<std::string> set = {

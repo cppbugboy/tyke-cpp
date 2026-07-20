@@ -1,3 +1,10 @@
+/**
+ * @file request.cpp
+ * @brief 请求消息实现，包含请求的构造、编码发送（同步/异步/回调/Future）以及元数据访问。
+ * @author Nick
+ * @date 2026/04/19
+ */
+
 #include "tyke/core/request.h"
 
 #include <unordered_map>
@@ -10,6 +17,7 @@
 
 namespace tyke
 {
+    /** @brief 重置请求对象至初始状态，供对象池复用。 */
     void Request::Reset()
     {
         protocol_header_ = ProtocolHeader{};
@@ -74,6 +82,16 @@ namespace tyke
         return metadata_.GetRoute();
     }
 
+    /**
+     * @brief 编码请求并通过 IPC 发送。
+     *
+     * 设置 msg_uuid 和时间戳，将请求编码为协议帧，通过 IpcClient::SendAsync 异步发送。
+     *
+     * @param send_uuid 目标服务端 UUID
+     * @param msg_type 消息类型（kRequest / kRequestAsync / kRequestAsyncFunc / kRequestAsyncFuture）
+     * @param timeout_ms 超时时间（毫秒）
+     * @return 成功返回 true，失败返回错误信息。
+     */
     BoolResult Request::EncodeAndSend(const std::string& send_uuid, MessageType msg_type, uint32_t timeout_ms)
     {
         LOG_DEBUG("EncodeAndSend: send_uuid={}, route={}, msg_type={}, timeout={}ms", send_uuid, GetRoute(),
@@ -105,6 +123,17 @@ namespace tyke
         return true;
     }
 
+    /**
+     * @brief 同步发送请求并等待响应。
+     *
+     * 将请求编码后通过 IpcClient::Send 同步发送，传入解码回调在收到数据时解析响应。
+     * 调用会阻塞直到收到完整响应或超时。
+     *
+     * @param send_uuid 目标服务端 UUID
+     * @param response [out] 接收到的响应对象
+     * @param timeout_ms 超时时间（毫秒）
+     * @return 成功返回 true，失败返回错误信息。
+     */
     BoolResult Request::Send(const std::string& send_uuid, Response& response, uint32_t timeout_ms)
     {
         LOG_DEBUG("Send: send_uuid={}, route={}, timeout={}ms", send_uuid, GetRoute(), timeout_ms);
@@ -143,11 +172,22 @@ namespace tyke
         return true;
     }
 
+    /** @brief 异步即发即弃请求，不等待响应。 */
     BoolResult Request::SendAsync(const std::string& send_uuid, const uint32_t timeout_ms)
     {
         return EncodeAndSend(send_uuid, MessageType::kRequestAsync, timeout_ms);
     }
 
+    /**
+     * @brief 异步发送请求并在收到响应时执行回调函数。
+     *
+     * 将回调注册到 stub 映射中，当响应到达时由 ResponseHandler 调用 ExecFunc 执行。
+     *
+     * @param send_uuid 目标服务端 UUID
+     * @param func 收到响应时执行的回调函数
+     * @param timeout_ms 超时时间（毫秒）
+     * @return 成功返回 true，失败返回错误信息。
+     */
     BoolResult Request::SendAsyncWithFunc(const std::string& send_uuid,
                                           const std::function<void(const Response&)>& func,
                                           uint32_t timeout_ms)
@@ -164,6 +204,15 @@ namespace tyke
         return result;
     }
 
+    /**
+     * @brief 异步发送请求并返回 std::future<Response>。
+     *
+     * 创建 promise/future 对并注册到 stub 映射中，当响应到达时由 ResponseHandler 调用 SetFuture 设置结果。
+     *
+     * @param send_uuid 目标服务端 UUID
+     * @param timeout_ms 超时时间（毫秒）
+     * @return 包含 future<Response> 的 expected，调用方可通过 future.get() 阻塞等待结果。
+     */
     nonstd::expected<std::future<Response>, std::string> Request::SendAsyncWithFuture(const std::string& send_uuid,
         uint32_t timeout_ms)
     {

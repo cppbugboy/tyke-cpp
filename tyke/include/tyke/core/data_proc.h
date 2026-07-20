@@ -15,29 +15,56 @@
 
 namespace tyke
 {
+    /** @brief 元数据最大长度: 4MB。 */
     constexpr uint32_t kMaxMetadataLen = 4 * 1024 * 1024;
+    /** @brief 内容最大长度: 64MB。 */
     constexpr uint32_t kMaxContentLen = 64 * 1024 * 1024;
 
+    /** @brief 数据编解码工具类。提供请求/响应对象与协议字节流之间的序列化/反序列化。 */
     class DataProc
     {
     public:
         DataProc() = delete;
         ~DataProc() = delete;
+
+        /** @brief 将请求对象编码为协议字节流。 */
         static void EncodeRequest(Request& request, std::vector<uint8_t>& data_vec);
 
-
+        /** @brief 从协议字节流解码为请求对象。
+         * @param data_vec 输入的字节流。
+         * @param request 输出解码后的请求。
+         * @param data_size 输出实际消耗的字节数。
+         * @return 解码成功返回 true，失败返回 nullopt。
+         */
         static std::optional<bool> DecodeRequest(const std::vector<uint8_t>& data_vec, Request& request,
                                                  uint32_t& data_size);
 
-
+        /** @brief 将响应对象编码为协议字节流。 */
         static void EncodeResponse(Response& response, std::vector<uint8_t>& data_vec);
 
-
+        /** @brief 从协议字节流解码为响应对象。
+         * @param data_vec 输入的字节流。
+         * @param response 输出解码后的响应。
+         * @param data_size 输出实际消耗的字节数。
+         * @return 解码成功返回 true，失败返回 nullopt。
+         */
         static std::optional<bool> DecodeResponse(const std::vector<uint8_t>& data_vec, Response& response,
                                                   uint32_t& data_size);
 
+        /** @brief 从字节流中提取协议头，不消费数据。
+         * @param data 数据指针。
+         * @param size 数据长度。
+         * @param header 输出解析后的协议头。
+         * @return 解析成功返回 true。
+         */
         static bool PeekHeader(const unsigned char* data, size_t size, ProtocolHeader& header);
 
+        /** @brief 模板编码方法。将任意带 metadata_/content_ 的消息对象序列化为字节流。
+         * @tparam T 消息类型（Request 或 Response）。
+         * @param msg 待编码的消息对象。
+         * @param data_vec 输出字节流。
+         * @throw std::runtime_error 序列化失败或数据超过协议限制时抛出。
+         */
         template <typename T>
         static void Encode(T& msg, std::vector<uint8_t>& data_vec)
         {
@@ -104,6 +131,13 @@ namespace tyke
             }
         }
 
+        /** @brief 模板解码方法。从字节流中还原消息对象。
+         * @tparam T 消息类型（Request 或 Response）。
+         * @param data_vec 输入的字节流。
+         * @param msg 输出解码后的消息对象。
+         * @param data_size 输出实际消耗的字节数。
+         * @return 解码成功返回 true，失败返回 nullopt。
+         */
         template <typename T>
         static std::optional<bool> Decode(const std::vector<uint8_t>& data_vec, T& msg, uint32_t& data_size)
         {

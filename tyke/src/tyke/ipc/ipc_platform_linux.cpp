@@ -1,3 +1,20 @@
+/**
+ * @file ipc_platform_linux.cpp
+ * @brief Linux 平台 IPC 实现。基于 Unix 域套接字 (SOCK_STREAM) + epoll 事件驱动模型的客户端和服务端。
+ *
+ * 客户端 (ClientConnectionImplLinux)：非阻塞 send/recv，poll + SO_RCVTIMEO/SO_SNDTIMEO，CAS 防并发，
+ *   支持大消息分片/重组。
+ * 服务端 (ServerImplLinux)：单线程 epoll 模型，accept4 非阻塞接受，EPOLLIN/EPOLLOUT/EPOLLRDHUP 事件驱动，
+ *   数据通过全局线程池异步回调。
+ *
+ * @warning 当前使用单线程 epoll 模型，与 Windows 端的多线程 IOCP 不对称。
+ *          高并发 Linux 场景下 I/O 路径串行化可能成为瓶颈。可通过多线程共享 epoll
+ *          fd（EPOLLEXCLUSIVE / SO_REUSEPORT）提升并发度。
+ *
+ * @author Nick
+ * @date 2026/04/19
+ */
+
 #ifndef _WIN32
 #include <atomic>
 #include <cerrno>
@@ -30,6 +47,7 @@ namespace tyke
             Close();
         }
 
+        /** @brief 连接到抽象域套接字 (@tyke_<name>)。设置 SO_RCVTIMEO/SO_SNDTIMEO。 */
         BoolResult Connect(std::string_view server_name, uint32_t, const uint32_t rw_timeout_ms) override
         {
             LOG_INFO("ipc client connecting to: {}", server_name);
@@ -58,6 +76,7 @@ namespace tyke
             return true;
         }
 
+        /** @brief 通过域套接字写入数据。超过 kFragmentChunkSize 时自动分片发送。使用 CAS 防并发。 */
         BoolResult Write(const void* data, const size_t size, uint32_t) override
         {
             bool expected = false;
@@ -98,6 +117,7 @@ namespace tyke
             return true;
         }
 
+        /** @brief 从域套接字循环读取。poll 超时 + recv，持续提取帧/重组分片，通过回调交付完整消息。 */
         BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms) override
         {
             bool expected = false;
@@ -113,8 +133,7 @@ namespace tyke
             uint8_t chunk[131072];
             while (true)
             {
-                // Use poll() with the per-call timeout before recv(), so timeout
-                // behavior is consistent with the Windows WaitForSingleObject path.
+                // 在 recv() 之前使用带超时的 poll()，使超时行为与 Windows WaitForSingleObject 路径一致。
                 pollfd pfd{};
                 pfd.fd = fd_;
                 pfd.events = POLLIN;
@@ -172,6 +191,7 @@ namespace tyke
             return nonstd::make_unexpected("read loop: connection closed");
         }
 
+        /** @brief 关闭客户端连接：close(fd)、清空重组缓冲区。 */
         void Close() override
         {
             LOG_INFO("ipc client closing connection");
@@ -274,6 +294,7 @@ namespace tyke
         {
         }
 
+        /** @brief 启动 epoll 服务端：创建非阻塞监听套接字、绑定抽象域套接字、启动单线程事件循环。 */
         BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) override
         {
             LOG_INFO("ipc server starting on: {}", server_name);

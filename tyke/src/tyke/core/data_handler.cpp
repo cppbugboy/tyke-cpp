@@ -1,10 +1,8 @@
 /**
  * @file data_handler.cpp
- * @brief 数据处理器实现
+ * @brief 数据处理器实现。接收 IPC 层解析后的原始数据，按消息类型分发到同步/异步请求处理器或响应处理器。
  * @author Nick
  * @date 2026/04/17
- *
- * 实现DataHandler类的具体逻辑，处理IPC层接收的数据并分发到相应的处理器。
  */
 
 #include "tyke/core/data_handler.h"
@@ -22,6 +20,24 @@
 
 namespace tyke::data_handler
 {
+    /**
+     * @brief IPC 数据回调入口。
+     *
+     * 从 IPC 层接收原始数据，解析协议头判定消息类型，然后路由到相应的处理器。
+     *
+     * 消息类型路由：
+     * - kRequest -> RequestHandler（同步请求-响应模式）
+     * - kRequestAsync / kRequestAsyncFunc / kRequestAsyncFuture -> RequestHandlerAsync（异步模式）
+     * - kResponseAsync* -> ResponseHandler（异步响应分发）
+     *
+     * @param client_id 客户端标识
+     * @param data_vec 原始数据缓冲区
+     * @param send_data_handler 发送数据的回调（服务端用于 Send 响应回客户端）
+     * @return 消费的字节数；nullopt 表示数据不完整需等待更多数据；0 表示数据损坏应丢弃。
+     *
+     * @note 数据不足 sizeof(ProtocolHeader) 或魔数不匹配时返回 0 丢弃。
+     * @note 解码失败且 used==0 时返回 nullopt 等待更多数据；used>0 时返回 0 丢弃损坏数据。
+     */
     std::optional<uint32_t> DataCallback(const ClientId client_id, const std::vector<uint8_t>& data_vec,
                                          const SendDataHandler& send_data_handler)
     {
@@ -143,6 +159,16 @@ namespace tyke::data_handler
         }
     }
 
+    /**
+     * @brief 同步请求处理器。
+     *
+     * 创建 TimerContext 设置超时回调，将请求上下文与响应绑定后分发到业务处理链。
+     * 若处理器未发送响应，则自动发送（取消超时回调后发送）。
+     *
+     * @param request 解码后的请求对象
+     * @param client_id 客户端标识（用于写回响应）
+     * @param send_data_handler 发送响应数据的回调
+     */
     void RequestHandler(Request& request, const ClientId client_id, const SendDataHandler& send_data_handler)
     {
         LOG_DEBUG("RequestHandler: client_id={}, route={}, msg_uuid={}", client_id, request.GetRoute(),
@@ -157,6 +183,7 @@ namespace tyke::data_handler
                     .SetAsyncUuid(request.GetAsyncUuid())
                     .SetSendDataHandler(send_data_handler);
 
+        // 创建带超时的上下文
         const auto [fst, snd] = context::ContextFactory::WithTimeout(context::ContextFactory::Background(),
                                                                      std::chrono::milliseconds(request.GetTimeout()));
         const auto timer_ctx = std::dynamic_pointer_cast<tyke::TimerContext>(fst);
@@ -171,6 +198,7 @@ namespace tyke::data_handler
             snd();
             return;
         }
+        // 注册超时回调：到期自动发送超时响应
         auto token = timer_ctx->RegisterCallback(
             [response_ptr]()
             {
@@ -185,6 +213,7 @@ namespace tyke::data_handler
 
         dispatcher::DispatchRequest(request, *response_ptr);
 
+        // 若业务处理未显式发送响应，则取消超时回调后自动发送
         if (!response_ptr->IsSent())
         {
             timer_ctx->UnregisterCallback(token);
@@ -196,6 +225,14 @@ namespace tyke::data_handler
         snd();
     }
 
+    /**
+     * @brief 异步请求处理器。
+     *
+     * 与 RequestHandler 类似，但为异步模式：根据请求类型设置对应响应消息类型，
+     * 响应通过 SendAsync 发送回请求方的 listen_uuid。
+     *
+     * @param request 解码后的异步请求对象
+     */
     void RequestHandlerAsync(Request& request)
     {
         LOG_DEBUG("RequestHandlerAsync: route={}, msg_uuid={}", request.GetRoute(), request.GetMsgUuid());
@@ -207,7 +244,7 @@ namespace tyke::data_handler
                     .SetMsgUuid(request.GetMsgUuid())
                     .SetRoute(request.GetRoute());
 
-        // 根据请求类型设置响应类型
+        // 根据请求类型设置对应的响应类型，确保请求-响应对的类型一致
         switch (request.GetMessageType())
         {
         case MessageType::kRequestAsync:
@@ -262,6 +299,16 @@ namespace tyke::data_handler
         snd();
     }
 
+    /**
+     * @brief 异步响应处理器。
+     *
+     * 根据响应的消息类型分发：
+     * - kResponseAsync -> dispatcher::DispatchResponse（路由到业务响应处理器）
+     * - kResponseAsyncFunc -> stub::ExecFunc（执行注册的回调函数）
+     * - kResponseAsyncFuture -> stub::SetFuture（设置 future 结果唤醒等待者）
+     *
+     * @param response 解码后的响应对象（值传递，转移所有权）
+     */
     void ResponseHandler(Response response)
     {
         LOG_DEBUG("ResponseHandler: route={}, msg_uuid={}, msg_type={}", response.GetRoute(), response.GetMsgUuid(),
@@ -270,15 +317,12 @@ namespace tyke::data_handler
         switch (response.GetMessageType())
         {
         case MessageType::kResponseAsync:
-            // 分发到响应处理器
             dispatcher::DispatchResponse(response);
             break;
         case MessageType::kResponseAsyncFunc:
-            // 执行回调函数
             stub::ExecFunc(response);
             break;
         case MessageType::kResponseAsyncFuture:
-            // 设置Future结果
             stub::SetFuture(std::move(response));
             break;
         default:

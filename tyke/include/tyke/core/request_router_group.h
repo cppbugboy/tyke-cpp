@@ -17,9 +17,12 @@
 
 namespace tyke
 {
+    /** @brief 请求处理函数类型：接收请求和响应引用的回调。 */
     using RequestHandlerFunc = std::function<void(const Request &, Response &)>;
 
+    /** @brief 请求路由条目：包含处理函数和过滤器链。 */
     using RequestRouteEntry = RouterGroup<RequestFilter, RequestHandlerFunc>::RouteEntry;
 
+    /** @brief 请求路由分组类型。 */
     using RequestRouterGroup = RouterGroup<RequestFilter, RequestHandlerFunc>;
 } // namespace tyke

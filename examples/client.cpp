@@ -27,11 +27,23 @@ static const std::string kClientListenerUuid = "8b077afb-7287-4aeb-a39d-b7e0c327
 
 static std::atomic<bool> g_running{true};
 
+/**
+ * @brief 处理终止信号（SIGINT、SIGTERM），以优雅地关闭客户端。
+ * @param signal 接收到的信号编号。
+ */
 void SignalHandler(int signal)
 {
     g_running = false;
 }
 
+/**
+ * @brief 以线程安全的方式将 time_t 值转换为 tm 结构体。
+ *
+ * 在 Windows 上使用 localtime_s，在 POSIX 系统上使用 localtime_r。
+ *
+ * @param time 要转换的 time_t 值。
+ * @return 表示本地时间的 tm 结构体。
+ */
 static tm SafeLocaltime(time_t time)
 {
     tm tm_buf{};
@@ -43,6 +55,16 @@ static tm SafeLocaltime(time_t time)
     return tm_buf;
 }
 
+/**
+ * @brief 在控制台上打印出站请求的格式化头部信息。
+ *
+ * 显示目标 UUID、模块、路由、可选的异步 UUID，
+ * 并解析/美化打印请求中附带的任何 JSON 内容。
+ *
+ * @param title 描述请求类型的标签（例如 "同步请求"）。
+ * @param target_uuid 目标端点的 UUID。
+ * @param request 要打印详细信息的请求。
+ */
 void PrintRequestHeader(const std::string& title, const std::string& target_uuid, const tyke::Request& request)
 {
     auto now = std::chrono::system_clock::now();
@@ -77,6 +99,13 @@ void PrintRequestHeader(const std::string& title, const std::string& target_uuid
     }
 }
 
+/**
+ * @brief 在控制台上打印同步响应。
+ *
+ * 显示状态码、原因短语以及服务端返回的任何 JSON 内容。
+ *
+ * @param response 从服务端收到的同步响应。
+ */
 void PrintSyncResponse(const tyke::Response& response)
 {
     auto now = std::chrono::system_clock::now();
@@ -111,6 +140,14 @@ void PrintSyncResponse(const tyke::Response& response)
     fmt::print("========================================\n");
 }
 
+/**
+ * @brief 在控制台上打印异步响应。
+ *
+ * 包含消息 UUID、状态码、原因、模块、路由和 JSON 内容。
+ *
+ * @param response 从服务端收到的异步响应。
+ * @param method_name 标识哪个异步方法传递了此响应的标签。
+ */
 void PrintAsyncResponse(const tyke::Response& response, const std::string& method_name)
 {
     auto now = std::chrono::system_clock::now();
@@ -148,6 +185,12 @@ void PrintAsyncResponse(const tyke::Response& response, const std::string& metho
     fmt::print("========================================\n");
 }
 
+/**
+ * @brief 演示使用 Request::Send() 发送同步请求。
+ *
+ * 向服务端发送登录请求并等待直接响应。
+ * 这是一个阻塞调用——调用线程将暂停，直到服务端回复。
+ */
 void DemoSyncRequest()
 {
     fmt::print("\n>>> 1. 同步请求示例 (Send)\n");
@@ -181,6 +224,14 @@ void DemoSyncRequest()
     }
 }
 
+/**
+ * @brief 演示使用 Request::SendAsync() 发送即发即弃的异步请求。
+ *
+ * 发送请求后立即返回。响应到达时将由 ResponseRouter
+ * 分发到匹配的响应控制器。
+ *
+ * @note 不附加回调或 future——响应完全通过响应控制器路由机制处理。
+ */
 void DemoSendAsync()
 {
     fmt::print("\n>>> 2. 异步请求示例 - SendAsync (即发即弃)\n");
@@ -211,6 +262,11 @@ void DemoSendAsync()
     }
 }
 
+/**
+ * @brief 演示使用 SendAsyncWithFunc() 发送带 lambda 回调的异步请求。
+ *
+ * 当响应到达时，提供的回调将被调用，直接将响应对象传递给调用者的处理函数。
+ */
 void DemoSendAsyncWithFunc()
 {
     fmt::print("\n>>> 3. 异步请求示例 - SendAsyncWithFunc (回调函数)\n");
@@ -245,6 +301,13 @@ void DemoSendAsyncWithFunc()
     }
 }
 
+/**
+ * @brief 演示使用 SendAsyncWithFuture() 通过 std::future 发送异步请求。
+ *
+ * 返回一个 future，调用者可以等待（阻塞或轮询）以在服务端处理完请求后获取响应。
+ *
+ * @note 这会通过 future::get() 阻塞调用线程，直到响应到达。
+ */
 void DemoSendAsyncWithFuture()
 {
     fmt::print("\n>>> 4. 异步请求示例 - SendAsyncWithFuture (Future/Promise)\n");
@@ -277,13 +340,18 @@ void DemoSendAsyncWithFuture()
     }
 }
 
+/**
+ * @brief Tyke 示例客户端的入口点。
+ *
+ * 启动 Tyke 框架作为客户端监听器，然后按顺序运行四个演示场景：
+ * 同步请求、即发即弃异步、基于回调的异步和基于 future 的异步。
+ * 在关闭之前等待待处理的异步响应。
+ *
+ * @return 正常关闭返回 0，框架启动失败返回 1。
+ */
 int main()
 {
-    // 验证是否正在使用 mimalloc
-    // 如果输出非 0 版本号，说明链接成功
     std::cout << "Using mimalloc version: " << mi_version() << std::endl;
-
-    std::vector<int> v(1000); // 这里的内存分配将由 mimalloc 接管
 
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);

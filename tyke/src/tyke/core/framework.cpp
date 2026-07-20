@@ -1,6 +1,6 @@
 /**
  * @file framework.cpp
- * @brief Tyke 框架主入口实现。
+ * @brief Tyke 框架主入口实现。负责线程池、时间轮、IPC 服务端和日志系统的生命周期管理。
  * @author Nick
  * @date 2026/04/20
  */
@@ -18,12 +18,14 @@
 
 namespace tyke
 {
+    /** @brief 设置线程池数量，在 Start() 前调用。默认检测硬件并发数。 */
     Framework& Framework::SetThreadPoolCount(const uint32_t thread_pool_count)
     {
         thread_pool_count_ = thread_pool_count;
         return *this;
     }
 
+    /** @brief 配置日志系统路径、级别、文件大小和数量，立即初始化日志。 */
     Framework& Framework::SetLogConfig(const std::string& log_path, const std::string& log_level,
                                        const uint32_t file_size_mb, const uint32_t file_count)
     {
@@ -38,6 +40,14 @@ namespace tyke
         return *this;
     }
 
+    /**
+     * @brief 启动框架：初始化线程池、时间轮、注册 stub 清理任务、启动 IPC 服务端。
+     *
+     * @param listen_uuid 服务端监听 UUID，格式必须为合法的 36 字符 UUID。
+     * @note 若日志未初始化则使用默认配置（临时目录下的 tyke.log）。
+     * @note 线程池数量为 0 时自动检测硬件并发数，检测失败则默认为 4。
+     * @return 成功返回 true，失败返回错误信息。
+     */
     BoolResult Framework::Start(std::string_view listen_uuid)
     {
         if (!utils::IsValidUUID(listen_uuid))
@@ -74,7 +84,7 @@ namespace tyke
         // 初始化时间轮
         GetGlobalTimingWheel().Init();
 
-        // 注册周期性超时清理任务
+        // 注册周期性超时清理任务，间隔为默认 stub 超时的 1/4
         const uint32_t cleanup_interval_ms = kDefaultStubTimeoutMs / 4;
         cleanup_timer_id_ = GetGlobalTimingWheel().AddRepeatedTask(cleanup_interval_ms, cleanup_interval_ms,
                                                                    []()
@@ -114,8 +124,24 @@ namespace tyke
         Shutdown();
     }
 
+    /**
+     * @brief 关闭框架所有子系统。
+     *
+     * 关闭顺序至关重要：
+     * 1. 先取消 stub 清理定时器
+     * 2. 停时间轮（取消定时回调，停止 tick 线程）
+     * 3. 停线程池（等待所有任务完成，确保不再有任务访问 IPC 服务端）
+     * 4. 停 IPC 服务端（此时所有使用者已退出）
+     * 5. 日志系统最后关闭（保证前面步骤的日志能正常输出）
+     *
+     * @warning 关闭顺序不可随意调整，否则可能产生 use-after-free 或日志丢失。
+     */
     void Framework::Shutdown()
     {
+        if (shutdown_)
+            return;
+        shutdown_ = true;
+
         LOG_INFO("Tyke framework shutting down");
 
         if (cleanup_timer_id_ != TimingWheel::kInvalidTimerId)
@@ -124,17 +150,13 @@ namespace tyke
             cleanup_timer_id_ = TimingWheel::kInvalidTimerId;
         }
 
-        // 关闭顺序至关重要：
-        // 1. 先停时间轮（取消定时回调，停止 tick 线程）
-        // 2. 再停线程池（等待所有任务完成，确保不再有任务访问 IPC 服务端）
-        // 3. 最后停 IPC 服务端（此时所有使用者已退出）
-        // 4. 日志系统最后关闭（保证前面步骤的日志能正常输出）
         GetGlobalTimingWheel().Stop();
         GetGlobalThreadPool().Stop();
         GetGlobalIpcServer().Stop();
         GetGlobalLogConfig().Stop();
     }
 
+    /** @brief 获取全局 Framework 单例。 */
     Framework& App()
     {
         static Framework instance;
