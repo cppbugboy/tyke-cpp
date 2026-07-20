@@ -9,7 +9,12 @@ namespace tyke
 {
     void Response::Reset()
     {
-        state_->is_send.store(false, std::memory_order_release);
+        // 防御移动后 state_ 为 nullptr 的情况：std::move(*ptr) 移出后
+        // 自定义删除器仍会调用 Reset()，必须重新创建 state_。
+        if (!state_)
+            state_ = std::make_shared<ResponseState>();
+        else
+            state_->is_send.store(false, std::memory_order_release);
         protocol_header_ = ProtocolHeader{};
         metadata_ = ResponseMetadata{};
         content_.clear();

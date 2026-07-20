@@ -352,9 +352,16 @@ namespace tyke
 
         if (wait_for_tasks)
         {
-            while (queue_size_.load(std::memory_order_relaxed) > 0)
+            // Use condition variable instead of spin-wait. Workers notify queue_cv_
+            // after completing each task, so we wake promptly when the queue drains.
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            if (!queue_cv_.wait_for(lock, std::chrono::seconds(30), [this]()
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                return queue_size_.load(std::memory_order_relaxed) == 0;
+            }))
+            {
+                LOG_WARN("ThreadPool stop timed out waiting for queue drain, remaining={}",
+                         queue_size_.load(std::memory_order_relaxed));
             }
         }
 

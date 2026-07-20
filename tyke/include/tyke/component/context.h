@@ -322,6 +322,10 @@ namespace tyke
      * @brief 上下文对象池
      *
      * 管理各种上下文类型的对象池，提供获取和释放接口。
+     *
+     * @deprecated 新代码请使用 tyke::context::ContextFactory（定义在 tyke/core/context_factory.h），
+     * 它返回 std::pair<ContextPtr, cancel_func> 且拥有独立的容量限制池。
+     * ContextPool 与 ContextFactory 维护两套独立的对象池，未来版本将合并。
      */
     class ContextPool
     {

@@ -124,9 +124,14 @@ namespace tyke
             cleanup_timer_id_ = TimingWheel::kInvalidTimerId;
         }
 
-        GetGlobalIpcServer().Stop();
+        // 关闭顺序至关重要：
+        // 1. 先停时间轮（取消定时回调，停止 tick 线程）
+        // 2. 再停线程池（等待所有任务完成，确保不再有任务访问 IPC 服务端）
+        // 3. 最后停 IPC 服务端（此时所有使用者已退出）
+        // 4. 日志系统最后关闭（保证前面步骤的日志能正常输出）
         GetGlobalTimingWheel().Stop();
         GetGlobalThreadPool().Stop();
+        GetGlobalIpcServer().Stop();
         GetGlobalLogConfig().Stop();
     }
 

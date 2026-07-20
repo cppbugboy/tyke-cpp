@@ -1,5 +1,5 @@
 /**
- * @file tyke_request.h
+ * @file request.h
  * @brief 请求对象。封装IPC请求的元数据、内容和发送功能，支持同步/异步发送。
  * @author Nick
  * @date 2026/04/19

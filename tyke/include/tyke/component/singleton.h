@@ -54,7 +54,9 @@ namespace tyke
         // 构造函数设为 protected，允许子类调用，防止外部直接实例化
         Singleton() = default;
 
-        // 析构函数设为 virtual 或 protected，取决于是否允许通过基类指针销毁
+    public:
+        // 析构函数为 public virtual：虽然 CRTP 单例通过 GetInstance() 返回 T&
+        // 而非基类指针，但 public virtual 析构是 C++ 核心指南推荐的惯用法。
         virtual ~Singleton() = default;
     };
 } // namespace tyke

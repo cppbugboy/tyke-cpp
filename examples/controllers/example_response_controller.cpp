@@ -29,6 +29,14 @@ namespace controller::response::examples
         {
             HandleAsyncCallback(resp);
         });
+        async_group->AddRouteHandler("/callback", [](const tyke::Response& resp)
+        {
+            HandleAsyncCallback(resp);
+        });
+        async_group->AddRouteHandler("/notification", [](const tyke::Response& resp)
+        {
+            HandleAsyncNotification(resp);
+        });
 
         fmt::print("✓ 响应路由处理器注册完成\n");
     }

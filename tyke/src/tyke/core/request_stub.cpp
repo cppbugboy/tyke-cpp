@@ -68,7 +68,14 @@ namespace tyke::stub
                 std::lock_guard<std::mutex> lock(uuid_future_expire_map_mutex_);
                 uuid_future_expire_map_.erase(response.GetMsgUuid());
             }
-            extracted_promise.set_value(std::move(response));
+            try
+            {
+                extracted_promise.set_value(std::move(response));
+            }
+            catch (const std::future_error& e)
+            {
+                LOG_WARN("SetFuture promise already satisfied, uuid={}, error={}", response.GetMsgUuid(), e.what());
+            }
         }
     }
 

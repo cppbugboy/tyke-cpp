@@ -65,10 +65,12 @@ namespace tyke
         }
 
         static const std::unordered_map<std::string, spdlog::level::level_enum> level_map = {
+            {"trace", spdlog::level::trace},
             {"debug", spdlog::level::debug},
             {"info", spdlog::level::info},
             {"warn", spdlog::level::warn},
-            {"error", spdlog::level::err}
+            {"error", spdlog::level::err},
+            {"critical", spdlog::level::critical}
         };
         auto it = level_map.find(log_level);
         tyke_logger_->set_level(it != level_map.end() ? it->second : spdlog::level::info);

@@ -1,5 +1,5 @@
-﻿/**
- * @file tyke_log.h
+/**
+ * @file log_config.h
  * @brief 日志管理器声明。基于spdlog的日志系统，支持文件日志和日志级别配置。
  * @author Nick
  * @date 2026/04/19

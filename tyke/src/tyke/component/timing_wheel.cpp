@@ -15,6 +15,7 @@
 
 #include "tyke/component/timing_wheel.h"
 
+#include "tyke/common/log_def.h"
 #include "tyke/component/thread_pool.h" // 用于 GetGlobalThreadPool
 
 namespace tyke
@@ -408,6 +409,7 @@ namespace tyke
                                 }
                                 catch (...)
                                 {
+                                    LOG_ERROR("TimingWheel task callback threw unknown exception");
                                 }
                             });
                     }

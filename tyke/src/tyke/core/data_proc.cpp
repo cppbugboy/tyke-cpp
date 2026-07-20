@@ -16,7 +16,7 @@
 
 namespace tyke
 {
-    inline void write_le32(unsigned char* buf, const uint32_t val)
+    static void write_le32(unsigned char* buf, const uint32_t val)
     {
         buf[0] = static_cast<unsigned char>(val & 0xFF);
         buf[1] = static_cast<unsigned char>((val >> 8) & 0xFF);
@@ -24,13 +24,13 @@ namespace tyke
         buf[3] = static_cast<unsigned char>((val >> 24) & 0xFF);
     }
 
-    inline uint32_t read_le32(const unsigned char* buf)
+    static uint32_t read_le32(const unsigned char* buf)
     {
         return static_cast<uint32_t>(buf[0]) | (static_cast<uint32_t>(buf[1]) << 8) |
             (static_cast<uint32_t>(buf[2]) << 16) | (static_cast<uint32_t>(buf[3]) << 24);
     }
 
-    void serialize_header(const ProtocolHeader& hdr, unsigned char* out)
+    static void serialize_header(const ProtocolHeader& hdr, unsigned char* out)
     {
         std::memcpy(out, hdr.magic, 4);
         write_le32(out + 4, static_cast<uint32_t>(hdr.msg_type));
@@ -40,7 +40,7 @@ namespace tyke
         write_le32(out + 24, hdr.content_len);
     }
 
-    void deserialize_header(const unsigned char* data, ProtocolHeader& hdr)
+    static void deserialize_header(const unsigned char* data, ProtocolHeader& hdr)
     {
         std::memcpy(hdr.magic, data, 4);
         hdr.msg_type = static_cast<MessageType>(read_le32(data + 4));

@@ -3,6 +3,7 @@
 #include <cerrno>
 #include <cstring>
 #include <mutex>
+#include <poll.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <sys/socket.h>
@@ -97,7 +98,7 @@ namespace tyke
             return true;
         }
 
-        BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t) override
+        BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms) override
         {
             bool expected = false;
             if (!in_use_.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
@@ -112,6 +113,21 @@ namespace tyke
             uint8_t chunk[131072];
             while (true)
             {
+                // Use poll() with the per-call timeout before recv(), so timeout
+                // behavior is consistent with the Windows WaitForSingleObject path.
+                pollfd pfd{};
+                pfd.fd = fd_;
+                pfd.events = POLLIN;
+                const int poll_ret = poll(&pfd, 1, static_cast<int>(timeout_ms));
+                if (poll_ret < 0)
+                {
+                    if (errno == EINTR)
+                        continue;
+                    return nonstd::make_unexpected("poll failed with errno " + std::to_string(errno));
+                }
+                if (poll_ret == 0)
+                    return nonstd::make_unexpected("read timeout after " + std::to_string(timeout_ms) + "ms");
+
                 const ssize_t n = recv(fd_, chunk, sizeof(chunk), MSG_NOSIGNAL);
                 if (n < 0)
                 {
@@ -230,6 +246,11 @@ namespace tyke
 
     constexpr int kMaxEvents = 100;
 
+    // NOTE(N-M8): ServerImplLinux 使用单线程 epoll 模型（1 个 worker_ 线程），
+    // 而 Windows ServerImplWin 使用 max(2, hardware_concurrency) 个 IOCP 工作线程。
+    // 在 Linux 高并发场景下，单线程可能成为瓶颈——所有客户端 I/O 和帧处理串行化。
+    // 业务逻辑通过 ThreadPool 分发，但 I/O 路径仍然串行。若需提升并发度，
+    // 可改为多线程共享 epoll fd（EPOLLEXCLUSIVE / SO_REUSEPORT）。
     class ServerImplLinux : public IServerImpl, public std::enable_shared_from_this<ServerImplLinux>
     {
         struct ClientContext

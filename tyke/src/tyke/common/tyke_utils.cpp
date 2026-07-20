@@ -27,8 +27,13 @@ namespace tyke::utils
 {
     std::string GenerateUUID()
     {
-        std::random_device rd;
-        std::mt19937 gen(rd());
+        // thread_local static generator avoids the cost of creating random_device+mt19937
+        // on every call. Seeded once per thread from std::random_device.
+        thread_local std::mt19937 gen([]()
+        {
+            std::random_device rd;
+            return std::mt19937(rd());
+        }());
         std::uniform_int_distribution<> dis(0, 15);
         std::uniform_int_distribution<> dis2(8, 11);
 

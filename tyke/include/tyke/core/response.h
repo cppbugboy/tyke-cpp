@@ -1,5 +1,5 @@
 /**
- * @file tyke_response.h
+ * @file response.h
  * @brief 响应对象。封装IPC响应的元数据、内容和发送功能。
  * @author Nick
  * @date 2026/04/19

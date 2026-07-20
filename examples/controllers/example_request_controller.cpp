@@ -26,8 +26,28 @@ namespace controller::request::examples
         auto router = tyke::Framework::GetRequestRouter();
         const auto root = router.GetRoot();
 
-        auto async_group = root->AddSubGroup("/api/async");
-        async_group->AddRouteHandler("/process", [](const tyke::Request& req, tyke::Response& resp)
+        // 用户相关路由
+        root->AddSubGroup("/api/user")->AddRouteHandler("/login", [](const tyke::Request& req, tyke::Response& resp)
+        {
+            HandleUserLogin(req, resp);
+        });
+        root->AddSubGroup("/api/user")->AddRouteHandler("/logout", [](const tyke::Request& req, tyke::Response& resp)
+        {
+            HandleUserLogout(req, resp);
+        });
+
+        // 数据相关路由
+        root->AddSubGroup("/api/data")->AddRouteHandler("/query", [](const tyke::Request& req, tyke::Response& resp)
+        {
+            HandleDataQuery(req, resp);
+        });
+        root->AddSubGroup("/api/data")->AddRouteHandler("/update", [](const tyke::Request& req, tyke::Response& resp)
+        {
+            HandleDataUpdate(req, resp);
+        });
+
+        // 异步处理路由
+        root->AddSubGroup("/api/async")->AddRouteHandler("/process", [](const tyke::Request& req, tyke::Response& resp)
         {
             HandleAsyncProcess(req, resp);
         });
@@ -67,9 +87,8 @@ namespace controller::request::examples
                     {"token", "<GENERATED_TOKEN_PLACEHOLDER>"},
                     {"expires_in", 3600}
                 };
-                std::vector<uint8_t> response_bytes = nlohmann::json::to_msgpack(response_data);
                 std::string json_str = response_data.dump();
-                response_bytes.assign(json_str.begin(), json_str.end());
+                std::vector<uint8_t> response_bytes(json_str.begin(), json_str.end());
                 response.SetContent(tyke::ContentType::kJson, response_bytes);
                 response.SetResult(tyke::StatusCode::kSuccess, "OK");
             }

@@ -1,6 +1,10 @@
 /**
 * @file context_factory.h
  * @brief Context 工厂类。封装对象池管理逻辑，提供统一的创建接口。
+ *
+ * 这是推荐的 Context 工厂 API。与 tyke::ContextPool（定义在 tyke/component/context.h）
+ * 不同，ContextFactory 返回 std::pair<ContextPtr, std::function<void()>>，
+ * 使调用者可以显式取消上下文。两者维护独立的对象池——未来版本将统一。
  */
 
 #pragma once

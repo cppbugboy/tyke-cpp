@@ -50,6 +50,9 @@ namespace tyke
                                 nullptr);
             if (pipe_ == INVALID_HANDLE_VALUE)
                 return nonstd::make_unexpected(std::string("CreateFile failed for pipe: ") + std::string(server_name));
+            // 与服务端保持一致：跳过同步 I/O 完成时的自动 IOCP 通知，
+            // 避免因 Windows 默认行为导致同一操作产生多个完成包。
+            SetFileCompletionNotificationModes(pipe_, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS);
             DWORD mode = PIPE_READMODE_BYTE;
             SetNamedPipeHandleState(pipe_, &mode, nullptr, nullptr);
             if (rw_timeout_ms > 0)
@@ -142,8 +145,17 @@ namespace tyke
                 raw_buf.insert(raw_buf.end(), chunk, chunk + bytes_read);
                 uint8_t type = 0;
                 std::vector<uint8_t> payload;
-                while (frame::FrameParser::ExtractFrame(raw_buf, type, payload))
+                // 持续提取帧直到数据不足（< 5 字节）。损坏帧头已被 ExtractFrame
+                // 内部丢弃，若仍有足够数据则立即重试，无需等待下一次 ReadFile。
+                while (raw_buf.size() >= 5)
                 {
+                    auto extract_result = frame::FrameParser::ExtractFrame(raw_buf, type, payload);
+                    if (!extract_result)
+                    {
+                        if (raw_buf.size() >= 5)
+                            continue;
+                        break;
+                    }
                     if (type == frame::kMsgData)
                     {
                         plain_buf.insert(plain_buf.end(), payload.begin(), payload.end());
@@ -287,19 +299,14 @@ namespace tyke
             ClientContext()
                 : pipe(INVALID_HANDLE_VALUE), client_id(0), connected(false), writing(false), raw_read_buf{}
             {
+                // 服务端 I/O 全部走 IOCP 完成通知，OVERLAPPED.hEvent 不需要。
+                // 旧实现在这里创建手动重置事件，但既不用于 WaitForSingleObject 等待，
+                // 又因 ConnectNamedPipe 完成后被置为信号态且从不重置，反而干扰 ReadFile。
                 memset(&read_ov, 0, sizeof(read_ov));
                 memset(&write_ov, 0, sizeof(write_ov));
-                read_ov.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-                write_ov.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
             }
 
-            ~ClientContext()
-            {
-                if (read_ov.hEvent)
-                    CloseHandle(read_ov.hEvent);
-                if (write_ov.hEvent)
-                    CloseHandle(write_ov.hEvent);
-            }
+            ~ClientContext() = default;
         };
 
     public:
@@ -418,7 +425,10 @@ namespace tyke
                 DWORD bytes = 0;
                 ULONG_PTR key = 0;
                 OVERLAPPED* ov = nullptr;
-                const BOOL ok = GetQueuedCompletionStatus(iocp_, &bytes, &key, &ov, INFINITE);
+                // Use a finite timeout (100 ms) so that the worker thread never blocks
+                // indefinitely when Stop() races with completion processing. Each iteration
+                // re-checks running_, guaranteeing prompt shutdown.
+                const BOOL ok = GetQueuedCompletionStatus(iocp_, &bytes, &key, &ov, 100);
                 if (!running_)
                     break;
                 const auto client_id = static_cast<ClientId>(key);
@@ -519,6 +529,10 @@ namespace tyke
                 CloseHandle(pipe);
                 return nonstd::make_unexpected("CreateIoCompletionPort for pipe failed");
             }
+            // 禁止同步 ReadFile 成功时 Windows 自动投递 IOCP 完成包。
+            // 所有完成通知均由代码中的 PostQueuedCompletionStatus 显式投递，
+            // 避免同一操作产生双重/多重完成包导致 DataCallback 被重复调用。
+            SetFileCompletionNotificationModes(pipe, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS);
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 clients_[ctx->client_id] = ctx;
@@ -540,30 +554,47 @@ namespace tyke
 
         void PostRead(const std::shared_ptr<ClientContext>& ctx)
         {
-            const HANDLE hEvent = ctx->read_ov.hEvent;
+            // 服务端走 IOCP 完成通知，OVERLAPPED.hEvent 不需要（保持 NULL）。
             memset(&ctx->read_ov, 0, sizeof(ctx->read_ov));
-            ctx->read_ov.hEvent = hEvent;
             DWORD bytes = 0;
-            if (const BOOL ok = ReadFile(ctx->pipe, ctx->raw_read_buf, sizeof(ctx->raw_read_buf), &bytes,
-                                         &ctx->read_ov);
-                !ok)
+            const BOOL ok = ReadFile(ctx->pipe, ctx->raw_read_buf, sizeof(ctx->raw_read_buf), &bytes,
+                                     &ctx->read_ov);
+            if (ok)
             {
-                const DWORD err = GetLastError();
-                if (err == ERROR_IO_PENDING || err == ERROR_MORE_DATA)
-                    return;
-                if (err == ERROR_OPERATION_ABORTED || err == ERROR_INVALID_HANDLE)
-                    return;
-                LOG_WARN("PostRead ReadFile failed, client_id={}, err={}", ctx->client_id, err);
-                CloseClient(ctx);
+                // 同步完成：IOCP 默认不为同步完成投递完成包，必须手动投递，
+                // 否则 worker 永远收不到这次读取的完成通知（这是 6 个 IPC 集成测试
+                // 失败的根因——客户端 Write 后数据已在管道缓冲区，ReadFile 同步返回 TRUE）。
+                PostQueuedCompletionStatus(iocp_, bytes,
+                                           static_cast<ULONG_PTR>(ctx->client_id), &ctx->read_ov);
+                return;
             }
+            const DWORD err = GetLastError();
+            if (err == ERROR_IO_PENDING || err == ERROR_MORE_DATA)
+                return;
+            if (err == ERROR_OPERATION_ABORTED || err == ERROR_INVALID_HANDLE)
+                return;
+            LOG_WARN("PostRead ReadFile failed, client_id={}, err={}", ctx->client_id, err);
+            CloseClient(ctx);
         }
 
         bool ProcessFrames(const std::shared_ptr<ClientContext>& ctx)
         {
             uint8_t type = 0;
             std::vector<uint8_t> payload;
-            while (frame::FrameParser::ExtractFrame(ctx->raw_recv_buf, type, payload))
+            // 持续尝试提取帧，直到缓冲区不足以容纳最小帧头（5 字节）。
+            // 当 ExtractFrame 检测到损坏帧头时，它已丢弃无效字节并返回错误；
+            // 此时若缓冲区仍有 ≥5 字节数据，立即重试，无需等待下一次 ReadFile。
+            while (ctx->raw_recv_buf.size() >= 5)
             {
+                auto extract_result = frame::FrameParser::ExtractFrame(ctx->raw_recv_buf, type, payload);
+                if (!extract_result)
+                {
+                    // ExtractFrame 内部已丢弃无效字节。
+                    // 若缓冲区仍有足够数据则立即重试；否则退出并等待 PostRead 补充数据。
+                    if (ctx->raw_recv_buf.size() >= 5)
+                        continue;
+                    break;
+                }
                 if (type == frame::kMsgData)
                 {
                     const auto captured_client_id = ctx->client_id;
@@ -583,10 +614,10 @@ namespace tyke
                             };
                             if (callback)
                             {
-                                if (const auto optional = callback(captured_client_id, *data_copy, cb_send); !optional)
-                                {
-                                    self->CloseClient(captured_client_id);
-                                }
+                                // 文档语义：回调返回 nullopt 表示"数据不完整，需等待更多数据"，
+                                // 不应关闭连接。返回值（消费字节数）当前实现不消费，留待未来扩展。
+                                const auto optional = callback(captured_client_id, *data_copy, cb_send);
+                                (void)optional;
                             }
                         });
                     if (!enqueue_result)
@@ -656,10 +687,9 @@ namespace tyke
                                 };
                                 if (callback)
                                 {
-                                    if (const auto optional = callback(captured_client_id, *data_copy, cb_send); !optional)
-                                    {
-                                        self->CloseClient(captured_client_id);
-                                    }
+                                    // 同上：nullopt 表示数据不完整，不关闭连接。
+                                    const auto optional = callback(captured_client_id, *data_copy, cb_send);
+                                    (void)optional;
                                 }
                             });
                         if (!enqueue_result)
@@ -682,15 +712,26 @@ namespace tyke
         {
             if (ctx->pending_writes.empty())
                 return true;
+            if (ctx->pipe == INVALID_HANDLE_VALUE)
+            {
+                ctx->writing = false;
+                return false;
+            }
             ctx->writing = true;
-            const HANDLE hEvent = ctx->write_ov.hEvent;
             memset(&ctx->write_ov, 0, sizeof(ctx->write_ov));
-            ctx->write_ov.hEvent = hEvent;
             DWORD bytes = 0;
             const BOOL ok = WriteFile(ctx->pipe, ctx->pending_writes.data(),
                                       static_cast<DWORD>(ctx->pending_writes.size()),
                                       &bytes, &ctx->write_ov);
-            if (!ok && GetLastError() != ERROR_IO_PENDING)
+            if (ok)
+            {
+                // 同步完成：手动投递完成包，让 worker 走正常的写完成流程
+                // （清空 pending_writes、置 writing=false、可能继续 StartWrite）。
+                PostQueuedCompletionStatus(iocp_, bytes,
+                                           static_cast<ULONG_PTR>(ctx->client_id), &ctx->write_ov);
+                return true;
+            }
+            if (GetLastError() != ERROR_IO_PENDING)
             {
                 ctx->writing = false;
                 return false;
@@ -702,6 +743,11 @@ namespace tyke
         {
             LOG_INFO("CloseClient(shared_ptr), client_id={}, connected={}", ctx->client_id,
                      ctx->connected);
+            {
+                std::lock_guard<std::mutex> write_lock(ctx->write_mutex);
+                ctx->writing = false;
+                ctx->pending_writes.clear();
+            }
             std::lock_guard<std::mutex> lock(mutex_);
             const auto it = clients_.find(ctx->client_id);
             if (it == clients_.end())
@@ -711,6 +757,7 @@ namespace tyke
             CancelIoEx(ctx->pipe, &ctx->write_ov);
             DisconnectNamedPipe(ctx->pipe);
             CloseHandle(ctx->pipe);
+            ctx->pipe = INVALID_HANDLE_VALUE;
         }
 
         void CloseClient(const ClientId client_id)
@@ -724,10 +771,16 @@ namespace tyke
                 ctx = it->second;
                 clients_.erase(it);
             }
+            {
+                std::lock_guard<std::mutex> write_lock(ctx->write_mutex);
+                ctx->writing = false;
+                ctx->pending_writes.clear();
+            }
             CancelIoEx(ctx->pipe, &ctx->read_ov);
             CancelIoEx(ctx->pipe, &ctx->write_ov);
             DisconnectNamedPipe(ctx->pipe);
             CloseHandle(ctx->pipe);
+            ctx->pipe = INVALID_HANDLE_VALUE;
         }
 
         std::string server_name_;

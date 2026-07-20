@@ -1,5 +1,5 @@
 /**
- * @file tyke_framework.h
+ * @file framework.h
  * @brief 框架主类声明。提供框架初始化、启动、停止及路由获取等生命周期管理接口。
  * @author Nick
  * @date 2026/04/19

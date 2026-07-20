@@ -45,7 +45,7 @@ namespace tyke::data_handler
             if (std::memcmp(header.magic, kProtocolMagic, sizeof(header.magic)) != 0)
             {
                 LOG_WARN("Protocol magic mismatch, expected=TYKE, discarding {} bytes", data_vec.size());
-                return std::nullopt;
+                return 0;
             }
 
             LOG_DEBUG("Received message, type={}, metadata_len={}, content_len={}", static_cast<int>(header.msg_type),
