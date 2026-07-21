@@ -183,6 +183,10 @@ void RunClient(const std::string& name)
     }
     std::cout << "========================================" << std::endl;
 
+    // Properly stop the global thread pool before exit to avoid
+    // static-destruction ordering issues that cause a segfault.
+    tyke::GetGlobalThreadPool().Stop(true);
+
     if (failed > 0)
     {
         exit(1);
