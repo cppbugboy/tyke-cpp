@@ -29,8 +29,8 @@ namespace tyke::frame
     /// @brief 分片数据帧类型（大消息分片）
     constexpr uint8_t kMsgDataFragment = 0x04;
 
-    /// @brief 最大帧载荷长度（16MB）
-    constexpr uint32_t kMaxFramePayloadLen = 16 * 1024 * 1024;
+    /// @brief 最大帧载荷长度（1MB）
+    constexpr uint32_t kMaxFramePayloadLen = 1 * 1024 * 1024;
 
     /// @brief 分片块大小（64KB）
     constexpr uint32_t kFragmentChunkSize = 64 * 1024;
@@ -38,8 +38,8 @@ namespace tyke::frame
     /// @brief 分片头大小（8B: total_size[4] + offset[4]）
     constexpr uint32_t kFragmentHeaderSize = 8;
 
-    /// @brief 分片重组后的逻辑消息最大大小（64MB），防止恶意 totalSize 触发 OOM
-    constexpr uint32_t kMaxMessageSize = 64 * 1024 * 1024;
+    /// @brief 分片重组后的逻辑消息最大大小（1MB），防止恶意 totalSize 触发 OOM
+    constexpr uint32_t kMaxMessageSize = 1 * 1024 * 1024;
 
 
     /**

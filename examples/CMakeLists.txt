@@ -60,4 +60,24 @@ if (MSVC)
             )
         endforeach ()
     endforeach ()
+
+    # 大数据量传输测试
+    add_executable(large_transfer_test large_transfer_test.cpp)
+    target_include_directories(large_transfer_test PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${THIRD_PARTY_INCLUDE_DIR}
+    )
+    target_link_directories(large_transfer_test PRIVATE
+            ${THIRD_PARTY_LIB_DIR}
+    )
+    target_link_libraries(large_transfer_test PRIVATE tyke ${MIMALLOC_LIB})
+
+    foreach (dll IN LISTS WIN_DLL_FILES)
+        add_custom_command(TARGET large_transfer_test POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${THIRD_PARTY_LIB_DIR}/${dll}"
+                $<TARGET_FILE_DIR:large_transfer_test>
+                COMMENT "Copying ${dll} to large_transfer_test output dir"
+        )
+    endforeach ()
 endif ()

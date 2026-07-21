@@ -129,7 +129,7 @@ namespace tyke
             } guard{in_use_};
             std::vector<uint8_t> raw_buf;
             std::vector<uint8_t> plain_buf;
-            uint8_t chunk[131072];
+            uint8_t chunk[131072]; // 128KB stack 分配，避免大消息栈溢出
             while (true)
             {
                 ResetEvent(event_);
@@ -306,7 +306,8 @@ namespace tyke
             bool connected;
             std::atomic<bool> writing{false};
             std::mutex write_mutex;
-            uint8_t raw_read_buf[131072];
+            // 增大读缓冲区以匹配管道缓冲区大小，确保大数据量传输时一次读取即可获取所有分片数据。
+            uint8_t raw_read_buf[1048576]; // 1MB
             std::vector<uint8_t> reassembly_buf;
             uint32_t reassembly_total = 0;
             uint32_t reassembly_received = 0;
@@ -531,9 +532,11 @@ namespace tyke
 
         BoolResult CreateListeningPipe()
         {
+            // 增大管道缓冲区以容纳大数据量传输（4MB input + 4MB output），
+            // 避免分片数据跨越多次 IOCP 读取导致重组延迟。
             HANDLE pipe = CreateNamedPipeA(server_name_.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                                            PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
-                                           262144, 262144, 0, nullptr);
+                                           4 * 1024 * 1024, 4 * 1024 * 1024, 0, nullptr);
             if (pipe == INVALID_HANDLE_VALUE)
                 return nonstd::make_unexpected("CreateNamedPipe failed");
             const auto ctx = std::make_shared<ClientContext>();
@@ -576,9 +579,7 @@ namespace tyke
                                      &ctx->read_ov);
             if (ok)
             {
-                // 同步完成：IOCP 默认不为同步完成投递完成包，必须手动投递，
-                // 否则 worker 永远收不到这次读取的完成通知（这是 6 个 IPC 集成测试
-                // 失败的根因——客户端 Write 后数据已在管道缓冲区，ReadFile 同步返回 TRUE）。
+                // 同步完成：IOCP 默认不为同步完成投递完成包，必须手动投递。
                 PostQueuedCompletionStatus(iocp_, bytes,
                                            static_cast<ULONG_PTR>(ctx->client_id), &ctx->read_ov);
                 return;
@@ -702,14 +703,15 @@ namespace tyke
                                 };
                                 if (callback)
                                 {
-                                    // 同上：nullopt 表示数据不完整，不关闭连接。
+                                    LOG_INFO("Pool worker executing callback, size={}", data_copy->size());
                                     const auto optional = callback(captured_client_id, *data_copy, cb_send);
                                     (void)optional;
+                                    LOG_INFO("Pool worker callback done");
                                 }
                             });
                         if (!enqueue_result)
                         {
-                            LOG_WARN("Thread pool stopped, cannot process data for client_id={}", captured_client_id);
+                            LOG_WARN("THREAD POOL REJECTED task for client_id={}", captured_client_id);
                         }
                     }
                 }

@@ -15,10 +15,10 @@
 
 namespace tyke
 {
-    /** @brief 元数据最大长度: 4MB。 */
-    constexpr uint32_t kMaxMetadataLen = 4 * 1024 * 1024;
-    /** @brief 内容最大长度: 64MB。 */
-    constexpr uint32_t kMaxContentLen = 64 * 1024 * 1024;
+    /** @brief 元数据最大长度: 256KB。 */
+    constexpr uint32_t kMaxMetadataLen = 256 * 1024;
+    /** @brief 内容最大长度: 1MB。 */
+    constexpr uint32_t kMaxContentLen = 1 * 1024 * 1024;
 
     /** @brief 数据编解码工具类。提供请求/响应对象与协议字节流之间的序列化/反序列化。 */
     class DataProc
