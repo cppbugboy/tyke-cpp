@@ -45,7 +45,7 @@ namespace tyke
          * @param rw_timeout_ms 读写超时（毫秒）
          * @return BoolResult 成功返回true，失败返回错误信息
          */
-        virtual BoolResult Connect(std::string_view server_name, uint32_t timeout_ms, uint32_t rw_timeout_ms) = 0;
+        [[nodiscard]] virtual BoolResult Connect(std::string_view server_name, uint32_t timeout_ms, uint32_t rw_timeout_ms) = 0;
 
         /**
          * @brief 发送明文数据到服务端
@@ -55,7 +55,7 @@ namespace tyke
          * @return BoolResult 成功返回true
          * @note 大于64KB的数据会自动分片发送
          */
-        virtual BoolResult Write(const void* data, size_t size, uint32_t timeout_ms) = 0;
+        [[nodiscard]] virtual BoolResult Write(const void* data, size_t size, uint32_t timeout_ms) = 0;
 
         /**
          * @brief 启动阻塞式读取循环
@@ -64,7 +64,7 @@ namespace tyke
          * @return BoolResult 成功返回true
          * @note 分片消息自动重组后调用回调
          */
-        virtual BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms) = 0;
+        [[nodiscard]] virtual BoolResult ReadLoop(const ClientRecvDataCallback& callback, uint32_t timeout_ms) = 0;
 
         /**
          * @brief 关闭连接并释放平台资源
@@ -75,7 +75,7 @@ namespace tyke
          * @brief 查询连接是否有效
          * @return true 连接已建立且可通信；false 未连接或已断开
          */
-        virtual bool IsValid() const = 0;
+        [[nodiscard]] virtual bool IsValid() const = 0;
     };
 
     /**
@@ -95,7 +95,7 @@ namespace tyke
          * @param callback 数据接收回调，在工作线程中调用
          * @return BoolResult 成功返回true
          */
-        virtual BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) = 0;
+        [[nodiscard]] virtual BoolResult Start(std::string_view server_name, ServerRecvDataCallback callback) = 0;
 
         /**
          * @brief 停止服务，关闭所有客户端连接并释放资源
@@ -109,7 +109,7 @@ namespace tyke
          * @return BoolResult 成功返回true
          * @note 大于64KB的数据自动分片发送
          */
-        virtual BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) = 0;
+        [[nodiscard]] virtual BoolResult SendToClient(ClientId id, const std::vector<uint8_t>& data) = 0;
     };
 
     /**

@@ -159,13 +159,18 @@ namespace tyke
                 raw_buf.insert(raw_buf.end(), chunk, chunk + bytes_read);
                 uint8_t type = 0;
                 std::vector<uint8_t> payload;
-                // 持续提取帧直到数据不足（< 5 字节）。损坏帧头已被 ExtractFrame
-                // 内部丢弃，若仍有足够数据则立即重试，无需等待下一次 ReadFile。
+                // 持续提取帧直到数据不足。记录每次提取前的缓冲区大小，
+                // 若提取失败但大小未变（帧头完整但载荷不足），则退出等待更多数据。
                 while (raw_buf.size() >= 5)
                 {
+                    const size_t size_before = raw_buf.size();
                     auto extract_result = frame::FrameParser::ExtractFrame(raw_buf, type, payload);
                     if (!extract_result)
                     {
+                        // 若 ExtractFrame 未消费任何数据（头有效但载荷不完整），
+                        // 退出循环等待更多数据；若已丢弃损坏帧头则立即重试
+                        if (raw_buf.size() == size_before)
+                            break;
                         if (raw_buf.size() >= 5)
                             continue;
                         break;
@@ -685,9 +690,6 @@ namespace tyke
                     {
                         const auto captured_client_id = ctx->client_id;
                         auto data_copy = std::make_shared<std::vector<uint8_t>>(std::move(ctx->reassembly_buf));
-                        ctx->reassembly_buf.clear();
-                        ctx->reassembly_total = 0;
-                        ctx->reassembly_received = 0;
                         auto callback = callback_;
                         auto self = shared_from_this();
 
@@ -703,16 +705,18 @@ namespace tyke
                                 };
                                 if (callback)
                                 {
-                                    LOG_INFO("Pool worker executing callback, size={}", data_copy->size());
                                     const auto optional = callback(captured_client_id, *data_copy, cb_send);
                                     (void)optional;
-                                    LOG_INFO("Pool worker callback done");
                                 }
                             });
                         if (!enqueue_result)
                         {
-                            LOG_WARN("THREAD POOL REJECTED task for client_id={}", captured_client_id);
+                            LOG_WARN("Thread pool rejected task, closing client client_id={}", captured_client_id);
+                            return false;
                         }
+                        ctx->reassembly_buf.clear();
+                        ctx->reassembly_total = 0;
+                        ctx->reassembly_received = 0;
                     }
                 }
                 else
@@ -760,16 +764,17 @@ namespace tyke
         {
             LOG_INFO("CloseClient(shared_ptr), client_id={}, connected={}", ctx->client_id,
                      ctx->connected);
-            {
-                std::lock_guard<std::mutex> write_lock(ctx->write_mutex);
-                ctx->writing = false;
-                ctx->pending_writes.clear();
-            }
+            // 先锁 mutex_ 再锁 write_mutex，与 SendToClient 保持一致顺序，避免死锁
             std::lock_guard<std::mutex> lock(mutex_);
             const auto it = clients_.find(ctx->client_id);
             if (it == clients_.end())
                 return;
             clients_.erase(it);
+            {
+                std::lock_guard<std::mutex> write_lock(ctx->write_mutex);
+                ctx->writing = false;
+                ctx->pending_writes.clear();
+            }
             CancelIoEx(ctx->pipe, &ctx->read_ov);
             CancelIoEx(ctx->pipe, &ctx->write_ov);
             DisconnectNamedPipe(ctx->pipe);

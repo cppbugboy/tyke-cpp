@@ -150,7 +150,7 @@ namespace tyke
                 if (vec_size < header_size)
                 {
                     LOG_ERROR("Data too short for header: expected {} bytes, got {}", header_size, vec_size);
-                    return false;
+                    return std::nullopt;
                 }
 
                 deserialize_header(data_vec.data(), msg.protocol_header_);
@@ -158,7 +158,7 @@ namespace tyke
                 if (std::memcmp(msg.protocol_header_.magic, kProtocolMagic, sizeof(msg.protocol_header_.magic)) != 0)
                 {
                     LOG_ERROR("Protocol magic mismatch: expected TYKE");
-                    return false;
+                    return std::nullopt;
                 }
 
                 const uint32_t meta_len = msg.protocol_header_.metadata_len;
@@ -167,27 +167,27 @@ namespace tyke
                 if (meta_len > kMaxMetadataLen)
                 {
                     LOG_ERROR("Metadata length exceeds limit: {} > {}", meta_len, kMaxMetadataLen);
-                    return false;
+                    return std::nullopt;
                 }
 
                 if (cont_len > kMaxContentLen)
                 {
                     LOG_ERROR("Content length exceeds limit: {} > {}", cont_len, kMaxContentLen);
-                    return false;
+                    return std::nullopt;
                 }
 
                 // 防御性检查：防止 meta_len + cont_len 整数溢出
                 if (static_cast<uint64_t>(meta_len) + static_cast<uint64_t>(cont_len) > static_cast<uint64_t>(UINT32_MAX))
                 {
                     LOG_ERROR("Metadata + content length overflow: {} + {}", meta_len, cont_len);
-                    return false;
+                    return std::nullopt;
                 }
 
                 if (vec_size < header_size + meta_len + cont_len)
                 {
                     LOG_ERROR("Data incomplete: expected {} bytes, got {}", header_size + meta_len + cont_len,
                               vec_size);
-                    return false;
+                    return std::nullopt;
                 }
 
                 msg.metadata_.Clear();
@@ -199,7 +199,7 @@ namespace tyke
                     if (!result)
                     {
                         LOG_ERROR("Failed to parse metadata: {}", result.error());
-                        return false;
+                        return std::nullopt;
                     }
                 }
 

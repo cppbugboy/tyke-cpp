@@ -51,7 +51,7 @@ namespace tyke
         uint32_t file_size_mb_ = 1024;
         uint32_t file_count_ = 5;
         TimerId cleanup_timer_id_ = TimingWheel::kInvalidTimerId;
-        bool shutdown_ = false;  ///< 防重入标志，避免静态析构期间二次调用导致崩溃
+        std::atomic<bool> shutdown_{false};  ///< 防重入标志，避免静态析构期间二次调用导致崩溃
     };
 
 

@@ -47,38 +47,73 @@ namespace tyke
             Close();
         }
 
-        /** @brief 连接到抽象域套接字 (@tyke_<name>)。设置 SO_RCVTIMEO/SO_SNDTIMEO。 */
-        BoolResult Connect(std::string_view server_name, uint32_t, const uint32_t rw_timeout_ms) override
+        /** @brief 连接到抽象域套接字 (@tyke_<name>)。设置 SO_RCVTIMEO/SO_SNDTIMEO。
+         *        使用非阻塞 connect + poll 实现连接超时，与 Windows WaitNamedPipe 行为对齐。 */
+        BoolResult Connect(std::string_view server_name, const uint32_t timeout_ms, const uint32_t rw_timeout_ms) override
         {
             LOG_INFO("ipc client connecting to: {}", server_name);
             if (!utils::IsValidServerName(server_name))
                 return nonstd::make_unexpected("invalid server name");
             if (server_name.size() + 5 >= sizeof(sockaddr_un::sun_path) - 1)
                 return nonstd::make_unexpected("server name too long for unix domain socket");
-            fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+            fd_ = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
             if (fd_ < 0)
                 return nonstd::make_unexpected("socket creation failed");
-            timeval tv{};
-            tv.tv_sec = rw_timeout_ms / 1000;
-            tv.tv_usec = (rw_timeout_ms % 1000) * 1000;
-            setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-            setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+            // 与 Windows 行为对齐：rw_timeout_ms=0 表示不设置超时（无限等待）
+            if (rw_timeout_ms > 0)
+            {
+                timeval tv{};
+                tv.tv_sec = rw_timeout_ms / 1000;
+                tv.tv_usec = (rw_timeout_ms % 1000) * 1000;
+                setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+                setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+            }
             sockaddr_un addr{};
             addr.sun_family = AF_UNIX;
             addr.sun_path[0] = '\0';
             snprintf(addr.sun_path + 1, sizeof(addr.sun_path) - 1, "tyke_%s", server_name.data());
-            if (connect(fd_, reinterpret_cast<sockaddr*>(&addr),
-                        sizeof(sa_family_t) + strlen(addr.sun_path + 1) + 1) < 0)
+            const int ret = connect(fd_, reinterpret_cast<sockaddr*>(&addr),
+                        sizeof(sa_family_t) + strlen(addr.sun_path + 1) + 1);
+            if (ret < 0 && errno == EINPROGRESS)
+            {
+                pollfd pfd{};
+                pfd.fd = fd_;
+                pfd.events = POLLOUT;
+                const int poll_ret = poll(&pfd, 1, static_cast<int>(timeout_ms));
+                if (poll_ret <= 0)
+                {
+                    Close();
+                    return nonstd::make_unexpected("connect timeout for: " + std::string(server_name));
+                }
+                int so_error = 0;
+                socklen_t len = sizeof(so_error);
+                getsockopt(fd_, SOL_SOCKET, SO_ERROR, &so_error, &len);
+                if (so_error != 0)
+                {
+                    Close();
+                    return nonstd::make_unexpected(std::string("connect failed for: ") + std::string(server_name) +
+                                                   " errno=" + std::to_string(so_error));
+                }
+            }
+            else if (ret < 0)
             {
                 Close();
                 return nonstd::make_unexpected(std::string("connect failed for: ") + std::string(server_name));
             }
+            // 连接成功，恢复阻塞模式
+            const int flags = fcntl(fd_, F_GETFL, 0);
+            fcntl(fd_, F_SETFL, flags & ~O_NONBLOCK);
             return true;
         }
 
-        /** @brief 通过域套接字写入数据。超过 kFragmentChunkSize 时自动分片发送。使用 CAS 防并发。 */
-        BoolResult Write(const void* data, const size_t size, uint32_t) override
+        /** @brief 通过域套接字写入数据。使用 SO_SNDTIMEO 控制超时，与 Windows 超时参数对齐。 */
+        BoolResult Write(const void* data, const size_t size, const uint32_t timeout_ms) override
         {
+            // 按请求覆盖发送超时，与 Windows 行为对齐
+            timeval tv{};
+            tv.tv_sec = timeout_ms / 1000;
+            tv.tv_usec = (timeout_ms % 1000) * 1000;
+            setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
             bool expected = false;
             if (!in_use_.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
                 return nonstd::make_unexpected("connection busy: concurrent operation detected");
